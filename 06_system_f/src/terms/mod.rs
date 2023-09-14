@@ -46,7 +46,7 @@ use crate::bottom::{BottomKind, BottomPattern};
 use crate::patterns::ExtPattern;
 use crate::types::Type;
 use std::fmt;
-use system_r_util::span::Span;
+use crate::system_r_util::span::Span;
 pub mod visit;
 
 pub type Term = ExtTerm<BottomPattern, BottomKind>;

@@ -20,7 +20,7 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 use core::fmt;
 use std::{collections::HashMap};
 
-use system_r_util::span::Span;
+use crate::system_r_util::span::Span;
 
 use crate::{types::{ExtContext, Type}, diagnostics::Diagnostic, terms::{Term, Kind}, bottom::{BottomPattern, BottomKind, BottomExtension}, patterns::PatternExtension};
 

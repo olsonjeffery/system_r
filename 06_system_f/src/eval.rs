@@ -355,7 +355,7 @@ fn type_subst(s: Type, t: &mut Term) {
 #[cfg(test)]
 mod test {
     use super::*;
-    use system_r_util::span::Span;
+    use crate::system_r_util::span::Span;
 
     #[test]
     fn literal() {

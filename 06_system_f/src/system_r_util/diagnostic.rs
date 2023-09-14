@@ -26,7 +26,7 @@ SOFTWARE.
 //! Diagnostic handling for errors detected in source code.
 //!
 //! Dropping a [`Diagnostic`] without calling `emit` will cause a [`panic`]!
-use crate::span::*;
+use crate::system_r_util::span::*;
 
 /// Struct that handles collecting and reporting Parser errors and diagnostics
 pub struct Diagnostic<'s> {

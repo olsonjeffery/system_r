@@ -1,11 +1,10 @@
 [package]
 name = "system_r"
 version = "0.0.1"
-authors = ["Jeffery Olson <olson.jeffery@gmail.com>", "Michael Lazear <lazear@scripps.edu>"]
+authors = ["see AUTHORS.md", "Michael Lazear <lazear@scripps.edu>"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-system_r_util = { path = "../util" }
 anyhow = { version = "1.0.68" }

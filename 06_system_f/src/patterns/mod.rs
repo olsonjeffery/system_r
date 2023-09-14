@@ -49,7 +49,7 @@ use crate::bottom::{BottomPattern, BottomKind};
 use crate::terms::{ExtKind, Literal, ExtTerm};
 use crate::types::{variant_field, Type};
 use crate::visit::PatternVisitor;
-use system_r_util::span::Span;
+use crate::system_r_util::span::Span;
 
 pub type Pattern = ExtPattern<BottomPattern, BottomKind>;
 

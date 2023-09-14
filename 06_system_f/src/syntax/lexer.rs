@@ -46,7 +46,7 @@ use super::{ExtToken, ExtTokenKind};
 use std::char;
 use std::iter::Peekable;
 use std::str::Chars;
-use system_r_util::span::{Location, Span};
+use crate::system_r_util::span::{Location, Span};
 
 pub type Lexer<'s> = ExtLexer<'s, BottomTokenKind, BottomExtension>;
 

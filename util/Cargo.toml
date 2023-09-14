@@ -1,7 +1,0 @@
-[package]
-name = "system_r_util"
-version = "0.0.1"
-authors = ["Michael Lazear <lazear@scripps.edu>", "Jeffery Olson <olson.jeffery@gmail.com>"]
-edition = "2021"
-
-[dependencies]

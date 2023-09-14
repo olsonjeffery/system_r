@@ -14,7 +14,7 @@ Code in this repository is dual-licensed under the following licenses, as noted 
 # Copyright
 
 - MIT-licensed changes are Copyright Michael Lazear, 2020.
-- All subsequent changes under LGPL v3 is attributed to entrants in AUTHORS.txt.
+- All subsequent changes under LGPL v3 is attributed to entrants in AUTHORS.md
 
 Every code file in the repository is annotated with one, or both the MIT/Expat and GNU LGPL3 license headers, referencing the `LICENSE.*` files outlined above.
 

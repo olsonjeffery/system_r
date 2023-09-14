@@ -47,7 +47,7 @@ use crate::patterns::{ExtPattern, PatternCount};
 use crate::terms::{Arm, ExtKind, Primitive, ExtTerm};
 use crate::types::Type;
 use crate::visit::{MutTermVisitor, MutTypeVisitor};
-use system_r_util::span::Span;
+use crate::system_r_util::span::Span;
 
 pub struct Shift {
     cutoff: usize,

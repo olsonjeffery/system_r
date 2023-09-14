@@ -17,7 +17,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
-use system_r_util::span::Span;
+use crate::system_r_util::span::Span;
 
 use crate::{types::{self, Type}, terms::{ExtTerm, visit::InjRewriter, Term}, syntax::parser, syntax::parser::Parser,
 eval, diagnostics::Diagnostic, visit::MutTermVisitor, platform_bindings::PlatformBindings, bottom::{BottomKind, BottomExtension, BottomPattern}};

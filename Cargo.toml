@@ -1,2 +1,2 @@
 [workspace]
-members = ["06_system_f", "util"]
+members = ["06_system_f"]

@@ -47,7 +47,7 @@ use core::fmt;
 use crate::patterns::ExtPattern;
 use crate::terms::{Arm, ExtKind, Literal, Primitive, ExtTerm};
 use crate::types::{Type, Variant};
-use system_r_util::span::Span;
+use crate::system_r_util::span::Span;
 
 pub trait MutTypeVisitor: Sized {
     fn visit_pb(&mut self, i: &mut Type, r: &mut Type) {}

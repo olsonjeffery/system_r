@@ -47,8 +47,8 @@ use crate::bottom::{BottomTokenKind, BottomExtension, BottomKind, BottomPattern}
 
 use core::fmt;
 use std::collections::VecDeque;
-use system_r_util::diagnostic::Diagnostic;
-use system_r_util::span::*;
+use crate::system_r_util::diagnostic::Diagnostic;
+use crate::system_r_util::span::*;
 
 use crate::patterns::{PatVarStack, ExtPattern};
 use crate::terms::*;

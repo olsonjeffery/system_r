@@ -44,7 +44,7 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 //! Extended Lexical analysis and recursive descent parser for System F
 pub mod lexer;
 pub mod parser;
-use system_r_util::span::Span;
+use crate::system_r_util::span::Span;
 
 use self::{lexer::LexerExtension, parser::ParserExtension};
 

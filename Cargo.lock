@@ -13,9 +13,4 @@ name = "system_r"
 version = "0.0.1"
 dependencies = [
  "anyhow",
- "system_r_util",
 ]
-
-[[package]]
-name = "system_r_util"
-version = "0.0.1"

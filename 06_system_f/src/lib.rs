@@ -54,6 +54,7 @@ pub mod visit;
 pub mod testing;
 pub mod platform_bindings;
 pub mod bottom;
+pub mod system_r_util;
 
 #[macro_use]
 extern crate anyhow;

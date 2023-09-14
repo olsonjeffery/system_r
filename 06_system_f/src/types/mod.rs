@@ -53,7 +53,7 @@ use crate::terms::{ExtKind, Literal, Primitive, ExtTerm};
 use crate::visit::{MutTermVisitor, MutTypeVisitor};
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
-use system_r_util::span::Span;
+use crate::system_r_util::span::Span;
 use visit::{Shift, Subst};
 
 #[derive(Default, Clone, PartialEq, PartialOrd, Eq, Hash)]
