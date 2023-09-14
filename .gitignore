@@ -2,3 +2,4 @@
 **/*.rs.bk
 .vscode/
 target
+specs-results.json
