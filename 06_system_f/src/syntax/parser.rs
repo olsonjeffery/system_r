@@ -1,17 +1,71 @@
-use super::lexer::Lexer;
-use super::{Token, TokenKind};
+/*
+Copyright (C) 2020-2023 Micheal Lazear, AUTHORS
 
+The MIT License (MIT)
+
+Copyright (c) ${license.years} ${license.owner}
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---------------------
+
+GNU Lesser General Public License Version 3
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 3 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License
+along with this program; if not, write to the Free Software Foundation,
+Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+*/
+use super::lexer::{ExtLexer, LexerExtension};
+use super::{ExtToken, ExtTokenKind};
+use crate::bottom::{BottomTokenKind, BottomExtension, BottomKind, BottomPattern};
+
+use core::fmt;
 use std::collections::VecDeque;
-use util::diagnostic::Diagnostic;
-use util::span::*;
+use system_r_util::diagnostic::Diagnostic;
+use system_r_util::span::*;
 
-use crate::patterns::{PatVarStack, Pattern};
+use crate::patterns::{PatVarStack, ExtPattern};
 use crate::terms::*;
+use crate::platform_bindings::PlatformBindings;
 use crate::types::*;
+
+pub type Parser<'s> = ExtParser<'s, BottomPattern, BottomKind, BottomTokenKind, BottomExtension, BottomExtension>;
 
 #[derive(Clone, Debug, Default)]
 pub struct DeBruijnIndexer {
     inner: VecDeque<String>,
+}
+
+impl<'s> Parser<'s> {
+    pub fn new(platform_bindings: &'s PlatformBindings, input: &'s str) -> Self {
+        ExtParser::ext_new(platform_bindings, input, BottomExtension, BottomExtension)
+    }
 }
 
 impl DeBruijnIndexer {
@@ -39,43 +93,68 @@ impl DeBruijnIndexer {
     }
 }
 
-pub struct Parser<'s> {
+pub struct ExtParser<'s, TExtPat: fmt::Debug + PartialEq + Default + Sized + Clone,
+                         TExtKind: fmt::Debug + PartialEq + Default + Sized + Clone,
+                         TExtTokenKind: fmt::Debug + PartialEq + Default + Sized + Clone,
+                         TLE: Clone + LexerExtension<TExtTokenKind>,
+                         TPE: ParserExtension<TExtTokenKind, TExtKind>> {
     tmvar: DeBruijnIndexer,
     tyvar: DeBruijnIndexer,
     diagnostic: Diagnostic<'s>,
-    lexer: Lexer<'s>,
+    lexer: ExtLexer<'s, TExtTokenKind, TLE>,
     span: Span,
-    token: Token,
+    token: ExtToken<TExtTokenKind>,
+    platform_bindings: PlatformBindings,
+    extension: TPE,
+    _kind: TExtKind,
+    _pat: TExtPat,
 }
 
-#[derive(Clone, Debug)]
-pub struct Error {
+pub trait ParserExtension<TExtTokenKind: fmt::Debug + PartialEq + Default + Sized + Clone,
+                          TExtKind: fmt::Debug + PartialEq + Default + Sized + Clone> {
+
+}
+
+#[derive(Clone)]
+pub struct Error<TExtTokenKind: PartialEq + Default + Sized + Clone> {
     pub span: Span,
-    pub tok: Token,
-    pub kind: ErrorKind,
+    pub tok: ExtToken<TExtTokenKind>,
+    pub kind: ErrorKind<TExtTokenKind>,
+}
+
+impl<TExtTokenKind: Default + Sized + Clone + PartialEq> fmt::Debug for Error<TExtTokenKind> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Error").finish()
+    }
 }
 
 #[derive(Clone, Debug)]
-pub enum ErrorKind {
+pub enum ErrorKind<TExtTokenKind: PartialEq> {
     ExpectedAtom,
     ExpectedIdent,
     ExpectedType,
     ExpectedPattern,
-    ExpectedToken(TokenKind),
+    ExpectedToken(ExtTokenKind<TExtTokenKind>),
     UnboundTypeVar,
     Unknown,
     Eof,
 }
-impl<'s> Parser<'s> {
+impl<'s, TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default, TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default, TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+         TLE: Clone + LexerExtension<TExtTokenKind>,
+         TPE: ParserExtension<TExtTokenKind, TExtKind>> ExtParser<'s, TExtPat, TExtKind, TExtTokenKind, TLE, TPE> {
     /// Create a new [`Parser`] for the input `&str`
-    pub fn new(input: &'s str) -> Parser<'s> {
-        let mut p = Parser {
+    pub fn ext_new(platform_bindings: &'s PlatformBindings, input: &'s str, lexer_ext: TLE, parser_ext: TPE) -> ExtParser<'s, TExtPat, TExtKind, TExtTokenKind, TLE, TPE> {
+        let mut p = ExtParser {
             tmvar: DeBruijnIndexer::default(),
             tyvar: DeBruijnIndexer::default(),
             diagnostic: Diagnostic::new(input),
-            lexer: Lexer::new(input.chars()),
+            lexer: ExtLexer::new(input.chars(), lexer_ext.clone()),
             span: Span::default(),
-            token: Token::dummy(),
+            token: ExtToken::dummy(),
+            platform_bindings: platform_bindings.clone(),
+            extension: parser_ext,
+            _kind: TExtKind::default(),
+            _pat: TExtPat::default(),
         };
         p.bump();
         p
@@ -86,11 +165,13 @@ impl<'s> Parser<'s> {
     }
 }
 
-impl<'s> Parser<'s> {
+impl<'s, TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default, TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+         TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+         TLE: Clone + LexerExtension<TExtTokenKind>, TPE: ParserExtension<TExtTokenKind, TExtKind>> ExtParser<'s, TExtPat, TExtKind, TExtTokenKind, TLE, TPE> where TLE : LexerExtension<TExtTokenKind> {
     /// Kleene Plus combinator
-    fn once_or_more<T, F>(&mut self, func: F, delimiter: TokenKind) -> Result<Vec<T>, Error>
+    fn once_or_more<T, F>(&mut self, func: F, delimiter: ExtTokenKind<TExtTokenKind>) -> Result<Vec<T>, Error<TExtTokenKind>>
     where
-        F: Fn(&mut Parser) -> Result<T, Error>,
+        F: Fn(&mut ExtParser<TExtPat, TExtKind, TExtTokenKind, TLE, TPE>) -> Result<T, Error<TExtTokenKind>>,
     {
         let mut v = vec![func(self)?];
         while self.bump_if(&delimiter) {
@@ -103,9 +184,9 @@ impl<'s> Parser<'s> {
     /// Combinator that must return Ok or a message will be pushed to
     /// diagnostic. This method should only be called after a token has
     /// already been bumped.
-    fn once<T, F>(&mut self, func: F, message: &str) -> Result<T, Error>
+    fn once<T, F>(&mut self, func: F, message: &str) -> Result<T, Error<TExtTokenKind>>
     where
-        F: Fn(&mut Parser) -> Result<T, Error>,
+        F: Fn(&mut ExtParser<TExtPat, TExtKind, TExtTokenKind, TLE, TPE>) -> Result<T, Error<TExtTokenKind>>,
     {
         match func(self) {
             Ok(t) => Ok(t),
@@ -117,8 +198,12 @@ impl<'s> Parser<'s> {
     }
 }
 
-impl<'s> Parser<'s> {
-    fn error<T>(&self, kind: ErrorKind) -> Result<T, Error> {
+impl<'s, TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+         TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+         TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+         TLE: Clone + LexerExtension<TExtTokenKind>,
+         TPE: ParserExtension<TExtTokenKind, TExtKind>> ExtParser<'s, TExtPat, TExtKind, TExtTokenKind, TLE, TPE> where TLE : LexerExtension<TExtTokenKind> {
+    fn error<T>(&self, kind: ErrorKind<TExtTokenKind>) -> Result<T, Error<TExtTokenKind>> {
         Err(Error {
             span: self.token.span,
             tok: self.token.clone(),
@@ -126,13 +211,13 @@ impl<'s> Parser<'s> {
         })
     }
 
-    fn bump(&mut self) -> TokenKind {
+    fn bump(&mut self) -> ExtTokenKind<TExtTokenKind> {
         let prev = std::mem::replace(&mut self.token, self.lexer.lex());
         self.span = prev.span;
         prev.kind
     }
 
-    fn bump_if(&mut self, kind: &TokenKind) -> bool {
+    fn bump_if(&mut self, kind: &ExtTokenKind<TExtTokenKind>) -> bool {
         if &self.token.kind == kind {
             self.bump();
             true
@@ -141,7 +226,7 @@ impl<'s> Parser<'s> {
         }
     }
 
-    fn expect(&mut self, kind: TokenKind) -> Result<(), Error> {
+    fn expect(&mut self, kind: ExtTokenKind<TExtTokenKind>) -> Result<(), Error<TExtTokenKind>> {
         if self.token.kind == kind {
             self.bump();
             Ok(())
@@ -154,11 +239,11 @@ impl<'s> Parser<'s> {
         }
     }
 
-    fn kind(&self) -> &TokenKind {
+    fn kind(&self) -> &ExtTokenKind<TExtTokenKind> {
         &self.token.kind
     }
 
-    fn ty_variant(&mut self) -> Result<Variant, Error> {
+    fn ty_variant(&mut self) -> Result<Variant, Error<TExtTokenKind>> {
         let label = self.uppercase_id()?;
         let ty = match self.ty() {
             Ok(ty) => ty,
@@ -168,69 +253,74 @@ impl<'s> Parser<'s> {
         Ok(Variant { label, ty })
     }
 
-    fn ty_app(&mut self) -> Result<Type, Error> {
-        if !self.bump_if(&TokenKind::LSquare) {
-            return self.error(ErrorKind::ExpectedToken(TokenKind::LSquare));
+    fn ty_app(&mut self) -> Result<Type, Error<TExtTokenKind>> {
+        if !self.bump_if(&ExtTokenKind::LSquare) {
+            return self.error(ErrorKind::ExpectedToken(ExtTokenKind::LSquare));
         }
         let ty = self.ty()?;
-        self.expect(TokenKind::RSquare)?;
+        self.expect(ExtTokenKind::RSquare)?;
         Ok(ty)
     }
 
-    fn ty_atom(&mut self) -> Result<Type, Error> {
+    fn ty_atom(&mut self) -> Result<Type, Error<TExtTokenKind>> {
         match self.kind() {
-            TokenKind::TyBool => {
+            ExtTokenKind::Tag(s) => {
+                let v = s.to_owned();
+                self.bump();
+                Ok(Type::Tag(v))
+            }
+            ExtTokenKind::TyBool => {
                 self.bump();
                 Ok(Type::Bool)
             }
-            TokenKind::TyNat => {
+            ExtTokenKind::TyNat => {
                 self.bump();
                 Ok(Type::Nat)
             }
-            TokenKind::TyUnit => {
+            ExtTokenKind::TyUnit => {
                 self.bump();
                 Ok(Type::Unit)
             }
-            TokenKind::LParen => {
+            ExtTokenKind::LParen => {
                 self.bump();
                 let r = self.ty()?;
-                self.expect(TokenKind::RParen)?;
+                self.expect(ExtTokenKind::RParen)?;
                 Ok(r)
             }
-            TokenKind::Forall => {
+            ExtTokenKind::Forall => {
                 self.bump();
                 Ok(Type::Universal(Box::new(self.ty()?)))
             }
-            TokenKind::Exists => {
+            ExtTokenKind::Exists => {
                 self.bump();
                 let tvar = self.uppercase_id()?;
-                self.expect(TokenKind::Proj)?;
+                self.expect(ExtTokenKind::Proj)?;
                 self.tyvar.push(tvar);
                 let xs = Type::Existential(Box::new(self.ty()?));
                 self.tyvar.pop();
                 Ok(xs)
             }
-            TokenKind::Uppercase(_) => {
+            ExtTokenKind::Uppercase(_) => {
                 let ty = self.uppercase_id()?;
                 match self.tyvar.lookup(&ty) {
                     Some(idx) => Ok(Type::Var(idx)),
                     None => Ok(Type::Alias(ty)),
                 }
             }
-            TokenKind::LBrace => {
+            ExtTokenKind::LBrace => {
                 self.bump();
-                let fields = self.once_or_more(|p| p.ty_variant(), TokenKind::Bar)?;
-                self.expect(TokenKind::RBrace)?;
+                let fields = self.once_or_more(|p| p.ty_variant(), ExtTokenKind::Bar)?;
+                self.expect(ExtTokenKind::RBrace)?;
                 Ok(Type::Variant(fields))
             }
             _ => self.error(ErrorKind::ExpectedType),
         }
     }
 
-    fn ty_tuple(&mut self) -> Result<Type, Error> {
-        if self.bump_if(&TokenKind::LParen) {
-            let mut v = self.once_or_more(|p| p.ty(), TokenKind::Comma)?;
-            self.expect(TokenKind::RParen)?;
+    fn ty_tuple(&mut self) -> Result<Type, Error<TExtTokenKind>> {
+        if self.bump_if(&ExtTokenKind::LParen) {
+            let mut v = self.once_or_more(|p| p.ty(), ExtTokenKind::Comma)?;
+            self.expect(ExtTokenKind::RParen)?;
 
             if v.len() > 1 {
                 Ok(Type::Product(v))
@@ -242,10 +332,17 @@ impl<'s> Parser<'s> {
         }
     }
 
-    pub fn ty(&mut self) -> Result<Type, Error> {
-        if self.bump_if(&TokenKind::Rec) {
+    pub fn ty(&mut self) -> Result<Type, Error<TExtTokenKind>> {
+        /*
+        match self.kind() {
+            ExtTokenKind::AnyTag => return Ok(Type::AnyTag),
+            ExtTokenKind::Tag(s) => return Ok(Type::Tag(s.to_owned())),
+            _ => {}
+        };
+        */
+        if self.bump_if(&ExtTokenKind::Rec) {
             let name = self.uppercase_id()?;
-            self.expect(TokenKind::Equals)?;
+            self.expect(ExtTokenKind::Equals)?;
             self.tyvar.push(name);
             let ty = self.ty()?;
             self.tyvar.pop();
@@ -253,11 +350,11 @@ impl<'s> Parser<'s> {
         }
 
         let mut lhs = self.ty_tuple()?;
-        if let TokenKind::TyArrow = self.kind() {
+        if let ExtTokenKind::TyArrow = self.kind() {
             self.bump();
             while let Ok(rhs) = self.ty() {
                 lhs = Type::Arrow(Box::new(lhs), Box::new(rhs));
-                if let TokenKind::TyArrow = self.kind() {
+                if let ExtTokenKind::TyArrow = self.kind() {
                     self.bump();
                 } else {
                     break;
@@ -267,78 +364,78 @@ impl<'s> Parser<'s> {
         Ok(lhs)
     }
 
-    fn tyabs(&mut self) -> Result<Term, Error> {
+    fn tyabs(&mut self) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
         let tyvar = self.uppercase_id()?;
         let sp = self.span;
         let ty = Box::new(Type::Var(self.tyvar.push(tyvar)));
         let body = self.once(|p| p.parse(), "abstraction body required")?;
-        Ok(Term::new(Kind::TyAbs(Box::new(body)), sp + self.span))
+        Ok(ExtTerm::new(ExtKind::TyAbs(Box::new(body)), sp + self.span))
     }
 
-    fn tmabs(&mut self) -> Result<Term, Error> {
+    fn tmabs(&mut self) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
         let tmvar = self.lowercase_id()?;
         let sp = self.span;
         self.tmvar.push(tmvar);
 
-        self.expect(TokenKind::Colon)?;
+        self.expect(ExtTokenKind::Colon)?;
         let ty = self.once(|p| p.ty(), "type annotation required in abstraction")?;
-        self.expect(TokenKind::Proj)?;
+        self.expect(ExtTokenKind::Proj)?;
         let body = self.once(|p| p.parse(), "abstraction body required")?;
         self.tmvar.pop();
-        Ok(Term::new(Kind::Abs(Box::new(ty), Box::new(body)), sp + self.span))
+        Ok(ExtTerm::new(ExtKind::Abs(Box::new(ty), Box::new(body)), sp + self.span))
     }
 
-    fn fold(&mut self) -> Result<Term, Error> {
-        self.expect(TokenKind::Fold)?;
+    fn fold(&mut self) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
+        self.expect(ExtTokenKind::Fold)?;
         let sp = self.span;
         let ty = self.once(|p| p.ty(), "type annotation required after `fold`")?;
         let tm = self.once(|p| p.parse(), "term required after `fold`")?;
-        Ok(Term::new(Kind::Fold(Box::new(ty), Box::new(tm)), sp + self.span))
+        Ok(ExtTerm::new(ExtKind::Fold(Box::new(ty), Box::new(tm)), sp + self.span))
     }
 
-    fn unfold(&mut self) -> Result<Term, Error> {
-        self.expect(TokenKind::Unfold)?;
+    fn unfold(&mut self) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
+        self.expect(ExtTokenKind::Unfold)?;
         let sp = self.span;
         let ty = self.once(|p| p.ty(), "type annotation required after `unfold`")?;
         let tm = self.once(|p| p.parse(), "term required after `unfold`")?;
-        Ok(Term::new(Kind::Unfold(Box::new(ty), Box::new(tm)), sp + self.span))
+        Ok(ExtTerm::new(ExtKind::Unfold(Box::new(ty), Box::new(tm)), sp + self.span))
     }
 
-    fn fix(&mut self) -> Result<Term, Error> {
+    fn fix(&mut self) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
         let sp = self.span;
-        self.expect(TokenKind::Fix)?;
+        self.expect(ExtTokenKind::Fix)?;
         let t = self.parse()?;
-        Ok(Term::new(Kind::Fix(Box::new(t)), sp + self.span))
+        Ok(ExtTerm::new(ExtKind::Fix(Box::new(t)), sp + self.span))
     }
 
-    fn letexpr(&mut self) -> Result<Term, Error> {
+    fn letexpr(&mut self) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
         let sp = self.span;
-        self.expect(TokenKind::Let)?;
+        self.expect(ExtTokenKind::Let)?;
         let mut pat = self.once(|p| p.pattern(), "missing pattern")?;
 
-        self.expect(TokenKind::Equals)?;
+        self.expect(ExtTokenKind::Equals)?;
 
         let t1 = self.once(|p| p.parse(), "let binder required")?;
         let len = self.tmvar.len();
         for var in PatVarStack::collect(&mut pat).into_iter().rev() {
             self.tmvar.push(var);
         }
-        self.expect(TokenKind::In)?;
+        self.expect(ExtTokenKind::In)?;
         let t2 = self.once(|p| p.parse(), "let body required")?;
         while self.tmvar.len() > len {
             self.tmvar.pop();
         }
-        Ok(Term::new(
-            Kind::Let(Box::new(pat), Box::new(t1), Box::new(t2)),
+        Ok(ExtTerm::new(
+            ExtKind::Let(Box::new(pat), Box::new(t1), Box::new(t2)),
             sp + self.span,
         ))
     }
 
-    fn lambda(&mut self) -> Result<Term, Error> {
-        self.expect(TokenKind::Lambda)?;
+    fn lambda(&mut self) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
+        self.expect(ExtTokenKind::Lambda)?;
         match self.kind() {
-            TokenKind::Uppercase(_) => self.tyabs(),
-            TokenKind::Lowercase(_) => self.tmabs(),
+            ExtTokenKind::Uppercase(_) => self.tyabs(),
+            ExtTokenKind::Lowercase(_) => self.tmabs(),
             _ => {
                 self.diagnostic
                     .push("expected identifier after lambda, found".to_string(), self.span);
@@ -347,22 +444,22 @@ impl<'s> Parser<'s> {
         }
     }
 
-    fn paren(&mut self) -> Result<Term, Error> {
-        self.expect(TokenKind::LParen)?;
+    fn paren(&mut self) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
+        self.expect(ExtTokenKind::LParen)?;
         let span = self.span;
-        let mut n = self.once_or_more(|p| p.parse(), TokenKind::Comma)?;
-        self.expect(TokenKind::RParen)?;
+        let mut n = self.once_or_more(|p| p.parse(), ExtTokenKind::Comma)?;
+        self.expect(ExtTokenKind::RParen)?;
         if n.len() > 1 {
-            Ok(Term::new(Kind::Product(n), span + self.span))
+            Ok(ExtTerm::new(ExtKind::Product(n), span + self.span))
         } else {
             // invariant, n.len() >= 1
             Ok(n.remove(0))
         }
     }
 
-    fn uppercase_id(&mut self) -> Result<String, Error> {
+    fn uppercase_id(&mut self) -> Result<String, Error<TExtTokenKind>> {
         match self.bump() {
-            TokenKind::Uppercase(s) => Ok(s),
+            ExtTokenKind::Uppercase(s) => Ok(s),
             tk => {
                 self.diagnostic
                     .push(format!("expected uppercase identifier, found {:?}", tk), self.span);
@@ -371,9 +468,9 @@ impl<'s> Parser<'s> {
         }
     }
 
-    fn lowercase_id(&mut self) -> Result<String, Error> {
+    fn lowercase_id(&mut self) -> Result<String, Error<TExtTokenKind>> {
         match self.bump() {
-            TokenKind::Lowercase(s) => Ok(s),
+            ExtTokenKind::Lowercase(s) => Ok(s),
             tk => {
                 self.diagnostic
                     .push(format!("expected lowercase identifier, found {:?}", tk), self.span);
@@ -382,80 +479,86 @@ impl<'s> Parser<'s> {
         }
     }
 
-    fn literal(&mut self) -> Result<Term, Error> {
+    fn literal(&mut self) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
         let lit = match self.bump() {
-            TokenKind::Nat(x) => Literal::Nat(x),
-            TokenKind::True => Literal::Bool(true),
-            TokenKind::False => Literal::Bool(false),
-            TokenKind::Unit => Literal::Unit,
+            ExtTokenKind::Nat(x) => Literal::Nat(x),
+            ExtTokenKind::True => Literal::Bool(true),
+            ExtTokenKind::False => Literal::Bool(false),
+            ExtTokenKind::Unit => Literal::Unit,
+            ExtTokenKind::Tag(s) => Literal::Tag(s),
             _ => return self.error(ErrorKind::Unknown),
         };
-        Ok(Term::new(Kind::Lit(lit), self.span))
+        Ok(ExtTerm::new(ExtKind::Lit(lit), self.span))
     }
 
-    fn primitive(&mut self) -> Result<Term, Error> {
+    fn primitive(&mut self) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
         let p = match self.bump() {
-            TokenKind::IsZero => Primitive::IsZero,
-            TokenKind::Succ => Primitive::Succ,
-            TokenKind::Pred => Primitive::Pred,
+            ExtTokenKind::IsZero => Primitive::IsZero,
+            ExtTokenKind::Succ => Primitive::Succ,
+            ExtTokenKind::Pred => Primitive::Pred,
             _ => return self.error(ErrorKind::Unknown),
         };
-        Ok(Term::new(Kind::Primitive(p), self.span))
+        Ok(ExtTerm::new(ExtKind::Primitive(p), self.span))
     }
 
     /// Important to note that this function can push variable names to the
     /// de Bruijn naming context. Callers of this function are responsible for
     /// making sure that the stack is balanced afterwards
-    fn pat_atom(&mut self) -> Result<Pattern, Error> {
+    fn pat_atom(&mut self) -> Result<ExtPattern<TExtPat, TExtKind>, Error<TExtTokenKind>> {
         match self.kind() {
-            TokenKind::LParen => self.pattern(),
-            TokenKind::Wildcard => {
+            ExtTokenKind::LParen => self.pattern(),
+            ExtTokenKind::Wildcard => {
                 self.bump();
-                Ok(Pattern::Any)
+                Ok(ExtPattern::Any)
             }
-            TokenKind::Uppercase(_) => {
+            ExtTokenKind::Uppercase(_) => {
                 let tycon = self.uppercase_id()?;
                 let inner = match self.pattern() {
                     Ok(pat) => pat,
-                    _ => Pattern::Any,
+                    _ => ExtPattern::Any,
                 };
-                Ok(Pattern::Constructor(tycon, Box::new(inner)))
+                Ok(ExtPattern::Constructor(tycon, Box::new(inner)))
             }
-            TokenKind::Lowercase(_) => {
+            ExtTokenKind::Lowercase(_) => {
                 let var = self.lowercase_id()?;
                 // self.tmvar.push(var.clone());
-                Ok(Pattern::Variable(var))
+                Ok(ExtPattern::Variable(var))
             }
-            TokenKind::True => {
+            ExtTokenKind::True => {
                 self.bump();
-                Ok(Pattern::Literal(Literal::Bool(true)))
+                Ok(ExtPattern::Literal(Literal::Bool(true)))
             }
-            TokenKind::False => {
+            ExtTokenKind::False => {
                 self.bump();
-                Ok(Pattern::Literal(Literal::Bool(false)))
+                Ok(ExtPattern::Literal(Literal::Bool(false)))
             }
-            TokenKind::Unit => {
+            ExtTokenKind::Unit => {
                 self.bump();
-                Ok(Pattern::Literal(Literal::Unit))
+                Ok(ExtPattern::Literal(Literal::Unit))
             }
-            TokenKind::Nat(n) => {
+            ExtTokenKind::Nat(n) => {
                 // O great borrowck, may this humble offering appease thee
                 let n = *n;
                 self.bump();
-                Ok(Pattern::Literal(Literal::Nat(n)))
+                Ok(ExtPattern::Literal(Literal::Nat(n)))
+            }
+            ExtTokenKind::Tag(s) => {
+                let s = s.clone();
+                self.bump();
+                Ok(ExtPattern::Literal(Literal::Tag(s)))
             }
             _ => self.error(ErrorKind::ExpectedPattern),
         }
     }
 
-    fn pattern(&mut self) -> Result<Pattern, Error> {
+    fn pattern(&mut self) -> Result<ExtPattern<TExtPat, TExtKind>, Error<TExtTokenKind>> {
         match self.kind() {
-            TokenKind::LParen => {
+            ExtTokenKind::LParen => {
                 self.bump();
-                let mut v = self.once_or_more(|p| p.pat_atom(), TokenKind::Comma)?;
-                self.expect(TokenKind::RParen)?;
+                let mut v = self.once_or_more(|p| p.pat_atom(), ExtTokenKind::Comma)?;
+                self.expect(ExtTokenKind::RParen)?;
                 if v.len() > 1 {
-                    Ok(Pattern::Product(v))
+                    Ok(ExtPattern::Product(v))
                 } else {
                     // v must have length == 1, else we would have early returned
                     assert_eq!(v.len(), 1);
@@ -466,10 +569,10 @@ impl<'s> Parser<'s> {
         }
     }
 
-    fn case_arm(&mut self) -> Result<Arm, Error> {
+    fn case_arm(&mut self) -> Result<Arm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
         // match self.kind() {
-        //     TokenKind::Bar => self.bump(),
-        //     _ => return self.error(ErrorKind::ExpectedToken(TokenKind::Bar)),
+        //     ExtTokenKind::Bar => self.bump(),
+        //     _ => return self.error(ErrorKind::ExpectedToken(ExtTokenKind::Bar)),
         // };
 
         // We don't track the length of the debruijn index in other methods,
@@ -485,12 +588,12 @@ impl<'s> Parser<'s> {
             self.tmvar.push(var);
         }
 
-        self.expect(TokenKind::Equals)?;
-        self.expect(TokenKind::Gt)?;
+        self.expect(ExtTokenKind::Equals)?;
+        self.expect(ExtTokenKind::Gt)?;
 
         let term = Box::new(self.once(|p| p.application(), "missing case term")?);
 
-        self.bump_if(&TokenKind::Comma);
+        self.bump_if(&ExtTokenKind::Comma);
 
         // Unbind any variables from the parsing context
         while self.tmvar.len() > len {
@@ -502,93 +605,98 @@ impl<'s> Parser<'s> {
         Ok(Arm { span, pat, term })
     }
 
-    fn case(&mut self) -> Result<Term, Error> {
-        self.expect(TokenKind::Case)?;
+    fn case(&mut self) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
+        self.expect(ExtTokenKind::Case)?;
         let span = self.span;
         let expr = self.once(|p| p.parse(), "missing case expression")?;
-        self.expect(TokenKind::Of)?;
+        self.expect(ExtTokenKind::Of)?;
 
-        self.bump_if(&TokenKind::Bar);
-        let arms = self.once_or_more(|p| p.case_arm(), TokenKind::Bar)?;
+        self.bump_if(&ExtTokenKind::Bar);
+        let arms = self.once_or_more(|p| p.case_arm(), ExtTokenKind::Bar)?;
 
-        Ok(Term::new(Kind::Case(Box::new(expr), arms), span + self.span))
+        Ok(ExtTerm::new(ExtKind::Case(Box::new(expr), arms), span + self.span))
     }
 
-    fn injection(&mut self) -> Result<Term, Error> {
+    fn injection(&mut self) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
         let label = self.uppercase_id()?;
         let sp = self.span;
         let term = match self.parse() {
             Ok(t) => t,
-            _ => Term::new(Kind::Lit(Literal::Unit), self.span),
+            _ => ExtTerm::new(ExtKind::Lit(Literal::Unit), self.span),
         };
 
-        self.expect(TokenKind::Of)?;
+        self.expect(ExtTokenKind::Of)?;
         let ty = self.ty()?;
-        Ok(Term::new(
-            Kind::Injection(label, Box::new(term), Box::new(ty)),
+        Ok(ExtTerm::new(
+            ExtKind::Injection(label, Box::new(term), Box::new(ty)),
             sp + self.span,
         ))
     }
 
-    fn pack(&mut self) -> Result<Term, Error> {
-        self.expect(TokenKind::Pack)?;
+    fn pack(&mut self) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
+        self.expect(ExtTokenKind::Pack)?;
         let sp = self.span;
         let witness = self.ty()?;
-        self.expect(TokenKind::Comma)?;
+        self.expect(ExtTokenKind::Comma)?;
         let evidence = self.parse()?;
-        self.expect(TokenKind::As)?;
+        self.expect(ExtTokenKind::As)?;
         let signature = self.ty()?;
 
-        Ok(Term::new(
-            Kind::Pack(Box::new(witness), Box::new(evidence), Box::new(signature)),
+        Ok(ExtTerm::new(
+            ExtKind::Pack(Box::new(witness), Box::new(evidence), Box::new(signature)),
             sp + self.span,
         ))
     }
 
-    fn unpack(&mut self) -> Result<Term, Error> {
-        self.expect(TokenKind::Unpack)?;
+    fn unpack(&mut self) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
+        self.expect(ExtTokenKind::Unpack)?;
         let sp = self.span;
         let package = self.parse()?;
-        self.expect(TokenKind::As)?;
+        self.expect(ExtTokenKind::As)?;
 
         let tyvar = self.uppercase_id()?;
-        self.expect(TokenKind::Comma)?;
+        self.expect(ExtTokenKind::Comma)?;
         let name = self.lowercase_id()?;
         self.tyvar.push(tyvar);
         self.tmvar.push(name);
-        self.expect(TokenKind::In)?;
+        self.expect(ExtTokenKind::In)?;
         let expr = self.parse()?;
         self.tmvar.pop();
         self.tyvar.pop();
-        Ok(Term::new(
-            Kind::Unpack(Box::new(package), Box::new(expr)),
+        Ok(ExtTerm::new(
+            ExtKind::Unpack(Box::new(package), Box::new(expr)),
             sp + self.span,
         ))
     }
 
-    fn atom(&mut self) -> Result<Term, Error> {
+    fn atom(&mut self) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
         match self.kind() {
-            TokenKind::LParen => self.paren(),
-            TokenKind::Fix => self.fix(),
-            TokenKind::Fold => self.fold(),
-            TokenKind::Unfold => self.unfold(),
-            TokenKind::Pack => self.pack(),
-            TokenKind::Unpack => self.unpack(),
-            TokenKind::IsZero | TokenKind::Succ | TokenKind::Pred => self.primitive(),
-            TokenKind::Uppercase(_) => self.injection(),
-            TokenKind::Lowercase(s) => {
+            ExtTokenKind::LParen => self.paren(),
+            ExtTokenKind::Fix => self.fix(),
+            ExtTokenKind::Fold => self.fold(),
+            ExtTokenKind::Unfold => self.unfold(),
+            ExtTokenKind::Pack => self.pack(),
+            ExtTokenKind::Unpack => self.unpack(),
+            ExtTokenKind::IsZero | ExtTokenKind::Succ | ExtTokenKind::Pred => self.primitive(),
+            ExtTokenKind::Uppercase(_) => self.injection(),
+            ExtTokenKind::Lowercase(s) => {
                 let var = self.lowercase_id()?;
                 match self.tmvar.lookup(&var) {
-                    Some(idx) => Ok(Term::new(Kind::Var(idx), self.span)),
+                    Some(idx) => Ok(ExtTerm::new(ExtKind::Var(idx), self.span)),
                     None => {
-                        self.diagnostic.push(format!("unbound variable {}", var), self.span);
+                        match self.platform_bindings.has(&var) {
+                            Some(idx) => {return Ok(ExtTerm::new(ExtKind::PlatformBinding(idx), self.span));},
+                            None => {}
+                        }
+                        self.diagnostic.push(format!("parser: unbound variable {}", var), self.span);
                         self.error(ErrorKind::UnboundTypeVar)
                     }
                 }
             }
-            TokenKind::Nat(_) | TokenKind::True | TokenKind::False | TokenKind::Unit => self.literal(),
-            TokenKind::Eof => self.error(ErrorKind::Eof),
-            TokenKind::Semicolon => {
+            ExtTokenKind::Nat(_) | ExtTokenKind::True | ExtTokenKind::False | ExtTokenKind::Unit
+            | ExtTokenKind::Tag(_) => self.literal(),
+            ExtTokenKind::Eof => self.error(ErrorKind::Eof),
+            ExtTokenKind::Semicolon => {
                 self.bump();
                 self.error(ErrorKind::ExpectedAtom)
             }
@@ -599,19 +707,19 @@ impl<'s> Parser<'s> {
     /// Parse a term of form:
     /// projection = atom `.` projection
     /// projection = atom
-    fn projection(&mut self) -> Result<Term, Error> {
+    fn projection(&mut self) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
         let atom = self.atom()?;
-        if self.bump_if(&TokenKind::Proj) {
+        if self.bump_if(&ExtTokenKind::Proj) {
             let idx = match self.bump() {
-                TokenKind::Nat(idx) => idx,
+                ExtTokenKind::Nat(idx) => idx,
                 _ => {
                     self.diagnostic
                         .push(format!("expected integer index after {}", atom), self.span);
-                    return self.error(ErrorKind::ExpectedToken(TokenKind::Proj));
+                    return self.error(ErrorKind::ExpectedToken(ExtTokenKind::Proj));
                 }
             };
             let sp = atom.span + self.span;
-            Ok(Term::new(Kind::Projection(Box::new(atom), idx as usize), sp))
+            Ok(ExtTerm::new(ExtKind::Projection(Box::new(atom), idx as usize), sp))
         } else {
             Ok(atom)
         }
@@ -620,7 +728,7 @@ impl<'s> Parser<'s> {
     /// Parse an application of form:
     /// application = atom application' | atom
     /// application' = atom application' | empty
-    fn application(&mut self) -> Result<Term, Error> {
+    fn application(&mut self) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
         let mut app = self.projection()?;
 
         loop {
@@ -637,9 +745,9 @@ impl<'s> Parser<'s> {
                 // erasep(t1 t2) = erasep(t1) erasep(t2)
                 // erasep(λX. t) = λX. erasep(t)
                 // erasep(t T) = erasep(t) []      <--- erasure of TyApp
-                app = Term::new(Kind::TyApp(Box::new(app), Box::new(ty)), sp + self.span);
+                app = ExtTerm::new(ExtKind::TyApp(Box::new(app), Box::new(ty)), sp + self.span);
             } else if let Ok(term) = self.projection() {
-                app = Term::new(Kind::App(Box::new(app), Box::new(term)), sp + self.span);
+                app = ExtTerm::new(ExtKind::App(Box::new(app), Box::new(term)), sp + self.span);
             } else {
                 break;
             }
@@ -647,11 +755,11 @@ impl<'s> Parser<'s> {
         Ok(app)
     }
 
-    pub fn parse(&mut self) -> Result<Term, Error> {
+    pub fn parse(&mut self) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
         match self.kind() {
-            TokenKind::Case => self.case(),
-            TokenKind::Lambda => self.lambda(),
-            TokenKind::Let => self.letexpr(),
+            ExtTokenKind::Case => self.case(),
+            ExtTokenKind::Lambda => self.lambda(),
+            ExtTokenKind::Let => self.letexpr(),
             _ => self.application(),
         }
     }

@@ -1,38 +1,88 @@
-use crate::patterns::Pattern;
+/*
+Copyright (C) 2020-2023 Micheal Lazear, AUTHORS
+
+The MIT License (MIT)
+
+Copyright (c) ${license.years} ${license.owner}
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---------------------
+
+GNU Lesser General Public License Version 3
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 3 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License
+along with this program; if not, write to the Free Software Foundation,
+Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+*/
+use core::fmt;
+
+use crate::bottom::{BottomKind, BottomPattern, BottomExtension};
+use crate::diagnostics::Diagnostic;
+use crate::patterns::{ExtPattern, Pattern};
+use crate::platform_bindings::PlatformBindings;
 use crate::terms::visit::{Shift, Subst, TyTermSubst};
-use crate::terms::{Kind, Literal, Primitive, Term};
-use crate::types::{Context, Type};
+use crate::terms::{ExtKind, Literal, Primitive, ExtTerm, Term};
+use crate::types::{ExtContext, Type, Context};
 use crate::visit::MutTermVisitor;
 
 pub struct Eval<'ctx> {
     _context: &'ctx Context,
+    platform_bindings: PlatformBindings,
 }
 
 impl<'ctx> Eval<'ctx> {
     pub fn with_context(_context: &Context) -> Eval<'_> {
-        Eval { _context }
+        let platform_bindings = _context.platform_bindings.clone();
+        Eval { _context, platform_bindings }
     }
 
-    fn normal_form(&self, term: &Term) -> bool {
+    fn normal_form(&self, term: &ExtTerm<BottomPattern, BottomKind>) -> bool {
         match &term.kind {
-            Kind::Lit(_) => true,
-            Kind::Abs(_, _) => true,
-            Kind::TyAbs(_) => true,
-            Kind::Primitive(_) => true,
-            Kind::Injection(_, tm, _) => self.normal_form(tm),
-            Kind::Product(fields) => fields.iter().all(|f| self.normal_form(f)),
-            Kind::Fold(_, tm) => self.normal_form(tm),
-            Kind::Pack(_, tm, _) => self.normal_form(tm),
+            ExtKind::Lit(_) => true,
+            ExtKind::Abs(_, _) => true,
+            ExtKind::TyAbs(_) => true,
+            ExtKind::Primitive(_) => true,
+            ExtKind::Injection(_, tm, _) => self.normal_form(tm),
+            ExtKind::Product(fields) => fields.iter().all(|f| self.normal_form(f)),
+            ExtKind::Fold(_, tm) => self.normal_form(tm),
+            ExtKind::Pack(_, tm, _) => self.normal_form(tm),
             // Kind::Unpack(pack, tm) => self.normal_form(tm),
             _ => false,
         }
     }
 
-    fn eval_primitive(&self, p: Primitive, term: Term) -> Option<Term> {
+    fn eval_primitive(&self, p: Primitive, term: Term) -> Result<Option<Term>, Diagnostic> {
         fn map<F: Fn(u32) -> u32>(f: F, mut term: Term) -> Option<Term> {
             match &term.kind {
-                Kind::Lit(Literal::Nat(n)) => {
-                    term.kind = Kind::Lit(Literal::Nat(f(*n)));
+                ExtKind::Lit(Literal::Nat(n)) => {
+                    term.kind = ExtKind::Lit(Literal::Nat(f(*n)));
                     Some(term)
                 }
                 _ => None,
@@ -40,31 +90,45 @@ impl<'ctx> Eval<'ctx> {
         }
 
         match p {
-            Primitive::Succ => map(|l| l + 1, term),
-            Primitive::Pred => map(|l| l.saturating_sub(1), term),
+            Primitive::Succ => Ok(map(|l| l + 1, term)),
+            Primitive::Pred => Ok(map(|l| l.saturating_sub(1), term)),
             Primitive::IsZero => match &term.kind {
-                Kind::Lit(Literal::Nat(0)) => Some(Term::new(Kind::Lit(Literal::Bool(true)), term.span)),
-                _ => Some(Term::new(Kind::Lit(Literal::Bool(false)), term.span)),
+                ExtKind::Lit(Literal::Nat(0)) => Ok(Some(ExtTerm::new(ExtKind::Lit(Literal::Bool(true)), term.span))),
+                _ => Ok(Some(ExtTerm::new(ExtKind::Lit(Literal::Bool(false)), term.span))),
             },
         }
     }
 
-    pub fn small_step(&self, term: Term) -> Option<Term> {
+    pub fn small_step(&self, term: Term) -> Result<Option<Term>, Diagnostic> {
         if self.normal_form(&term) {
-            return None;
+            return Ok(None);
         }
         match term.kind {
-            Kind::App(t1, t2) => {
+            ExtKind::App(t1, t2) => {
                 if self.normal_form(&t2) {
                     match t1.kind {
-                        Kind::Abs(_, mut abs) => {
+                        ExtKind::Abs(_, mut abs) => {
                             term_subst(*t2, abs.as_mut());
-                            Some(*abs)
+                            Ok(Some(*abs))
                         }
-                        Kind::Primitive(p) => self.eval_primitive(p, *t2),
+                        ExtKind::PlatformBinding(idx) => {
+                            match self.platform_bindings.get(idx) {
+                                Some(wc) => {
+                                    let span = t1.span;
+                                    match (&wc.0)(*t2, &span) {
+                                        Ok(t) => return Ok(Some(t)),
+                                        Err(_) => return Ok(None),
+                                    }
+                                },
+                                _ => panic!("unable to get platform_binding with idx after parsing; shouldn't happen")
+                            }
+                        }
+                        ExtKind::Primitive(p) => self.eval_primitive(p, *t2),
                         _ => {
-                            let t = self.small_step(*t1)?;
-                            Some(Term::new(Kind::App(Box::new(t), t2), term.span))
+                            match self.small_step(*t1)? {
+                                Some(t) => return Ok(Some(ExtTerm::new(ExtKind::App(Box::new(t), t2), term.span))),
+                                None => return Ok(None)
+                            };
                         }
                     }
                 } else if self.normal_form(&t1) {
@@ -72,138 +136,180 @@ impl<'ctx> Eval<'ctx> {
                     // carry out the reducton t2 -> t2', and return
                     // App(t1, t2')
                     let t = self.small_step(*t2)?;
-                    Some(Term::new(Kind::App(t1, Box::new(t)), term.span))
+                    match t {
+                        Some(t) => 
+                            Ok(Some(ExtTerm::new(ExtKind::App(t1, Box::new(t)), term.span))),
+                        None => Ok(None),
+                    }
                 } else {
                     // Neither t1 nor t2 are in normal form, we reduce t1 first
                     let t = self.small_step(*t1)?;
-                    Some(Term::new(Kind::App(Box::new(t), t2), term.span))
+                    match t {
+                        Some(t) => Ok(Some(ExtTerm::new(ExtKind::App(Box::new(t), t2), term.span))),
+                        None => Ok(None),
+                    }
                 }
             }
-            Kind::Let(pat, bind, mut body) => {
+            ExtKind::Let(pat, bind, mut body) => {
                 if self.normal_form(&bind) {
                     // term_subst(*bind, &mut body);
                     self.case_subst(&pat, &bind, body.as_mut());
-                    Some(*body)
+                    Ok(Some(*body))
                 } else {
                     let t = self.small_step(*bind)?;
-                    Some(Term::new(Kind::Let(pat, Box::new(t), body), term.span))
+                    match t {
+                        None => return Ok(None),
+                        Some(t) => Ok(Some(ExtTerm::new(ExtKind::Let(pat, Box::new(t), body), term.span)))
+                    }
                 }
             }
-            Kind::TyApp(tm, ty) => match tm.kind {
-                Kind::TyAbs(mut tm2) => {
+            ExtKind::TyApp(tm, ty) => match tm.kind {
+                ExtKind::TyAbs(mut tm2) => {
                     type_subst(*ty, &mut tm2);
-                    Some(*tm2)
+                    Ok(Some(*tm2))
                 }
                 _ => {
                     let t_prime = self.small_step(*tm)?;
-                    Some(Term::new(Kind::TyApp(Box::new(t_prime), ty), term.span))
+                    match t_prime {
+                        Some(t_prime) => return Ok(Some(ExtTerm::new(ExtKind::TyApp(Box::new(t_prime), ty), term.span))),
+                        None => return Ok(None)
+                    }
                 }
             },
-            Kind::Injection(label, tm, ty) => {
+            ExtKind::Injection(label, tm, ty) => {
                 let t_prime = self.small_step(*tm)?;
-                Some(Term::new(Kind::Injection(label, Box::new(t_prime), ty), term.span))
+                match t_prime {
+                    Some(t_prime) => Ok(Some(ExtTerm::new(ExtKind::Injection(label, Box::new(t_prime), ty), term.span)))
+                    , None => Ok(None)
+                }
             }
-            Kind::Projection(tm, idx) => {
+            ExtKind::Projection(tm, idx) => {
                 if self.normal_form(&tm) {
                     match tm.kind {
                         // Typechecker ensures that idx is in bounds
-                        Kind::Product(terms) => terms.get(idx).cloned(),
-                        _ => None,
+                        ExtKind::Product(terms) => Ok(terms.get(idx).cloned()),
+                        _ => Ok(None),
                     }
                 } else {
                     let t_prime = self.small_step(*tm)?;
-                    Some(Term::new(Kind::Projection(Box::new(t_prime), idx), term.span))
+                    match t_prime {
+                        Some(t_prime) => Ok(Some(ExtTerm::new(ExtKind::Projection(Box::new(t_prime), idx), term.span)))
+                        , None => Ok(None)
+                    }
                 }
             }
-            Kind::Product(terms) => {
+            ExtKind::Product(terms) => {
                 let mut v = Vec::with_capacity(terms.len());
                 for term in terms {
                     if self.normal_form(&term) {
                         v.push(term);
                     } else {
-                        v.push(self.small_step(term)?);
+                        let res = self.small_step(term)?;
+                        match res {
+                            Some(t) => v.push(t),
+                            _ => return Ok(None),
+                        }
                     }
                 }
-                Some(Term::new(Kind::Product(v), term.span))
+                Ok(Some(ExtTerm::new(ExtKind::Product(v), term.span)))
             }
-            Kind::Fix(tm) => {
+            ExtKind::Fix(tm) => {
                 if !self.normal_form(&tm) {
                     let t_prime = self.small_step(*tm)?;
-                    return Some(Term::new(Kind::Fix(Box::new(t_prime)), term.span));
+                    match t_prime {
+                        Some(t_prime) => return Ok(Some(ExtTerm::new(ExtKind::Fix(Box::new(t_prime)), term.span))),
+                        None => return Ok(None),
+                    }
                 }
 
-                let x = Term::new(Kind::Fix(tm.clone()), term.span);
+                let x = ExtTerm::new(ExtKind::Fix(tm.clone()), term.span);
                 match tm.kind {
-                    Kind::Abs(_, mut body) => {
+                    ExtKind::Abs(_, mut body) => {
                         term_subst(x, &mut body);
-                        Some(*body)
+                        Ok(Some(*body))
                     }
-                    _ => None,
+                    _ => Ok(None),
                 }
             }
-            Kind::Case(expr, arms) => {
+            ExtKind::Case(expr, arms) => {
                 if !self.normal_form(&expr) {
                     let t_prime = self.small_step(*expr)?;
-                    return Some(Term::new(Kind::Case(Box::new(t_prime), arms), term.span));
+                    match t_prime {
+                        Some(t_prime) => return Ok(Some(ExtTerm::new(ExtKind::Case(Box::new(t_prime), arms), term.span))),
+                        None => return Ok(None)
+                    }
                 }
 
                 for mut arm in arms {
-                    if arm.pat.matches(&expr) {
+                    if arm.pat.matches(&expr, &BottomExtension) {
                         self.case_subst(&arm.pat, &expr, arm.term.as_mut());
-                        return Some(*arm.term);
+                        return Ok(Some(*arm.term));
                     }
                 }
 
-                None
+                Ok(None)
             }
-            Kind::Fold(ty, tm) => {
+            ExtKind::Fold(ty, tm) => {
                 if !self.normal_form(&tm) {
                     let t_prime = self.small_step(*tm)?;
-                    Some(Term::new(Kind::Fold(ty, Box::new(t_prime)), term.span))
+                    match t_prime {
+                        Some(t_prime) => Ok(Some(ExtTerm::new(ExtKind::Fold(ty, Box::new(t_prime)), term.span))),
+                        None => Ok(None)
+                    }
                 } else {
-                    None
+                    Ok(None)
                 }
             }
 
-            Kind::Unfold(ty, tm) => {
+            ExtKind::Unfold(ty, tm) => {
                 if !self.normal_form(&tm) {
                     let t_prime = self.small_step(*tm)?;
-                    return Some(Term::new(Kind::Unfold(ty, Box::new(t_prime)), term.span));
+                    match t_prime {
+                        Some(t_prime) => return Ok(Some(ExtTerm::new(ExtKind::Unfold(ty, Box::new(t_prime)), term.span))),
+                        None => return Ok(None)
+                    }
                 }
 
                 match tm.kind {
-                    Kind::Fold(ty2, inner) => Some(*inner),
-                    _ => None,
+                    ExtKind::Fold(ty2, inner) => Ok(Some(*inner)),
+                    _ => Ok(None),
                 }
             }
-            Kind::Pack(wit, evidence, sig) => {
+            ExtKind::Pack(wit, evidence, sig) => {
                 if !self.normal_form(&evidence) {
                     let t_prime = self.small_step(*evidence)?;
-                    return Some(Term::new(Kind::Pack(wit, Box::new(t_prime), sig), term.span));
+                    match t_prime {
+                        Some(t_prime) => return Ok(Some(ExtTerm::new(ExtKind::Pack(wit, Box::new(t_prime), sig), term.span))),
+                        None => return Ok(None)
+                    }
                 }
-                None
+                Ok(None)
             }
-            Kind::Unpack(package, mut body) => match package.kind {
-                Kind::Pack(wit, evidence, sig) => {
+            ExtKind::Unpack(package, mut body) => match package.kind {
+                ExtKind::Pack(wit, evidence, sig) => {
                     term_subst(*evidence, &mut body);
                     type_subst(*wit, &mut body);
-                    Some(*body)
+                    Ok(Some(*body))
                 }
                 _ => {
                     if !self.normal_form(&package) {
                         let t_prime = self.small_step(*package)?;
-                        return Some(Term::new(Kind::Unpack(Box::new(t_prime), body), term.span));
+                        match t_prime {
+                            Some(t_prime) =>
+                                return Ok(Some(ExtTerm::new(ExtKind::Unpack(Box::new(t_prime), body), term.span))),
+                            None => return Ok(None),
+                        }
                     }
-                    None
+                    Ok(None)
                 }
             },
 
-            _ => None,
+            _ => Ok(None),
         }
     }
 
     fn case_subst(&self, pat: &Pattern, expr: &Term, term: &mut Term) {
-        use Pattern::*;
+        use ExtPattern::*;
         match pat {
             Any => {}
             Literal(_) => {}
@@ -211,7 +317,7 @@ impl<'ctx> Eval<'ctx> {
                 term_subst(expr.clone(), term);
             }
             Product(v) => {
-                if let Kind::Product(terms) = &expr.kind {
+                if let ExtKind::Product(terms) = &expr.kind {
                     let mut idx = 0;
                     for tm in terms.iter() {
                         self.case_subst(&v[idx], tm, term);
@@ -222,7 +328,7 @@ impl<'ctx> Eval<'ctx> {
                 }
             }
             Constructor(label, v) => {
-                if let Kind::Injection(label_, tm, _) = &expr.kind {
+                if let ExtKind::Injection(label_, tm, _) = &expr.kind {
                     if label == label_ {
                         self.case_subst(&v, &tm, term);
                     }
@@ -230,6 +336,7 @@ impl<'ctx> Eval<'ctx> {
                     panic!("wrong type!")
                 }
             }
+            Extended(_, _) => panic!("extended pattern instructions shouldn't appear here in eval")
         }
     }
 }
@@ -248,57 +355,57 @@ fn type_subst(s: Type, t: &mut Term) {
 #[cfg(test)]
 mod test {
     use super::*;
-    use util::span::Span;
+    use system_r_util::span::Span;
 
     #[test]
     fn literal() {
-        let ctx = crate::types::Context::default();
+        let ctx = crate::types::ExtContext::default();
         let eval = Eval::with_context(&ctx);
-        assert_eq!(eval.small_step(lit!(false)), None);
+        assert_eq!(eval.small_step(lit!(false)).unwrap(), None);
     }
 
     #[test]
     fn application() {
-        let ctx = crate::types::Context::default();
+        let ctx = crate::types::ExtContext::default();
         let eval = Eval::with_context(&ctx);
         let tm = app!(abs!(Type::Nat, app!(prim!(Primitive::Succ), var!(0))), nat!(1));
 
-        let t1 = eval.small_step(tm);
+        let t1 = eval.small_step(tm).unwrap();
         assert_eq!(t1, Some(app!(prim!(Primitive::Succ), nat!(1))));
-        let t2 = eval.small_step(t1.unwrap());
+        let t2 = eval.small_step(t1.unwrap()).unwrap();
         assert_eq!(t2, Some(nat!(2)));
-        let t3 = eval.small_step(t2.unwrap());
+        let t3 = eval.small_step(t2.unwrap()).unwrap();
         assert_eq!(t3, None);
     }
 
     #[test]
     fn type_application() {
-        let ctx = crate::types::Context::default();
+        let ctx = crate::types::ExtContext::default();
         let eval = Eval::with_context(&ctx);
         let tm = tyapp!(
             tyabs!(abs!(Type::Var(0), app!(prim!(Primitive::Succ), var!(0)))),
             Type::Nat
         );
 
-        let t1 = eval.small_step(tm);
+        let t1 = eval.small_step(tm).unwrap();
         assert_eq!(t1, Some(abs!(Type::Nat, app!(prim!(Primitive::Succ), var!(0)))));
-        let t2 = eval.small_step(t1.unwrap());
+        let t2 = eval.small_step(t1.unwrap()).unwrap();
         assert_eq!(t2, None);
     }
 
     #[test]
     fn projection() {
-        let ctx = crate::types::Context::default();
+        let ctx = crate::types::ExtContext::default();
         let eval = Eval::with_context(&ctx);
-        let product = Term::new(Kind::Product(vec![nat!(5), nat!(6), nat!(29)]), Span::zero());
-        let projection = Term::new(Kind::Projection(Box::new(product), 2), Span::zero());
+        let product = ExtTerm::new(ExtKind::Product(vec![nat!(5), nat!(6), nat!(29)]), Span::zero());
+        let projection = ExtTerm::new(ExtKind::Projection(Box::new(product), 2), Span::zero());
         let term = app!(prim!(Primitive::Succ), projection);
 
-        let t1 = eval.small_step(term);
+        let t1 = eval.small_step(term).unwrap();
         assert_eq!(t1, Some(app!(prim!(Primitive::Succ), nat!(29))));
-        let t2 = eval.small_step(t1.unwrap());
+        let t2 = eval.small_step(t1.unwrap()).unwrap();
         assert_eq!(t2, Some(nat!(30)));
-        let t3 = eval.small_step(t2.unwrap());
+        let t3 = eval.small_step(t2.unwrap()).unwrap();
         assert_eq!(t3, None);
     }
 }

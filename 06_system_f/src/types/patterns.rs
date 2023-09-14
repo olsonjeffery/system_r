@@ -1,3 +1,46 @@
+/*
+Copyright (C) 2020-2023 Micheal Lazear, AUTHORS
+
+The MIT License (MIT)
+
+Copyright (c) ${license.years} ${license.owner}
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---------------------
+
+GNU Lesser General Public License Version 3
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 3 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License
+along with this program; if not, write to the Free Software Foundation,
+Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+*/
 //! Naive, inefficient exhaustiveness checking for pattern matching
 //!
 //! Inspired somewhat by the docs for the Rust compiler (and linked paper), we
@@ -15,14 +58,14 @@
 
 use super::*;
 use crate::diagnostics::*;
-use crate::patterns::{PatTyStack, Pattern};
+use crate::patterns::{PatTyStack, ExtPattern, PatternExtension};
 use crate::terms::*;
 use std::collections::HashSet;
 
 /// Return true if `existing` covers `new`, i.e. if new is a useful pattern
 /// then `overlap` will return `false`
-fn overlap(existing: &Pattern, new: &Pattern) -> bool {
-    use Pattern::*;
+fn overlap<TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default, TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default>(existing: &ExtPattern<TExtPat, TExtKind>, new: &ExtPattern<TExtPat, TExtKind>) -> bool {
+    use ExtPattern::*;
     match (existing, new) {
         (Any, _) => true,
         (Variable(_), _) => true,
@@ -40,15 +83,18 @@ fn overlap(existing: &Pattern, new: &Pattern) -> bool {
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
-pub struct Matrix<'pat> {
+pub struct Matrix<'pat,TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+                    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+                    > {
     pub expr_ty: Type,
     len: usize,
-    matrix: Vec<Vec<&'pat Pattern>>,
+    matrix: Vec<Vec<&'pat ExtPattern<TExtPat, TExtKind>>>,
 }
 
-impl<'pat> Matrix<'pat> {
+impl<'a, 'pat, TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+               TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default> Matrix<'pat, TExtPat, TExtKind> {
     /// Create a new [`Matrix`] for a given type
-    pub fn new(expr_ty: Type) -> Matrix<'pat> {
+    pub fn new(expr_ty: Type) -> Matrix<'pat, TExtPat, TExtKind> {
         let len = match &expr_ty {
             Type::Product(p) => p.len(),
             _ => 1,
@@ -64,7 +110,9 @@ impl<'pat> Matrix<'pat> {
     /// Is the pattern [`Matrix`] exhaustive for this type?
     ///
     /// For a boolean type, True, False, or a wildcard/variable match are
-    /// required For a product type (tuple), the algorithm is slightly more
+    /// required
+    ///
+    /// For a product type (tuple), the algorithm is slightly more
     /// complicated: We generate a tuple of length N (equal to the length of
     /// the case expressions' tuple) filled with Wildcard patterns, and see
     /// if addition of tuple is a useful pattern. If the pattern is not
@@ -80,7 +128,7 @@ impl<'pat> Matrix<'pat> {
                 // For all constructors in the sum type, generate a constructor
                 // pattern that will match all possible inhabitants of that
                 // constructor
-                let con = Pattern::Constructor(variant.label.clone(), Box::new(Pattern::Any));
+                let con = ExtPattern::Constructor(variant.label.clone(), Box::new(ExtPattern::Any));
                 let temp = [&con];
                 let mut ret = false;
                 for row in &self.matrix {
@@ -94,7 +142,7 @@ impl<'pat> Matrix<'pat> {
             Type::Product(_) | Type::Nat => {
                 // Generate a tuple of wildcard patterns. If the pattern is
                 // useful, then we do not have an exhaustive matrix
-                let filler = (0..self.len).map(|_| Pattern::Any).collect::<Vec<_>>();
+                let filler = (0..self.len).map(|_| ExtPattern::Any).collect::<Vec<_>>();
                 for row in &self.matrix {
                     if row.iter().zip(filler.iter()).all(|(a, b)| overlap(a, b)) {
                         return true;
@@ -106,13 +154,13 @@ impl<'pat> Matrix<'pat> {
                 // Boolean type is one of the simplest cases: we only need
                 // to match `true` and `false`, or one of those + a wildcard,
                 // or just a wildcard
-                let tru = Pattern::Literal(Literal::Bool(true));
-                let fal = Pattern::Literal(Literal::Bool(false));
+                let tru = ExtPattern::Literal(Literal::Bool(true));
+                let fal = ExtPattern::Literal(Literal::Bool(false));
                 !(self.can_add_row(vec![&tru]) && self.can_add_row(vec![&fal]))
             }
             Type::Unit => {
                 // Unit is a degenerate case
-                let unit = Pattern::Literal(Literal::Unit);
+                let unit = ExtPattern::Literal(Literal::Unit);
                 !self.can_add_row(vec![&unit])
             }
             _ => false,
@@ -120,7 +168,7 @@ impl<'pat> Matrix<'pat> {
     }
 
     /// Return true if a new pattern row is reachable
-    fn can_add_row(&self, new_row: Vec<&'pat Pattern>) -> bool {
+    fn can_add_row(&self, new_row: Vec<&'pat ExtPattern<TExtPat, TExtKind>>) -> bool {
         assert_eq!(self.len, new_row.len());
         for row in &self.matrix {
             if row.iter().zip(new_row.iter()).all(|(a, b)| overlap(a, b)) {
@@ -130,7 +178,7 @@ impl<'pat> Matrix<'pat> {
         true
     }
 
-    fn try_add_row(&mut self, new_row: Vec<&'pat Pattern>) -> bool {
+    fn try_add_row(&mut self, new_row: Vec<&'pat ExtPattern<TExtPat, TExtKind>>) -> bool {
         assert_eq!(self.len, new_row.len());
         for row in &self.matrix {
             if row.iter().zip(new_row.iter()).all(|(a, b)| overlap(a, b)) {
@@ -145,26 +193,30 @@ impl<'pat> Matrix<'pat> {
     ///
     /// Returns true on success, and false if the new pattern is
     /// unreachable
-    pub fn add_pattern(&mut self, pat: &'pat Pattern) -> bool {
+    pub fn add_pattern<TPtE: PatternExtension<TExtPat, TExtKind>>(&mut self, pat: &'pat ExtPattern<TExtPat, TExtKind>, pat_ext: &TPtE) -> bool {
         match pat {
-            Pattern::Any | Pattern::Variable(_) => {
-                let filler = (0..self.len).map(|_| &Pattern::Any).collect::<Vec<_>>();
+            ExtPattern::Any | ExtPattern::Variable(_) => {
+                let filler = (0..self.len).map(|_| &ExtPattern::Any).collect::<Vec<_>>();
                 self.try_add_row(filler)
             }
-            Pattern::Product(tuple) => self.try_add_row(tuple.iter().collect()),
-            Pattern::Literal(lit) => {
+            ExtPattern::Product(tuple) => self.try_add_row(tuple.iter().collect()),
+            ExtPattern::Literal(lit) => {
                 if self.len == 1 {
                     self.try_add_row(vec![pat])
                 } else {
                     false
                 }
             }
-            Pattern::Constructor(label, inner) => self.try_add_row(vec![pat]),
+            ExtPattern::Constructor(label, inner) => self.try_add_row(vec![pat]),
+            v @ ExtPattern::Extended(_, _) => pat_ext.add_ext_pattern(self, v),
         }
     }
 }
 
-impl Context {
+impl<TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+         TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+         TPtE: Default + Clone + PatternExtension<TExtPat, TExtKind>>
+    ExtContext<TExtPat, TExtKind, TPtE> {
     /// Type check a case expression, returning the Type of the arms, assuming
     /// that the case expression is exhaustive and well-typed
     ///
@@ -189,9 +241,9 @@ impl Context {
     /// the shared type of all of the case arms - the term associated with each
     /// arm should have one type, and that type should be the same for all of
     /// the arms.
-    pub(crate) fn type_check_case(&mut self, expr: &Term, arms: &[Arm]) -> Result<Type, Diagnostic> {
+    pub(crate) fn type_check_case(&mut self, expr: &ExtTerm<TExtPat, TExtKind>, arms: &[Arm<TExtPat, TExtKind>]) -> Result<Type, Diagnostic> {
         let ty = self.type_check(expr)?;
-        let mut matrix = patterns::Matrix::new(ty);
+        let mut matrix = patterns::Matrix::<TExtPat, TExtKind>::new(ty);
 
         let mut set = HashSet::new();
         for arm in arms {
@@ -210,7 +262,7 @@ impl Context {
                 }
 
                 set.insert(arm_ty);
-                if !matrix.add_pattern(&arm.pat) {
+                if !matrix.add_pattern(&arm.pat, &self.pat_ext) {
                     return Err(Diagnostic::error(arm.span, "unreachable pattern!"));
                 }
             } else {
@@ -252,17 +304,20 @@ impl Context {
     ///
     /// This function is primarily used as a first pass to ensure that a pattern
     /// is valid for a given case expression
-    pub(crate) fn pattern_type_eq(&self, pat: &Pattern, ty: &Type) -> bool {
+    pub(crate) fn pattern_type_eq(&self, pat: &ExtPattern<TExtPat, TExtKind>, ty: &Type) -> bool {
         match pat {
-            Pattern::Any => true,
-            Pattern::Variable(_) => true,
-            Pattern::Literal(lit) => match (lit, ty) {
+            ExtPattern::Any => true,
+            ExtPattern::Variable(_) => true,
+            ExtPattern::Literal(lit) => match (lit, ty) {
                 (Literal::Bool(_), Type::Bool) => true,
                 (Literal::Nat(_), Type::Nat) => true,
                 (Literal::Unit, Type::Unit) => true,
+                (Literal::Tag(s), Type::Tag(t)) => {
+                    s == t
+                },
                 _ => false,
             },
-            Pattern::Product(patterns) => match ty {
+            ExtPattern::Product(patterns) => match ty {
                 Type::Product(types) => {
                     patterns.len() == types.len()
                         && patterns
@@ -272,7 +327,7 @@ impl Context {
                 }
                 _ => false,
             },
-            Pattern::Constructor(label, inner) => match ty {
+            ExtPattern::Constructor(label, inner) => match ty {
                 Type::Variant(v) => {
                     for discriminant in v {
                         if label == &discriminant.label && self.pattern_type_eq(&inner, &discriminant.ty) {
@@ -283,6 +338,7 @@ impl Context {
                 }
                 _ => false,
             },
+            ExtPattern::Extended(v, k) => self.pat_ext.ext_pattern_type_eq(v, ty)
         }
     }
 }
@@ -290,7 +346,7 @@ impl Context {
 #[cfg(test)]
 mod test {
     use super::*;
-    use Pattern::*;
+    use ExtPattern::*;
 
     #[test]
     fn product() {
@@ -322,7 +378,7 @@ mod test {
             },
         ]);
 
-        let pat1 = con!("A", Pattern::Any);
+        let pat1 = con!("A", ExtPattern::Any);
         let pat2 = con!("A", boolean!(true));
         let pat3 = con!("B", num!(1));
 
@@ -372,9 +428,9 @@ mod test {
         let ty = Type::Product(vec![Type::Nat, Type::Nat]);
         let mut matrix = Matrix::new(ty);
         for pat in &pats {
-            assert!(matrix.add_pattern(pat));
+            assert!(matrix.add_pattern(pat, &BottomExtension));
         }
-        assert!(!matrix.add_pattern(&Any));
+        assert!(!matrix.add_pattern(&Any, &BottomExtension));
         assert!(matrix.exhaustive());
     }
 
@@ -400,12 +456,12 @@ mod test {
         let mut matrix = Matrix::new(ty);
 
         for p in &pats {
-            assert!(matrix.add_pattern(p));
+            assert!(matrix.add_pattern(p, &BottomExtension));
         }
         let last = con!("C", Any);
 
         assert!(!matrix.exhaustive());
-        assert!(matrix.add_pattern(&last));
+        assert!(matrix.add_pattern(&last, &BottomExtension));
         assert!(matrix.exhaustive());
     }
 
@@ -419,9 +475,9 @@ mod test {
 
         let mut matrix = Matrix::new(ty);
         for p in &pats {
-            assert!(matrix.add_pattern(p));
+            assert!(matrix.add_pattern(p, &BottomExtension));
         }
-        assert!(!matrix.add_pattern(&pats[1]));
+        assert!(!matrix.add_pattern(&pats[1], &BottomExtension));
         assert!(matrix.exhaustive());
     }
 }

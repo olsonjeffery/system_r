@@ -1,30 +1,80 @@
+/*
+Copyright (C) 2020-2023 Micheal Lazear, AUTHORS
+
+The MIT License (MIT)
+
+Copyright (c) ${license.years} ${license.owner}
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---------------------
+
+GNU Lesser General Public License Version 3
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 3 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License
+along with this program; if not, write to the Free Software Foundation,
+Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+*/
 //! Typechecking of the simply typed lambda calculus with parametric
 //! polymorphism
 pub mod patterns;
 pub mod visit;
+use crate::bottom::{BottomPattern, BottomKind, BottomExtension};
 use crate::diagnostics::*;
-use crate::terms::{Kind, Literal, Primitive, Term};
+use crate::patterns::PatternExtension;
+use crate::platform_bindings::PlatformBindings;
+use crate::terms::{ExtKind, Literal, Primitive, ExtTerm};
 use crate::visit::{MutTermVisitor, MutTypeVisitor};
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
-use util::span::Span;
+use system_r_util::span::Span;
 use visit::{Shift, Subst};
 
-#[derive(Clone, PartialEq, PartialOrd, Eq, Hash)]
+#[derive(Default, Clone, PartialEq, PartialOrd, Eq, Hash)]
 pub enum Type {
+    #[default]
     Unit,
     Nat,
     Bool,
+    Tag(String),
     Alias(String),
     Var(usize),
     Variant(Vec<Variant>),
     Product(Vec<Type>),
+    PlatformBinding(Box<Type>, Box<Type>),
     Arrow(Box<Type>, Box<Type>),
     Universal(Box<Type>),
     Existential(Box<Type>),
     Rec(Box<Type>),
 }
 
+#[derive(Debug, Default)]
 #[derive(Clone, PartialEq, PartialOrd, Eq, Hash)]
 pub struct Variant {
     pub label: String,
@@ -54,13 +104,37 @@ pub enum TypeErrorKind {
     UnboundVariable(usize),
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct Context {
+pub type Context = ExtContext<BottomPattern, BottomKind, BottomExtension>;
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ExtContext<TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+                   TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+                   TPtE: Default + Clone + PatternExtension<TExtPat, TExtKind> > {
     stack: VecDeque<Type>,
     map: HashMap<String, Type>,
+    pub platform_bindings: PlatformBindings,
+    _kind: TExtKind,
+    _pat: TExtPat,
+    pub pat_ext: TPtE,
 }
 
-impl Context {
+impl<'a, TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+                   TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+                   TPtE: Clone + Default + PatternExtension<TExtPat, TExtKind> > Default for ExtContext<TExtPat, TExtKind, TPtE> {
+                    fn default() -> Self {
+        Self {
+            stack: Default::default(),
+            map: Default::default(),
+            platform_bindings: Default::default(),
+            _kind: Default::default(),
+            _pat: Default::default(),
+            pat_ext: Default::default() }
+    }
+                }
+
+impl<TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+         TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+         TPtE: Clone + Default + PatternExtension<TExtPat, TExtKind>> ExtContext<TExtPat, TExtKind, TPtE> {
     fn push(&mut self, ty: Type) {
         self.stack.push_front(ty);
     }
@@ -81,7 +155,7 @@ impl Context {
         Aliaser { map: &self.map }
     }
 
-    pub fn de_alias(&mut self, term: &mut Term) {
+    pub fn de_alias(&mut self, term: &mut ExtTerm<TExtPat, TExtKind>) {
         crate::visit::MutTermVisitor::visit(self, term)
     }
 }
@@ -104,32 +178,38 @@ pub fn variant_field<'vs>(var: &'vs [Variant], label: &str, span: Span) -> Resul
     // })
 }
 
-impl Context {
-    pub fn type_check(&mut self, term: &Term) -> Result<Type, Diagnostic> {
+impl<TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+    TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+         TPtE: Default + Clone + PatternExtension<TExtPat, TExtKind>> ExtContext<TExtPat, TExtKind, TPtE> {
+    pub fn type_check(&mut self, term: &ExtTerm<TExtPat, TExtKind>) -> Result<Type, Diagnostic> {
         // dbg!(&self.stack);
 
-        // println!("{}", term);
         match term.kind() {
-            Kind::Lit(Literal::Unit) => Ok(Type::Unit),
-            Kind::Lit(Literal::Bool(_)) => Ok(Type::Bool),
-            Kind::Lit(Literal::Nat(_)) => Ok(Type::Nat),
-            Kind::Var(idx) => self
+            ExtKind::Lit(Literal::Unit) => Ok(Type::Unit),
+            ExtKind::Lit(Literal::Bool(_)) => Ok(Type::Bool),
+            ExtKind::Lit(Literal::Nat(_)) => Ok(Type::Nat),
+            ExtKind::Lit(Literal::Tag(s)) => Ok(Type::Tag(s.clone())),
+            ExtKind::PlatformBinding(idx) => self.type_check_platform_binding(idx, &term.span),
+            ExtKind::Var(idx) => self
                 .find(*idx)
                 .cloned()
-                .ok_or_else(|| Diagnostic::error(term.span, format!("unbound variable {}", idx))),
+                .ok_or_else(|| Diagnostic::error(term.span, format!("type_check: unbound variable {}", idx))),
 
-            Kind::Abs(ty, t2) => {
+            ExtKind::Abs(ty, t2) => {
                 self.push(*ty.clone());
                 let ty2 = self.type_check(t2)?;
                 // Shift::new(-1).visit(&mut ty2);
                 self.pop();
                 Ok(Type::Arrow(ty.clone(), Box::new(ty2)))
             }
-            Kind::App(t1, t2) => {
+            ExtKind::App(t1, t2) => {
                 let ty1 = self.type_check(t1)?;
                 let ty2 = self.type_check(t2)?;
-                match ty1 {
+                match ty1.clone() {
                     Type::Arrow(ty11, ty12) => {
+                        // does the invocation's type (ty2)
+                        // match the type of the function's
+                        // arg (ty11)?
                         if *ty11 == ty2 {
                             Ok(*ty12)
                         } else {
@@ -139,11 +219,23 @@ impl Context {
                             Err(d)
                         }
                     }
-                    _ => Err(Diagnostic::error(term.span, "Expected arrow type!")
+                    Type::PlatformBinding(ty11, ty12) => {
+                        // repeat Arrow logic above
+                        if *ty11 == ty2 {
+                            Ok(*ty12)
+                        } else {
+                            let d = Diagnostic::error(term.span, "Type mismatch in PlatformBinding application")
+                                .message(t1.span, format!("PlatformBinding Abstraction requires type {:?}", ty11))
+                                .message(t2.span, format!("Value has a type of {:?}", ty2));
+                            Err(d)
+                        }
+
+                    }
+                    _ => Err(Diagnostic::error(term.span, "app: Expected arrow type!")
                         .message(t1.span, format!("operator has type {:?}", ty1))),
                 }
             }
-            Kind::Fix(inner) => {
+            ExtKind::Fix(inner) => {
                 let ty = self.type_check(inner)?;
                 match ty {
                     Type::Arrow(ty1, ty2) => {
@@ -155,15 +247,15 @@ impl Context {
                             Err(d)
                         }
                     }
-                    _ => Err(Diagnostic::error(term.span, "Expected arrow type!")
+                    _ => Err(Diagnostic::error(term.span, "Fix: Expected arrow type!")
                         .message(inner.span, format!("operator has type {:?}", ty))),
                 }
             }
-            Kind::Primitive(prim) => match prim {
+            ExtKind::Primitive(prim) => match prim {
                 Primitive::IsZero => Ok(Type::Arrow(Box::new(Type::Nat), Box::new(Type::Bool))),
                 _ => Ok(Type::Arrow(Box::new(Type::Nat), Box::new(Type::Nat))),
             },
-            Kind::Injection(label, tm, ty) => match ty.as_ref() {
+            ExtKind::Injection(label, tm, ty) => match ty.as_ref() {
                 Type::Variant(fields) => {
                     for f in fields {
                         if label == &f.label {
@@ -197,7 +289,7 @@ impl Context {
                     format!("Cannot injection {} into non-variant type {:?}", label, ty),
                 )),
             },
-            Kind::Projection(term, idx) => match self.type_check(term)? {
+            ExtKind::Projection(term, idx) => match self.type_check(term)? {
                 Type::Product(types) => match types.get(*idx) {
                     Some(ty) => Ok(ty.clone()),
                     None => Err(Diagnostic::error(
@@ -210,10 +302,10 @@ impl Context {
                     format!("Cannot project on non-product type {:?}", ty),
                 )),
             },
-            Kind::Product(terms) => Ok(Type::Product(
+            ExtKind::Product(terms) => Ok(Type::Product(
                 terms.iter().map(|t| self.type_check(t)).collect::<Result<_, _>>()?,
             )),
-            Kind::Let(pat, t1, t2) => {
+            ExtKind::Let(pat, t1, t2) => {
                 let ty = self.type_check(t1)?;
                 if !self.pattern_type_eq(&pat, &ty) {
                     return Err(Diagnostic::error(
@@ -237,7 +329,7 @@ impl Context {
 
                 y
             }
-            Kind::TyAbs(term) => {
+            ExtKind::TyAbs(term) => {
                 self.stack.iter_mut().for_each(|ty| match ty {
                     Type::Var(v) => *v += 1,
                     _ => {}
@@ -249,7 +341,7 @@ impl Context {
                 });
                 Ok(Type::Universal(Box::new(ty2)))
             }
-            Kind::TyApp(term, ty) => {
+            ExtKind::TyApp(term, ty) => {
                 let mut ty = ty.clone();
                 let ty1 = self.type_check(term)?;
                 match ty1 {
@@ -267,9 +359,9 @@ impl Context {
             }
             // See src/types/patterns.rs for exhaustiveness and typechecking
             // of case expressions
-            Kind::Case(expr, arms) => self.type_check_case(expr, arms),
+            ExtKind::Case(expr, arms) => self.type_check_case(expr, arms),
 
-            Kind::Unfold(rec, tm) => match rec.as_ref() {
+            ExtKind::Unfold(rec, tm) => match rec.as_ref() {
                 Type::Rec(inner) => {
                     let ty_ = self.type_check(&tm)?;
                     if ty_ == *rec.clone() {
@@ -288,7 +380,7 @@ impl Context {
                 )),
             },
 
-            Kind::Fold(rec, tm) => match rec.as_ref() {
+            ExtKind::Fold(rec, tm) => match rec.as_ref() {
                 Type::Rec(inner) => {
                     let ty_ = self.type_check(&tm)?;
                     let s = subst(*rec.clone(), *inner.clone());
@@ -306,7 +398,7 @@ impl Context {
                     format!("Expected a recursive type, not {:?}", rec),
                 )),
             },
-            Kind::Pack(witness, evidence, signature) => {
+            ExtKind::Pack(witness, evidence, signature) => {
                 if let Type::Existential(exists) = signature.as_ref() {
                     let sig_prime = subst(*witness.clone(), *exists.clone());
                     let evidence_ty = self.type_check(evidence)?;
@@ -325,7 +417,7 @@ impl Context {
                     ))
                 }
             }
-            Kind::Unpack(package, body) => {
+            ExtKind::Unpack(package, body) => {
                 let p_ty = self.type_check(package)?;
                 if let Type::Existential(xst) = p_ty {
                     self.push(*xst);
@@ -357,8 +449,9 @@ struct Aliaser<'ctx> {
 impl<'ctx> MutTypeVisitor for Aliaser<'ctx> {
     fn visit(&mut self, ty: &mut Type) {
         match ty {
-            Type::Unit | Type::Bool | Type::Nat => {}
+            Type::Unit | Type::Bool | Type::Nat | Type::Tag(_) => {}
             Type::Var(v) => {}
+            Type::PlatformBinding(i, r) => {},
             Type::Alias(v) => {
                 if let Some(aliased) = self.map.get(v) {
                     *ty = aliased.clone();
@@ -375,28 +468,30 @@ impl<'ctx> MutTypeVisitor for Aliaser<'ctx> {
     }
 }
 
-impl MutTermVisitor for Context {
-    fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type, term: &mut Term) {
+impl<TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+         TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+         TPtE: Clone + Default + PatternExtension<TExtPat, TExtKind>> MutTermVisitor<TExtPat, TExtKind> for ExtContext<TExtPat, TExtKind, TPtE> {
+    fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type, term: &mut ExtTerm<TExtPat, TExtKind>) {
         self.aliaser().visit(ty);
         self.visit(term);
     }
 
-    fn visit_tyapp(&mut self, sp: &mut Span, term: &mut Term, ty: &mut Type) {
+    fn visit_tyapp(&mut self, sp: &mut Span, term: &mut ExtTerm<TExtPat, TExtKind>, ty: &mut Type) {
         self.aliaser().visit(ty);
         self.visit(term);
     }
 
-    fn visit_injection(&mut self, sp: &mut Span, label: &mut String, term: &mut Term, ty: &mut Type) {
+    fn visit_injection(&mut self, sp: &mut Span, label: &mut String, term: &mut ExtTerm<TExtPat, TExtKind>, ty: &mut Type) {
         self.aliaser().visit(ty);
         self.visit(term);
     }
 
-    fn visit_fold(&mut self, sp: &mut Span, ty: &mut Type, tm: &mut Term) {
+    fn visit_fold(&mut self, sp: &mut Span, ty: &mut Type, tm: &mut ExtTerm<TExtPat, TExtKind>) {
         self.aliaser().visit(ty);
         self.visit(tm);
     }
 
-    fn visit_unfold(&mut self, sp: &mut Span, ty: &mut Type, tm: &mut Term) {
+    fn visit_unfold(&mut self, sp: &mut Span, ty: &mut Type, tm: &mut ExtTerm<TExtPat, TExtKind>) {
         self.aliaser().visit(ty);
         self.visit(tm);
     }
@@ -408,6 +503,8 @@ impl fmt::Debug for Type {
             Type::Unit => write!(f, "Unit"),
             Type::Bool => write!(f, "Bool"),
             Type::Nat => write!(f, "Nat"),
+            Type::Tag(s) => write!(f, "Tag({})", s),
+            Type::PlatformBinding(i, r) => write!(f, "PlatformBinding({:?}, {:?})", i, r),
             Type::Var(v) => write!(f, "TyVar({})", v),
             Type::Variant(v) => write!(
                 f,

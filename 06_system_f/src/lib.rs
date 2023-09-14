@@ -41,7 +41,19 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
-//! Source code locations and diagnostic reporting that can be shared
-//! across different projects
-pub mod diagnostic;
-pub mod span;
+#![allow(unused_variables, unused_macros)]
+#[macro_use]
+pub mod macros;
+pub mod diagnostics;
+pub mod eval;
+pub mod patterns;
+pub mod syntax;
+pub mod terms;
+pub mod types;
+pub mod visit;
+pub mod testing;
+pub mod platform_bindings;
+pub mod bottom;
+
+#[macro_use]
+extern crate anyhow;

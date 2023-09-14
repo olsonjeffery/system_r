@@ -1,24 +1,23 @@
-# types-and-programming-languages
+# System R
 
-![](https://github.com/lazear/types-and-programming-languages/workflows/Rust/badge.svg)
+An extension of the simply typed lambda calculus with parametric polymorphism (known classically as System F). Starting from the base provided for `06_system_f` and `util` under `lazear/types-and-programming-languages`, the lexer, parser, type_checker and eval system have been extended to support more "industrial use cases", as defined by subsequent author(s).
 
-Several Rust implementations of exercises from Benjamin Pierce's "Types and Programming Languages" are organized into different folders, as described below:
+Consult the gherkin specs in the `/tests/features` directory for more on system_r's capabilities, embedding, etc.
 
-- `arith` is an implementation of the untyped lambda calculus extended with simple numeric operations
+# Licenses:
 
-- `lambda` is an implementation of the untyped lambda calculus as presented in chapter 5, 6, and 7.
+Code in this repository is dual-licensed under the following licenses, as noted below:
 
-- `typedarith` is the `arith` project extended with simple types: `Nat` and `Bool`
+- Remaining "original", imported repository files & content from the forked `lazear/types-and-programming-languages` is licensed under the MIT/Expat License, provided in-full at `/LICENSE.MIT`
+- After this import in September of 2023, all subsequent contributions (whether as modification to existing repository file contents or added repository files) are made under the terms of the GNU Lesser General Public License Version 3, provided in full at `LICENSE.LGPL3`
 
-- `stlc` is an implementation of the simply typed lambda calculus, as discussed in chapters 9 and 10 of TAPL. This simply typed calculus has the types, `Unit`, `Nat`, `Bool`, `T -> T` (arrow), and `Record` types.
+# Copyright
 
-- `recon` contains several implementations of Hindley-Milner based type reconstruction from the untyped lambda calculus to System F, with let-polymorphism. Both Algorithm W (the more common) and Algorithm J (the more efficient) are presented. For Alg. W, both a naive equality constraint solver, and a faster union-find (with path compression) solver are provided. Algorithm J makes use shared mutable references to promote type sharing instead.
+- MIT-licensed changes are Copyright Michael Lazear, 2020.
+- All subsequent changes under LGPL v3 is attributed to entrants in AUTHORS.txt.
+
+Every code file in the repository is annotated with one, or both the MIT/Expat and GNU LGPL3 license headers, referencing the `LICENSE.*` files outlined above.
+
+# Original System F docs from lazear/types-and-programming-languages main README
 
 - `system_f` contains a parser, typechecker, and evaluator for the simply typed lambda calculus with parametric polymorphism (System F). The implementation of System F is the most complete so far, and I've tried to write a parser, typechecker and diagnostic system that can given meaningful messages
-
-- `system_fw` contains a parser for a high-level, Standard ML like source language that is desugared into an HIR, and then System F-omega. This extends `system_f` with type operators and higher-kinded types. This is where most of the ongoing work is located, as I'd like to make this the basis of a toy (but powerful, and useable) programming language. Ideally we will have some form of bidirectional type inference. Work on this has accidentally turned into a full fledged [SML compiler](https://github.com/SomewhatML/sml-compiler), so it's likely that I will roll back the work on the system_fw project to just type checking
-
-- `bidir` is is an implementation of the bidirectional typechecker from 'Complete and Easy Bidirectional Typechecking', extended with booleans, product, and sum types. I make no claims on the correctness of the implementation for the extended features not present in the paper.
-
-- `dependent` is WIP, implementing a simple, dependently typed lambda calculus as discussed in ATAPL.
-

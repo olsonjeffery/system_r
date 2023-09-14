@@ -1,0 +1,6 @@
+let f = \x: (Nat, Symbol).
+    case x of
+    | (x, @go) => 1
+    | (_, @nogo) => 0
+    | (x, _) => x in
+    f (16, @foo)

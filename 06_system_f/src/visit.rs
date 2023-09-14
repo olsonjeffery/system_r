@@ -1,10 +1,56 @@
+/*
+Copyright (C) 2020-2023 Micheal Lazear, AUTHORS
+
+The MIT License (MIT)
+
+Copyright (c) ${license.years} ${license.owner}
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---------------------
+
+GNU Lesser General Public License Version 3
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 3 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License
+along with this program; if not, write to the Free Software Foundation,
+Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+*/
 //! Visitor traits for [`Pattern`], [`Term`], and [`Type`] objects
-use crate::patterns::Pattern;
-use crate::terms::{Arm, Kind, Literal, Primitive, Term};
+use core::fmt;
+
+use crate::patterns::ExtPattern;
+use crate::terms::{Arm, ExtKind, Literal, Primitive, ExtTerm};
 use crate::types::{Type, Variant};
-use util::span::Span;
+use system_r_util::span::Span;
 
 pub trait MutTypeVisitor: Sized {
+    fn visit_pb(&mut self, i: &mut Type, r: &mut Type) {}
     fn visit_var(&mut self, var: &mut usize) {}
     fn visit_alias(&mut self, alias: &mut String) {}
 
@@ -39,7 +85,8 @@ pub trait MutTypeVisitor: Sized {
 
     fn visit(&mut self, ty: &mut Type) {
         match ty {
-            Type::Unit | Type::Bool | Type::Nat => {}
+            Type::Unit | Type::Bool | Type::Nat | Type::Tag(_) => {}
+            Type::PlatformBinding(i, r) => self.visit_pb(i, r),
             Type::Var(v) => self.visit_var(v),
             Type::Variant(v) => self.visit_variant(v),
             Type::Product(v) => self.visit_product(v),
@@ -52,119 +99,125 @@ pub trait MutTypeVisitor: Sized {
     }
 }
 
-pub trait MutTermVisitor: Sized {
+pub trait MutTermVisitor<TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+                         TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd>: Sized {
     fn visit_lit(&mut self, sp: &mut Span, lit: &mut Literal) {}
     fn visit_var(&mut self, sp: &mut Span, var: &mut usize) {}
+    fn visit_pb(&mut self, sp: &mut Span, idx: &mut usize) {}
 
-    fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type, term: &mut Term) {
+    fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type, term: &mut ExtTerm<TExtPat, TExtKind>) {
         self.visit(term);
     }
 
-    fn visit_app(&mut self, sp: &mut Span, t1: &mut Term, t2: &mut Term) {
+    fn visit_app(&mut self, sp: &mut Span, t1: &mut ExtTerm<TExtPat, TExtKind>, t2: &mut ExtTerm<TExtPat, TExtKind>) {
         self.visit(t1);
         self.visit(t2);
     }
 
-    fn visit_let(&mut self, sp: &mut Span, pat: &mut Pattern, t1: &mut Term, t2: &mut Term) {
+    fn visit_let(&mut self, sp: &mut Span, pat: &mut ExtPattern<TExtPat, TExtKind>, t1: &mut ExtTerm<TExtPat, TExtKind>, t2: &mut ExtTerm<TExtPat, TExtKind>) {
         self.visit(t1);
         self.visit(t2);
     }
 
-    fn visit_tyabs(&mut self, sp: &mut Span, term: &mut Term) {
+    fn visit_tyabs(&mut self, sp: &mut Span, term: &mut ExtTerm<TExtPat, TExtKind>) {
         self.visit(term);
     }
 
-    fn visit_tyapp(&mut self, sp: &mut Span, term: &mut Term, ty: &mut Type) {
+    fn visit_tyapp(&mut self, sp: &mut Span, term: &mut ExtTerm<TExtPat, TExtKind>, ty: &mut Type) {
         self.visit(term);
     }
 
     fn visit_primitive(&mut self, sp: &mut Span, prim: &mut Primitive) {}
-    fn visit_injection(&mut self, sp: &mut Span, label: &mut String, term: &mut Term, ty: &mut Type) {
+    fn visit_injection(&mut self, sp: &mut Span, label: &mut String, term: &mut ExtTerm<TExtPat, TExtKind>, ty: &mut Type) {
         self.visit(term);
     }
 
-    fn visit_case(&mut self, sp: &mut Span, term: &mut Term, arms: &mut Vec<Arm>) {
+    fn visit_case(&mut self, sp: &mut Span, term: &mut ExtTerm<TExtPat, TExtKind>, arms: &mut Vec<Arm<TExtPat, TExtKind>>) {
         self.visit(term);
         for arm in arms {
             self.visit(&mut arm.term);
         }
     }
 
-    fn visit_product(&mut self, sp: &mut Span, product: &mut Vec<Term>) {
+    fn visit_product(&mut self, sp: &mut Span, product: &mut Vec<ExtTerm<TExtPat, TExtKind>>) {
         for t in product {
             self.visit(t);
         }
     }
 
-    fn visit_projection(&mut self, sp: &mut Span, term: &mut Term, index: &mut usize) {
+    fn visit_projection(&mut self, sp: &mut Span, term: &mut ExtTerm<TExtPat, TExtKind>, index: &mut usize) {
         self.visit(term);
     }
 
-    fn visit_fold(&mut self, sp: &mut Span, ty: &mut Type, term: &mut Term) {
+    fn visit_fold(&mut self, sp: &mut Span, ty: &mut Type, term: &mut ExtTerm<TExtPat, TExtKind>) {
         self.visit(term);
     }
-    fn visit_unfold(&mut self, sp: &mut Span, ty: &mut Type, term: &mut Term) {
+    fn visit_unfold(&mut self, sp: &mut Span, ty: &mut Type, term: &mut ExtTerm<TExtPat, TExtKind>) {
         self.visit(term);
     }
 
-    fn visit_pack(&mut self, sp: &mut Span, witness: &mut Type, evidence: &mut Term, signature: &mut Type) {
+    fn visit_pack(&mut self, sp: &mut Span, witness: &mut Type, evidence: &mut ExtTerm<TExtPat, TExtKind>, signature: &mut Type) {
         self.visit(evidence);
     }
 
-    fn visit_unpack(&mut self, sp: &mut Span, package: &mut Term, term: &mut Term) {
+    fn visit_unpack(&mut self, sp: &mut Span, package: &mut ExtTerm<TExtPat, TExtKind>, term: &mut ExtTerm<TExtPat, TExtKind>) {
         self.visit(package);
         self.visit(term);
     }
 
-    fn visit(&mut self, term: &mut Term) {
+    fn visit(&mut self, term: &mut ExtTerm<TExtPat, TExtKind>) {
         self.walk(term);
     }
 
-    fn walk(&mut self, term: &mut Term) {
+    fn walk(&mut self, term: &mut ExtTerm<TExtPat, TExtKind>) {
         let sp = &mut term.span;
         match &mut term.kind {
-            Kind::Lit(l) => self.visit_lit(sp, l),
-            Kind::Var(v) => self.visit_var(sp, v),
-            Kind::Abs(ty, term) => self.visit_abs(sp, ty, term),
-            Kind::App(t1, t2) => self.visit_app(sp, t1, t2),
+            ExtKind::Lit(l) => self.visit_lit(sp, l),
+            ExtKind::Var(v) => self.visit_var(sp, v),
+            ExtKind::PlatformBinding(v) => self.visit_pb(sp, v),
+            ExtKind::Abs(ty, term) => self.visit_abs(sp, ty, term),
+            ExtKind::App(t1, t2) => self.visit_app(sp, t1, t2),
             // Do we need a separate branch?
-            Kind::Fix(term) => self.visit(term),
-            Kind::Primitive(p) => self.visit_primitive(sp, p),
-            Kind::Injection(label, tm, ty) => self.visit_injection(sp, label, tm, ty),
-            Kind::Projection(term, idx) => self.visit_projection(sp, term, idx),
-            Kind::Product(terms) => self.visit_product(sp, terms),
-            Kind::Case(term, arms) => self.visit_case(sp, term, arms),
-            Kind::Let(pat, t1, t2) => self.visit_let(sp, pat, t1, t2),
-            Kind::TyAbs(term) => self.visit_tyabs(sp, term),
-            Kind::TyApp(term, ty) => self.visit_tyapp(sp, term, ty),
-            Kind::Fold(ty, term) => self.visit_fold(sp, ty, term),
-            Kind::Unfold(ty, term) => self.visit_unfold(sp, ty, term),
-            Kind::Pack(wit, term, sig) => self.visit_pack(sp, wit, term, sig),
-            Kind::Unpack(package, term) => self.visit_unpack(sp, package, term),
+            ExtKind::Fix(term) => self.visit(term),
+            ExtKind::Primitive(p) => self.visit_primitive(sp, p),
+            ExtKind::Injection(label, tm, ty) => self.visit_injection(sp, label, tm, ty),
+            ExtKind::Projection(term, idx) => self.visit_projection(sp, term, idx),
+            ExtKind::Product(terms) => self.visit_product(sp, terms),
+            ExtKind::Case(term, arms) => self.visit_case(sp, term, arms),
+            ExtKind::Let(pat, t1, t2) => self.visit_let(sp, pat, t1, t2),
+            ExtKind::TyAbs(term) => self.visit_tyabs(sp, term),
+            ExtKind::TyApp(term, ty) => self.visit_tyapp(sp, term, ty),
+            ExtKind::Fold(ty, term) => self.visit_fold(sp, ty, term),
+            ExtKind::Unfold(ty, term) => self.visit_unfold(sp, ty, term),
+            ExtKind::Pack(wit, term, sig) => self.visit_pack(sp, wit, term, sig),
+            ExtKind::Unpack(package, term) => self.visit_unpack(sp, package, term),
         }
     }
 }
 
-pub trait PatternVisitor: Sized {
+pub trait PatternVisitor<TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+                         TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd>: Sized {
+    fn visit_ext(&mut self, ext: &TExtPat) {}
     fn visit_literal(&mut self, lit: &Literal) {}
     fn visit_variable(&mut self, var: &String) {}
-    fn visit_product(&mut self, pats: &Vec<Pattern>) {
+    fn visit_product(&mut self, pats: &Vec<ExtPattern<TExtPat, TExtKind>>) {
         for p in pats {
             self.visit_pattern(p);
         }
     }
 
-    fn visit_constructor(&mut self, label: &String, pat: &Pattern) {
+    fn visit_constructor(&mut self, label: &String, pat: &ExtPattern<TExtPat, TExtKind>) {
         self.visit_pattern(pat);
     }
 
-    fn visit_pattern(&mut self, pattern: &Pattern) {
+    fn visit_pattern(&mut self, pattern: &ExtPattern<TExtPat, TExtKind>) {
         match pattern {
-            Pattern::Any => {}
-            Pattern::Constructor(label, pat) => self.visit_constructor(label, pat),
-            Pattern::Product(pat) => self.visit_product(pat),
-            Pattern::Literal(lit) => self.visit_literal(lit),
-            Pattern::Variable(var) => self.visit_variable(var),
+            ExtPattern::Any => {}
+            ExtPattern::Constructor(label, pat) => self.visit_constructor(label, pat),
+            ExtPattern::Product(pat) => self.visit_product(pat),
+            ExtPattern::Literal(lit) => self.visit_literal(lit),
+            ExtPattern::Variable(var) => self.visit_variable(var),
+            ExtPattern::Extended(v, k) => panic!("FIXME impl PatternExtension check in this arm")
         }
     }
 }
