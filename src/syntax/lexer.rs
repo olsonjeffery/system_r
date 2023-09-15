@@ -41,29 +41,42 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
-use crate::bottom::{BottomExtension, BottomTokenKind};
+use crate::{bottom::{BottomExtension, BottomTokenKind, BottomPattern}, extensions::SystemRExtension};
 use super::{ExtToken, ExtTokenKind};
+use core::fmt;
 use std::char;
 use std::iter::Peekable;
 use std::str::Chars;
 use crate::system_r_util::span::{Location, Span};
 
-pub type Lexer<'s> = ExtLexer<'s, BottomTokenKind, BottomExtension>;
+pub type Lexer<'s> = ExtLexer<'s, BottomTokenKind, BottomExtension, BottomPattern, BottomExtension>;
 
-#[derive(Clone)]
-pub struct ExtLexer<'s, TExtTokenKind: PartialEq + Default + Sized + Clone, TLE: LexerExtension<TExtTokenKind>> {
+#[derive(Clone, Debug)]
+pub struct ExtLexer<'s, TExtTokenKind: PartialOrd + PartialEq + Default + fmt::Debug + Clone,
+        TExtKind: PartialOrd + PartialEq + Default + fmt::Debug + Clone,
+        TExtPattern: PartialOrd + PartialEq + Default + fmt::Debug + Clone,
+        TLE: SystemRExtension<TExtTokenKind, TExtKind, TExtPattern>> {
     input: Peekable<Chars<'s>>,
     current: Location,
     extension: TLE,
     _token: TExtTokenKind,
+    _kind: TExtKind,
+    _pat: TExtPattern
 }
 
-pub trait LexerExtension<TExtTokenKind: Sized + Clone> {
-    fn is_ext_single(&self, x: char) -> bool;
-    fn extended_single_pred(&self, x: char) -> bool;
-    fn is_ext_keyword(&self, data: &str) -> bool;
-    fn lex_extended_single(&mut self, data: &str) -> TExtTokenKind;
-    fn lex_ext_keyword(&mut self, data: &str) -> TExtTokenKind;
+impl<'s, TExtTokenKind: PartialEq + PartialOrd + Default + fmt::Debug + Clone,
+        TExtKind: PartialEq + PartialOrd + Default + fmt::Debug + Clone,
+        TExtPattern: PartialEq + PartialOrd + Default + fmt::Debug + Clone,
+        TLE: Default + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern>> Default for ExtLexer<'s, TExtTokenKind, TExtKind, TExtPattern, TLE> {
+    fn default() -> Self {
+        Self { input: "".chars().peekable(),
+               current: Default::default(),
+               extension: TLE::default(),
+               _token: Default::default(),
+               _kind: TExtKind::default(),
+               _pat: Default::default(),
+            }
+    }
 }
 
 fn is_tag(x: char) -> bool {
@@ -73,8 +86,11 @@ fn is_tag(x: char) -> bool {
     false
 }
 
-impl<'s, TExtTokenKind: PartialEq + Default + Clone + Sized, TLE: Clone + LexerExtension<TExtTokenKind>> ExtLexer<'s, TExtTokenKind, TLE> {
-    pub fn new(input: Chars<'s>, extension: TLE) -> ExtLexer<'s, TExtTokenKind, TLE> {
+impl<'s, TExtTokenKind: PartialEq + PartialOrd + Default + Clone + fmt::Debug,
+        TExtKind: PartialEq + PartialOrd + Default + Clone + fmt::Debug,
+        TExtPattern: PartialEq + PartialOrd + Default + Clone + fmt::Debug,
+        TLE: Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern>> ExtLexer<'s, TExtTokenKind, TExtKind, TExtPattern, TLE> {
+    pub fn new(input: Chars<'s>, extension: TLE) -> ExtLexer<'s, TExtTokenKind, TExtKind, TExtPattern, TLE> {
         ExtLexer {
             input: input.peekable(),
             current: Location {
@@ -84,6 +100,8 @@ impl<'s, TExtTokenKind: PartialEq + Default + Clone + Sized, TLE: Clone + LexerE
             },
             extension,
             _token: TExtTokenKind::default(),
+               _kind: TExtKind::default(),
+               _pat: Default::default(),
         }
     }
 
@@ -153,7 +171,7 @@ impl<'s, TExtTokenKind: PartialEq + Default + Clone + Sized, TLE: Clone + LexerE
     fn extended_single(&mut self) -> ExtToken<TExtTokenKind> {
         let ext = self.extension.clone();
         let (data, span) = self.consume_while(|ch|
-            ext.extended_single_pred(ch));
+            ext.lex_is_extended_single_pred(ch));
         let kind = self.extension.lex_extended_single(&data);
         return ExtToken::new(ExtTokenKind::Extended(kind), span);
     }
@@ -162,8 +180,8 @@ impl<'s, TExtTokenKind: PartialEq + Default + Clone + Sized, TLE: Clone + LexerE
     fn keyword(&mut self) -> ExtToken<TExtTokenKind> {
         let (data, span) = self.consume_while(|ch| ch.is_ascii_alphanumeric());
         let kind = match data.as_ref() {
-            data if self.extension.is_ext_keyword(data) =>
-                ExtTokenKind::Extended(self.extension.lex_ext_keyword(data)),
+            data if self.extension.lex_is_ext_keyword(data) =>
+                ExtTokenKind::Extended(self.extension.lexer_lex_ext_keyword(data)),
             "if" => ExtTokenKind::If,
             "then" => ExtTokenKind::Then,
             "else" => ExtTokenKind::Else,
@@ -223,7 +241,7 @@ impl<'s, TExtTokenKind: PartialEq + Default + Clone + Sized, TLE: Clone + LexerE
             None => return ExtToken::new(ExtTokenKind::Eof, Span::new(self.current, self.current)),
         };
         match next {
-            x if self.extension.is_ext_single(x) => self.extended_single(),
+            x if self.extension.lex_is_ext_single(x) => self.extended_single(),
             x if is_tag(x) => self.tag(),
             x if x.is_ascii_alphabetic() => self.keyword(),
             x if x.is_numeric() => self.number(),
@@ -254,7 +272,10 @@ impl<'s, TExtTokenKind: PartialEq + Default + Clone + Sized, TLE: Clone + LexerE
     }
 }
 
-impl<'s, TExtTokenKind: PartialEq + Default + Sized + Clone, TLE: Clone + LexerExtension<TExtTokenKind>> Iterator for ExtLexer<'s, TExtTokenKind, TLE> {
+impl<'s, TExtTokenKind: PartialEq + PartialOrd + Default + Clone + fmt::Debug,
+        TExtKind: PartialEq + PartialOrd + Default + Clone + fmt::Debug,
+        TExtPattern: PartialEq + PartialOrd + Default + Clone + fmt::Debug,
+        TLE: Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern>> Iterator for ExtLexer<'s, TExtTokenKind, TExtKind, TExtPattern, TLE> {
     type Item = ExtToken<TExtTokenKind>;
     fn next(&mut self) -> Option<Self::Item> {
         match self.lex() {

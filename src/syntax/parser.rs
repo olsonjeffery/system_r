@@ -41,9 +41,10 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
-use super::lexer::{ExtLexer, LexerExtension};
+use super::lexer::{ExtLexer};
 use super::{ExtToken, ExtTokenKind};
 use crate::bottom::{BottomTokenKind, BottomExtension, BottomKind, BottomPattern};
+use crate::extensions::{SystemRExtension, self};
 
 use core::fmt;
 use std::collections::VecDeque;
@@ -55,12 +56,12 @@ use crate::terms::*;
 use crate::platform_bindings::PlatformBindings;
 use crate::types::*;
 
-pub type Parser<'s> = ExtParser<'s, BottomPattern, BottomKind, BottomTokenKind, BottomExtension, BottomExtension>;
-
 #[derive(Clone, Debug, Default)]
 pub struct DeBruijnIndexer {
     inner: VecDeque<String>,
 }
+
+pub type Parser<'s> = ExtParser<'s, BottomTokenKind, BottomKind, BottomPattern, BottomExtension, BottomExtension>;
 
 impl<'s> Parser<'s> {
     pub fn new(platform_bindings: &'s PlatformBindings, input: &'s str) -> Self {
@@ -93,19 +94,20 @@ impl DeBruijnIndexer {
     }
 }
 
-pub struct ExtParser<'s, TExtPat: fmt::Debug + PartialEq + Default + Sized + Clone,
-                         TExtKind: fmt::Debug + PartialEq + Default + Sized + Clone,
-                         TExtTokenKind: fmt::Debug + PartialEq + Default + Sized + Clone,
-                         TLE: Clone + LexerExtension<TExtTokenKind>,
+#[derive(Default, Debug, Clone)]
+pub struct ExtParser<'s, TExtTokenKind: fmt::Debug + PartialEq + PartialOrd + Default + Sized + Clone,
+                         TExtKind: fmt::Debug + PartialEq + PartialOrd + Default + Sized + Clone,
+                         TExtPat: fmt::Debug + PartialEq + PartialOrd + Default + Sized + Clone,
+                         TLE: SystemRExtension<TExtTokenKind, TExtKind, TExtPat>,
                          TPE: ParserExtension<TExtTokenKind, TExtKind>> {
     tmvar: DeBruijnIndexer,
     tyvar: DeBruijnIndexer,
     diagnostic: Diagnostic<'s>,
-    lexer: ExtLexer<'s, TExtTokenKind, TLE>,
+    pub lexer: ExtLexer<'s, TExtTokenKind, TExtKind, TExtPat, TLE>,
     span: Span,
     token: ExtToken<TExtTokenKind>,
     platform_bindings: PlatformBindings,
-    extension: TPE,
+    pub extension: TPE,
     _kind: TExtKind,
     _pat: TExtPat,
 }
@@ -139,11 +141,13 @@ pub enum ErrorKind<TExtTokenKind: PartialEq> {
     Unknown,
     Eof,
 }
-impl<'s, TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default, TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default, TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-         TLE: Clone + LexerExtension<TExtTokenKind>,
-         TPE: ParserExtension<TExtTokenKind, TExtKind>> ExtParser<'s, TExtPat, TExtKind, TExtTokenKind, TLE, TPE> {
+impl<'s, TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+         TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+         TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+         TLE: Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>,
+         TPE: Clone + ParserExtension<TExtTokenKind, TExtKind>> ExtParser<'s, TExtTokenKind, TExtKind, TExtPat, TLE, TPE> {
     /// Create a new [`Parser`] for the input `&str`
-    pub fn ext_new(platform_bindings: &'s PlatformBindings, input: &'s str, lexer_ext: TLE, parser_ext: TPE) -> ExtParser<'s, TExtPat, TExtKind, TExtTokenKind, TLE, TPE> {
+    pub fn ext_new(platform_bindings: &'s PlatformBindings, input: &'s str, lexer_ext: TLE, parser_ext: TPE) -> ExtParser<'s, TExtTokenKind, TExtKind, TExtPat, TLE, TPE> {
         let mut p = ExtParser {
             tmvar: DeBruijnIndexer::default(),
             tyvar: DeBruijnIndexer::default(),
@@ -165,13 +169,15 @@ impl<'s, TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default, TExtKin
     }
 }
 
-impl<'s, TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default, TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-         TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-         TLE: Clone + LexerExtension<TExtTokenKind>, TPE: ParserExtension<TExtTokenKind, TExtKind>> ExtParser<'s, TExtPat, TExtKind, TExtTokenKind, TLE, TPE> where TLE : LexerExtension<TExtTokenKind> {
+impl<'s, TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+         TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+         TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default, 
+         TLE: Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>,
+         TPE: Clone + ParserExtension<TExtTokenKind, TExtKind>> ExtParser<'s, TExtTokenKind, TExtKind, TExtPat, TLE, TPE> {
     /// Kleene Plus combinator
     fn once_or_more<T, F>(&mut self, func: F, delimiter: ExtTokenKind<TExtTokenKind>) -> Result<Vec<T>, Error<TExtTokenKind>>
     where
-        F: Fn(&mut ExtParser<TExtPat, TExtKind, TExtTokenKind, TLE, TPE>) -> Result<T, Error<TExtTokenKind>>,
+        F: Fn(&mut ExtParser<TExtTokenKind, TExtKind, TExtPat, TLE, TPE>) -> Result<T, Error<TExtTokenKind>>,
     {
         let mut v = vec![func(self)?];
         while self.bump_if(&delimiter) {
@@ -186,7 +192,7 @@ impl<'s, TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default, TExtKin
     /// already been bumped.
     fn once<T, F>(&mut self, func: F, message: &str) -> Result<T, Error<TExtTokenKind>>
     where
-        F: Fn(&mut ExtParser<TExtPat, TExtKind, TExtTokenKind, TLE, TPE>) -> Result<T, Error<TExtTokenKind>>,
+        F: Fn(&mut ExtParser<TExtTokenKind, TExtKind, TExtPat, TLE, TPE>) -> Result<T, Error<TExtTokenKind>>,
     {
         match func(self) {
             Ok(t) => Ok(t),
@@ -198,11 +204,11 @@ impl<'s, TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default, TExtKin
     }
 }
 
-impl<'s, TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+impl<'s, TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
          TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-         TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-         TLE: Clone + LexerExtension<TExtTokenKind>,
-         TPE: ParserExtension<TExtTokenKind, TExtKind>> ExtParser<'s, TExtPat, TExtKind, TExtTokenKind, TLE, TPE> where TLE : LexerExtension<TExtTokenKind> {
+         TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+         TLE: Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>,
+         TPE: Clone + ParserExtension<TExtTokenKind, TExtKind>> ExtParser<'s, TExtTokenKind, TExtKind, TExtPat, TLE, TPE> {
     fn error<T>(&self, kind: ErrorKind<TExtTokenKind>) -> Result<T, Error<TExtTokenKind>> {
         Err(Error {
             span: self.token.span,

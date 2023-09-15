@@ -9,16 +9,16 @@ use system_r::{
     types::Type,
 };
 
-use crate::common;
+use crate::common::{self, extensions::OmniContext};
 
-static CTX_NAME: &'static str = "L";
+static CTX_NAME: &'static str = "system_r_bottom";
 
 #[given(regex = r#"^a new ctx"#)]
 #[given(regex = r#"^a new sr ctx"#)]
 #[given(regex = r#"^a new system_r context"#)]
 fn given_a_new_context(world: &mut common::SpecsWorld) {
     let mut new_ctx = Context::default();
-    world.contexts.insert(CTX_NAME.to_string(), new_ctx);
+    world.contexts.insert(CTX_NAME.to_string(), OmniContext::Bottom(new_ctx));
 }
 
 #[given(regex = r#"^a code block:(\w?.*)$"#)]
@@ -34,10 +34,10 @@ fn given_an_intrinsic_for_nat_addition_named_i_nat_add(world: &mut common::Specs
 
     pb.register(
         "iiiNatAdd",
-        common::extensions::arith::pb_add(),
+        common::platform_bindings::arith::pb_add(),
     );
 
-    world.contexts.get_mut(CTX_NAME).unwrap().platform_bindings = pb.clone();
+    world.contexts.get_mut(CTX_NAME).unwrap().set_platform_bindings(pb.clone());
 }
 
 #[when("it evals successfully")]
@@ -78,7 +78,9 @@ fn when_eval_is_ran(world: &mut common::SpecsWorld) {
     if world.code_snippet == "" {
         assert!(false, "passed empty code snippet to parser");
     }
-    let ctx = world.contexts.get_mut(CTX_NAME).unwrap();
+    let OmniContext::Bottom(ctx) = world.contexts.get_mut(CTX_NAME).unwrap() else {
+        panic!("expected to get a bottom context, didn't!");
+    };
     let mut term = world.last_parse_term.clone();
 
     let eval_res =

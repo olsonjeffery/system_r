@@ -17,7 +17,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
-use crate::{syntax::{parser::ParserExtension, lexer::LexerExtension}, patterns::{PatternExtension, ExtPattern}};
+use crate::{syntax::{parser::ParserExtension}, patterns::{PatternExtension, ExtPattern}, extensions::SystemRExtension};
 
 #[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
 pub enum BottomTokenKind {
@@ -44,6 +44,40 @@ impl ParserExtension<BottomTokenKind, BottomKind> for BottomExtension {
 
 }
 
+impl SystemRExtension<BottomTokenKind, BottomKind, BottomPattern> for BottomExtension {
+    fn lex_is_ext_single(&self, x: char) -> bool {
+       false 
+    }
+
+    fn lex_is_extended_single_pred(&self, x: char) -> bool {
+        false
+    }
+
+    fn lex_is_ext_keyword(&self, data: &str) -> bool {
+        false
+    }
+
+    fn lex_extended_single(&mut self, data: &str) -> BottomTokenKind {
+        BottomTokenKind::Placeholder
+    }
+
+    fn lexer_lex_ext_keyword(&mut self, data: &str) -> BottomTokenKind {
+        BottomTokenKind::Placeholder
+    }
+
+    fn pat_ext_pattern_type_eq(&self, pat: &BottomPattern, ty: &crate::types::Type) -> bool {
+        false
+    }
+
+    fn pat_add_ext_pattern<'a>(&'a self, parent: &crate::types::patterns::Matrix<'a, BottomPattern, BottomKind>, ext_pattern: &ExtPattern<BottomPattern, BottomKind>) -> bool {
+        false
+    }
+
+    fn pat_ext_matches(&self, pat: &BottomPattern, term: &crate::terms::ExtTerm<BottomPattern, BottomKind>) -> bool {
+        false
+    }
+}
+
 impl PatternExtension<BottomPattern, BottomKind> for BottomExtension {
     fn add_ext_pattern<'a>(&'a self, parent: &'a crate::types::patterns::Matrix<'a, BottomPattern, BottomKind>, ext_pattern: &ExtPattern<BottomPattern, BottomKind>) -> bool {
         // should mutate parent
@@ -56,28 +90,5 @@ impl PatternExtension<BottomPattern, BottomKind> for BottomExtension {
 
     fn ext_matches(&self, pat: &BottomPattern, term: &crate::terms::ExtTerm<BottomPattern, BottomKind>) -> bool {
         false
-    }
-}
-
-impl LexerExtension<BottomTokenKind> for BottomExtension {
-    fn is_ext_single(&self, x: char) -> bool {
-        false
-    }
-
-    fn extended_single_pred(&self, x: char) -> bool {
-
-        false
-    }
-
-    fn lex_extended_single(&mut self, data: &str) -> BottomTokenKind {
-        BottomTokenKind::default()
-    }
-
-    fn is_ext_keyword(&self, data: &str) -> bool {
-        false
-    }
-
-    fn lex_ext_keyword(&mut self, data: &str) -> BottomTokenKind {
-        BottomTokenKind::default()
     }
 }

@@ -29,9 +29,16 @@ SOFTWARE.
 use crate::system_r_util::span::*;
 
 /// Struct that handles collecting and reporting Parser errors and diagnostics
+#[derive(Clone, Debug)]
 pub struct Diagnostic<'s> {
     src: &'s str,
     messages: Vec<Spanned<String>>,
+}
+
+impl<'s> Default for Diagnostic<'s> {
+    fn default() -> Self {
+        Self { src: Default::default(), messages: Default::default() }
+    }
 }
 
 impl Diagnostic<'_> {

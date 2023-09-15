@@ -46,9 +46,9 @@ pub mod lexer;
 pub mod parser;
 use crate::system_r_util::span::Span;
 
-use self::{lexer::LexerExtension, parser::ParserExtension};
+use self::{parser::ParserExtension};
 
-#[derive(Clone, Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
 pub enum ExtTokenKind<TExtTokenKind: PartialEq> {
     Uppercase(String),
     Lowercase(String),
@@ -57,6 +57,7 @@ pub enum ExtTokenKind<TExtTokenKind: PartialEq> {
     TyBool,
     TyArrow,
     TyUnit,
+    #[default]
     Unit,
     True,
     False,
@@ -101,7 +102,7 @@ pub enum ExtTokenKind<TExtTokenKind: PartialEq> {
     Extended(TExtTokenKind)
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
 pub struct ExtToken<TExtTokenKind: Sized + Clone + Default + PartialEq> where {
     pub kind: ExtTokenKind<TExtTokenKind>,
     pub span: Span,

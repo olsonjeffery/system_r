@@ -8,12 +8,16 @@ use system_r::{
     types::{Context, Type},
 };
 
+use self::extensions::{OmniContext, OmniParser, OmniKind, OmniTerm};
+
 pub mod extensions;
+pub mod platform_bindings;
 
 #[derive(Debug, Default, World)]
 pub struct SpecsWorld {
     pub code_snippet: String,
-    pub contexts: HashMap<String, Context>,
+    pub contexts: HashMap<String, OmniContext>,
+    pub parsers: HashMap<String, OmniParser<'static>>,
     pub platform_bindings: PlatformBindings,
     pub last_parse_success: bool,
     pub last_parse_kind: Kind,
@@ -24,4 +28,9 @@ pub struct SpecsWorld {
     pub last_eval_kind: Kind,
     pub last_eval_msg: String,
     pub last_eval_term: Term,
+    pub last_ext_parse_success: bool,
+    pub last_ext_parse_kind: OmniKind,
+    pub last_ext_parse_term: OmniTerm,
+    pub last_ext_parse_msg: String,
+    pub last_ext_ty: Type,
 }
