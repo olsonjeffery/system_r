@@ -73,9 +73,9 @@ impl<TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default, TExtKind: C
         self.cutoff -= 1;
     }
 
-    fn visit_let(&mut self, sp: &mut Span, pat: &mut ExtPattern<TExtPat, TExtKind>, t1: &mut ExtTerm<TExtPat, TExtKind>, t2: &mut ExtTerm<TExtPat, TExtKind>) {
+    fn visit_let(&mut self, sp: &mut Span, pat: &mut ExtPattern<TExtPat>, t1: &mut ExtTerm<TExtPat, TExtKind>, t2: &mut ExtTerm<TExtPat, TExtKind>) {
         self.visit(t1);
-        let c = PatternCount::collect(pat);
+        let c = PatternCount::<TExtPat, TExtKind>::collect(pat);
         self.cutoff += c;
         self.visit(t2);
         self.cutoff -= c;
@@ -84,7 +84,7 @@ impl<TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default, TExtKind: C
     fn visit_case(&mut self, sp: &mut Span, term: &mut ExtTerm<TExtPat, TExtKind>, arms: &mut Vec<Arm<TExtPat, TExtKind>>) {
         self.visit(term);
         for arm in arms {
-            let c = PatternCount::collect(&mut arm.pat);
+            let c = PatternCount::<TExtPat, TExtKind>::collect(&mut arm.pat);
             self.cutoff += c;
             self.visit(&mut arm.term);
             self.cutoff -= c;
@@ -118,9 +118,9 @@ impl<TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default, TExtKind: C
         self.cutoff -= 1;
     }
 
-    fn visit_let(&mut self, sp: &mut Span, pat: &mut ExtPattern<TExtPat, TExtKind>, t1: &mut ExtTerm<TExtPat, TExtKind>, t2: &mut ExtTerm<TExtPat, TExtKind>) {
+    fn visit_let(&mut self, sp: &mut Span, pat: &mut ExtPattern<TExtPat>, t1: &mut ExtTerm<TExtPat, TExtKind>, t2: &mut ExtTerm<TExtPat, TExtKind>) {
         self.visit(t1);
-        let c = PatternCount::collect(pat);
+        let c = PatternCount::<TExtPat, TExtKind>::collect(pat);
         self.cutoff += c;
         self.visit(t2);
         self.cutoff -= c;
@@ -129,7 +129,7 @@ impl<TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default, TExtKind: C
     fn visit_case(&mut self, sp: &mut Span, term: &mut ExtTerm<TExtPat, TExtKind>, arms: &mut Vec<Arm<TExtPat, TExtKind>>) {
         self.visit(term);
         for arm in arms {
-            let c = PatternCount::collect(&mut arm.pat);
+            let c = PatternCount::<TExtPat, TExtKind>::collect(&mut arm.pat);
             self.cutoff += c;
             self.visit(&mut arm.term);
             self.cutoff -= c;

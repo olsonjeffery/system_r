@@ -181,7 +181,7 @@ impl<'s, TExtTokenKind: PartialEq + PartialOrd + Default + Clone + fmt::Debug,
         let (data, span) = self.consume_while(|ch| ch.is_ascii_alphanumeric());
         let kind = match data.as_ref() {
             data if self.extension.lex_is_ext_keyword(data) =>
-                ExtTokenKind::Extended(self.extension.lexer_lex_ext_keyword(data)),
+                ExtTokenKind::Extended(self.extension.lex_ext_keyword(data)),
             "if" => ExtTokenKind::If,
             "then" => ExtTokenKind::Then,
             "else" => ExtTokenKind::Else,

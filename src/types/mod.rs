@@ -45,9 +45,9 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 //! polymorphism
 pub mod patterns;
 pub mod visit;
-use crate::bottom::{BottomPattern, BottomKind, BottomExtension};
+use crate::bottom::{BottomPattern, BottomKind, BottomExtension, BottomTokenKind};
 use crate::diagnostics::*;
-use crate::patterns::PatternExtension;
+use crate::extensions::SystemRExtension;
 use crate::platform_bindings::PlatformBindings;
 use crate::terms::{ExtKind, Literal, Primitive, ExtTerm};
 use crate::visit::{MutTermVisitor, MutTypeVisitor};
@@ -104,37 +104,42 @@ pub enum TypeErrorKind {
     UnboundVariable(usize),
 }
 
-pub type Context = ExtContext<BottomPattern, BottomKind, BottomExtension>;
+pub type Context = ExtContext<BottomTokenKind, BottomKind, BottomPattern, BottomExtension>;
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct ExtContext<TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+pub struct ExtContext<TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
                    TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-                   TPtE: Default + Clone + PatternExtension<TExtPat, TExtKind> > {
+                    TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+                   TPtE: Default + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat> > {
     stack: VecDeque<Type>,
     map: HashMap<String, Type>,
     pub platform_bindings: PlatformBindings,
+    _token: TExtTokenKind,
     _kind: TExtKind,
     _pat: TExtPat,
     pub pat_ext: TPtE,
 }
 
-impl<'a, TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+impl<TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
                    TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-                   TPtE: Clone + Default + PatternExtension<TExtPat, TExtKind> > Default for ExtContext<TExtPat, TExtKind, TPtE> {
+                    TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+                   TPtE: Default + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat> > Default for ExtContext<TExtTokenKind, TExtKind, TExtPat, TPtE> {
                     fn default() -> Self {
         Self {
             stack: Default::default(),
             map: Default::default(),
             platform_bindings: Default::default(),
+            _token: Default::default(),
             _kind: Default::default(),
             _pat: Default::default(),
             pat_ext: Default::default() }
     }
                 }
 
-impl<TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-         TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-         TPtE: Clone + Default + PatternExtension<TExtPat, TExtKind>> ExtContext<TExtPat, TExtKind, TPtE> {
+impl<TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+        TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+        TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+        TPtE: Clone + Default + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>> ExtContext<TExtTokenKind, TExtKind, TExtPat, TPtE> {
     fn push(&mut self, ty: Type) {
         self.stack.push_front(ty);
     }
@@ -178,9 +183,10 @@ pub fn variant_field<'vs>(var: &'vs [Variant], label: &str, span: Span) -> Resul
     // })
 }
 
-impl<TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-    TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-         TPtE: Default + Clone + PatternExtension<TExtPat, TExtKind>> ExtContext<TExtPat, TExtKind, TPtE> {
+impl<TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+        TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+        TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+        TPtE: Clone + Default + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>> ExtContext<TExtTokenKind, TExtKind, TExtPat, TPtE> {
     pub fn type_check(&mut self, term: &ExtTerm<TExtPat, TExtKind>) -> Result<Type, Diagnostic> {
         // dbg!(&self.stack);
 
@@ -316,7 +322,7 @@ impl<TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
 
                 let height = self.stack.len();
 
-                let binds = crate::patterns::PatTyStack::collect(&ty, &pat);
+                let binds = crate::patterns::PatTyStack::<TExtPat, TExtKind>::collect(&ty, &pat);
                 for b in binds.into_iter().rev() {
                     self.push(b.clone());
                 }
@@ -468,9 +474,10 @@ impl<'ctx> MutTypeVisitor for Aliaser<'ctx> {
     }
 }
 
-impl<TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-         TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-         TPtE: Clone + Default + PatternExtension<TExtPat, TExtKind>> MutTermVisitor<TExtPat, TExtKind> for ExtContext<TExtPat, TExtKind, TPtE> {
+impl<TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+        TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+        TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+        TPtE: Clone + Default + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>>MutTermVisitor<TExtPat, TExtKind> for ExtContext<TExtTokenKind, TExtKind, TExtPat, TPtE> {
     fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type, term: &mut ExtTerm<TExtPat, TExtKind>) {
         self.aliaser().visit(ty);
         self.visit(term);

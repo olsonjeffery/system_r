@@ -61,11 +61,11 @@ pub struct DeBruijnIndexer {
     inner: VecDeque<String>,
 }
 
-pub type Parser<'s> = ExtParser<'s, BottomTokenKind, BottomKind, BottomPattern, BottomExtension, BottomExtension>;
+pub type Parser<'s> = ExtParser<'s, BottomTokenKind, BottomKind, BottomPattern, BottomExtension>;
 
 impl<'s> Parser<'s> {
     pub fn new(platform_bindings: &'s PlatformBindings, input: &'s str) -> Self {
-        ExtParser::ext_new(platform_bindings, input, BottomExtension, BottomExtension)
+        ExtParser::ext_new(platform_bindings, input, BottomExtension)
     }
 }
 
@@ -98,8 +98,7 @@ impl DeBruijnIndexer {
 pub struct ExtParser<'s, TExtTokenKind: fmt::Debug + PartialEq + PartialOrd + Default + Sized + Clone,
                          TExtKind: fmt::Debug + PartialEq + PartialOrd + Default + Sized + Clone,
                          TExtPat: fmt::Debug + PartialEq + PartialOrd + Default + Sized + Clone,
-                         TLE: SystemRExtension<TExtTokenKind, TExtKind, TExtPat>,
-                         TPE: ParserExtension<TExtTokenKind, TExtKind>> {
+                         TLE: SystemRExtension<TExtTokenKind, TExtKind, TExtPat>> {
     tmvar: DeBruijnIndexer,
     tyvar: DeBruijnIndexer,
     diagnostic: Diagnostic<'s>,
@@ -107,14 +106,9 @@ pub struct ExtParser<'s, TExtTokenKind: fmt::Debug + PartialEq + PartialOrd + De
     span: Span,
     token: ExtToken<TExtTokenKind>,
     platform_bindings: PlatformBindings,
-    pub extension: TPE,
+    pub extension: TLE,
     _kind: TExtKind,
     _pat: TExtPat,
-}
-
-pub trait ParserExtension<TExtTokenKind: fmt::Debug + PartialEq + Default + Sized + Clone,
-                          TExtKind: fmt::Debug + PartialEq + Default + Sized + Clone> {
-
 }
 
 #[derive(Clone)]
@@ -145,9 +139,9 @@ impl<'s, TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
          TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
          TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
          TLE: Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>,
-         TPE: Clone + ParserExtension<TExtTokenKind, TExtKind>> ExtParser<'s, TExtTokenKind, TExtKind, TExtPat, TLE, TPE> {
+         > ExtParser<'s, TExtTokenKind, TExtKind, TExtPat, TLE> {
     /// Create a new [`Parser`] for the input `&str`
-    pub fn ext_new(platform_bindings: &'s PlatformBindings, input: &'s str, lexer_ext: TLE, parser_ext: TPE) -> ExtParser<'s, TExtTokenKind, TExtKind, TExtPat, TLE, TPE> {
+    pub fn ext_new(platform_bindings: &'s PlatformBindings, input: &'s str, lexer_ext: TLE) -> ExtParser<'s, TExtTokenKind, TExtKind, TExtPat, TLE> {
         let mut p = ExtParser {
             tmvar: DeBruijnIndexer::default(),
             tyvar: DeBruijnIndexer::default(),
@@ -156,7 +150,7 @@ impl<'s, TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
             span: Span::default(),
             token: ExtToken::dummy(),
             platform_bindings: platform_bindings.clone(),
-            extension: parser_ext,
+            extension: lexer_ext,
             _kind: TExtKind::default(),
             _pat: TExtPat::default(),
         };
@@ -172,12 +166,11 @@ impl<'s, TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
 impl<'s, TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
          TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
          TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default, 
-         TLE: Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>,
-         TPE: Clone + ParserExtension<TExtTokenKind, TExtKind>> ExtParser<'s, TExtTokenKind, TExtKind, TExtPat, TLE, TPE> {
+         TLE: Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>> ExtParser<'s, TExtTokenKind, TExtKind, TExtPat, TLE> {
     /// Kleene Plus combinator
     fn once_or_more<T, F>(&mut self, func: F, delimiter: ExtTokenKind<TExtTokenKind>) -> Result<Vec<T>, Error<TExtTokenKind>>
     where
-        F: Fn(&mut ExtParser<TExtTokenKind, TExtKind, TExtPat, TLE, TPE>) -> Result<T, Error<TExtTokenKind>>,
+        F: Fn(&mut ExtParser<TExtTokenKind, TExtKind, TExtPat, TLE>) -> Result<T, Error<TExtTokenKind>>,
     {
         let mut v = vec![func(self)?];
         while self.bump_if(&delimiter) {
@@ -192,7 +185,7 @@ impl<'s, TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     /// already been bumped.
     fn once<T, F>(&mut self, func: F, message: &str) -> Result<T, Error<TExtTokenKind>>
     where
-        F: Fn(&mut ExtParser<TExtTokenKind, TExtKind, TExtPat, TLE, TPE>) -> Result<T, Error<TExtTokenKind>>,
+        F: Fn(&mut ExtParser<TExtTokenKind, TExtKind, TExtPat, TLE>) -> Result<T, Error<TExtTokenKind>>,
     {
         match func(self) {
             Ok(t) => Ok(t),
@@ -207,8 +200,7 @@ impl<'s, TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
 impl<'s, TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
          TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
          TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-         TLE: Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>,
-         TPE: Clone + ParserExtension<TExtTokenKind, TExtKind>> ExtParser<'s, TExtTokenKind, TExtKind, TExtPat, TLE, TPE> {
+         TLE: Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>> ExtParser<'s, TExtTokenKind, TExtKind, TExtPat, TLE> {
     fn error<T>(&self, kind: ErrorKind<TExtTokenKind>) -> Result<T, Error<TExtTokenKind>> {
         Err(Error {
             span: self.token.span,
@@ -423,7 +415,7 @@ impl<'s, TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
 
         let t1 = self.once(|p| p.parse(), "let binder required")?;
         let len = self.tmvar.len();
-        for var in PatVarStack::collect(&mut pat).into_iter().rev() {
+        for var in PatVarStack::<TExtPat, TExtKind>::collect(&mut pat).into_iter().rev() {
             self.tmvar.push(var);
         }
         self.expect(ExtTokenKind::In)?;
@@ -510,7 +502,7 @@ impl<'s, TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     /// Important to note that this function can push variable names to the
     /// de Bruijn naming context. Callers of this function are responsible for
     /// making sure that the stack is balanced afterwards
-    fn pat_atom(&mut self) -> Result<ExtPattern<TExtPat, TExtKind>, Error<TExtTokenKind>> {
+    fn pat_atom(&mut self) -> Result<ExtPattern<TExtPat>, Error<TExtTokenKind>> {
         match self.kind() {
             ExtTokenKind::LParen => self.pattern(),
             ExtTokenKind::Wildcard => {
@@ -557,7 +549,7 @@ impl<'s, TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
         }
     }
 
-    fn pattern(&mut self) -> Result<ExtPattern<TExtPat, TExtKind>, Error<TExtTokenKind>> {
+    fn pattern(&mut self) -> Result<ExtPattern<TExtPat>, Error<TExtTokenKind>> {
         match self.kind() {
             ExtTokenKind::LParen => {
                 self.bump();
@@ -590,7 +582,7 @@ impl<'s, TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
 
         let mut pat = self.once(|p| p.pattern(), "missing pattern")?;
 
-        for var in PatVarStack::collect(&mut pat).into_iter().rev() {
+        for var in PatVarStack::<TExtPat, TExtKind>::collect(&mut pat).into_iter().rev() {
             self.tmvar.push(var);
         }
 
@@ -608,7 +600,7 @@ impl<'s, TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
 
         span = span + self.span;
 
-        Ok(Arm { span, pat, term })
+        Ok(Arm { span, pat, term, _kind: Default::default() })
     }
 
     fn case(&mut self) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {

@@ -17,7 +17,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
-use crate::{syntax::{parser::ParserExtension}, patterns::{PatternExtension, ExtPattern}, extensions::SystemRExtension};
+use crate::{patterns::ExtPattern, extensions::SystemRExtension};
 
 #[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
 pub enum BottomTokenKind {
@@ -40,9 +40,6 @@ pub enum BottomPattern {
 #[derive(Clone, Default, Debug)]
 pub struct BottomExtension;
 
-impl ParserExtension<BottomTokenKind, BottomKind> for BottomExtension {
-
-}
 
 impl SystemRExtension<BottomTokenKind, BottomKind, BottomPattern> for BottomExtension {
     fn lex_is_ext_single(&self, x: char) -> bool {
@@ -61,7 +58,7 @@ impl SystemRExtension<BottomTokenKind, BottomKind, BottomPattern> for BottomExte
         BottomTokenKind::Placeholder
     }
 
-    fn lexer_lex_ext_keyword(&mut self, data: &str) -> BottomTokenKind {
+    fn lex_ext_keyword(&mut self, data: &str) -> BottomTokenKind {
         BottomTokenKind::Placeholder
     }
 
@@ -69,26 +66,11 @@ impl SystemRExtension<BottomTokenKind, BottomKind, BottomPattern> for BottomExte
         false
     }
 
-    fn pat_add_ext_pattern<'a>(&'a self, parent: &crate::types::patterns::Matrix<'a, BottomPattern, BottomKind>, ext_pattern: &ExtPattern<BottomPattern, BottomKind>) -> bool {
+    fn pat_add_ext_pattern<'a>(&'a self, parent: &crate::types::patterns::Matrix<'a, BottomPattern>, ext_pattern: &ExtPattern<BottomPattern>) -> bool {
         false
     }
 
     fn pat_ext_matches(&self, pat: &BottomPattern, term: &crate::terms::ExtTerm<BottomPattern, BottomKind>) -> bool {
-        false
-    }
-}
-
-impl PatternExtension<BottomPattern, BottomKind> for BottomExtension {
-    fn add_ext_pattern<'a>(&'a self, parent: &'a crate::types::patterns::Matrix<'a, BottomPattern, BottomKind>, ext_pattern: &ExtPattern<BottomPattern, BottomKind>) -> bool {
-        // should mutate parent
-        false
-    }
-
-    fn ext_pattern_type_eq(&self, pat: &BottomPattern, ty: &crate::types::Type) -> bool {
-        false
-    }
-
-    fn ext_matches(&self, pat: &BottomPattern, term: &crate::terms::ExtTerm<BottomPattern, BottomKind>) -> bool {
         false
     }
 }

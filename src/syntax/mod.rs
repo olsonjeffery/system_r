@@ -46,8 +46,6 @@ pub mod lexer;
 pub mod parser;
 use crate::system_r_util::span::Span;
 
-use self::{parser::ParserExtension};
-
 #[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
 pub enum ExtTokenKind<TExtTokenKind: PartialEq> {
     Uppercase(String),

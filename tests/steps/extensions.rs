@@ -9,7 +9,7 @@ use system_r::{
     terms::{Kind, Literal, Term, ExtKind, ExtTerm},
     testing::{self, code_format},
     types::Context,
-    types::Type, extensions::{tylet::{TyLetContext, TyLetPattern, TyLetParser, TyLetExtension}, SystemRExtension}, syntax::parser::{ExtParser, ParserExtension}, diagnostics::Diagnostic,
+    types::Type, extensions::{tylet::{TyLetContext, TyLetPattern, TyLetParser, TyLetExtension}, SystemRExtension}, syntax::parser::ExtParser, diagnostics::Diagnostic,
 };
 
 use crate::common::{self, extensions::{OmniContext, OmniParser, OmniKind, OmniTerm}, SpecsWorld};
@@ -19,8 +19,7 @@ static TYLET_CTX_NAME: &'static str = "TyLet";
 pub fn parse_for_extension<'s, TExtTokenKind: fmt::Debug + Default + Clone + PartialEq + PartialOrd,
         TExtKind: fmt::Debug + Default + Clone + PartialEq + PartialOrd,
         TEXtPat: fmt::Debug + Default + Clone + PartialEq + PartialOrd,
-        TLE: Clone + SystemRExtension<TExtTokenKind, TExtKind, TEXtPat>,
-        TPE: Clone + ParserExtension<TExtTokenKind, TExtKind>>(input: &str, mut parser: ExtParser<TExtTokenKind, TExtKind, TEXtPat, TLE, TPE>, world: &mut SpecsWorld) -> Result<ExtTerm<TEXtPat, TExtKind>, Diagnostic> {
+        TLE: Clone + SystemRExtension<TExtTokenKind, TExtKind, TEXtPat>>(input: &str, mut parser: ExtParser<TExtTokenKind, TExtKind, TEXtPat, TLE>, world: &mut SpecsWorld) -> Result<ExtTerm<TEXtPat, TExtKind>, Diagnostic> {
     testing::operate_parser_for(parser, input)
 }
 

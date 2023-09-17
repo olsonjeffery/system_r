@@ -20,9 +20,10 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 use core::fmt;
 use std::{collections::HashMap};
 
+use crate::extensions::SystemRExtension;
 use crate::system_r_util::span::Span;
 
-use crate::{types::{ExtContext, Type}, diagnostics::Diagnostic, terms::{Term, Kind}, bottom::{BottomPattern, BottomKind, BottomExtension}, patterns::PatternExtension};
+use crate::{types::{ExtContext, Type}, diagnostics::Diagnostic, terms::{Term, Kind}, bottom::{BottomPattern, BottomKind, BottomExtension}};
 
 pub type WrappedFn = fn(input: Term, span: &Span) -> Result<Term, Diagnostic>;
 
@@ -92,9 +93,10 @@ impl<'a> PlatformBindings {
     }
 }
 
-impl<TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-         TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-         TPtE: Clone + Default + PatternExtension<TExtPat, TExtKind>> ExtContext<TExtPat, TExtKind, TPtE> {
+impl<TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+                   TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+                    TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+                   TPtE: Default + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>> ExtContext<TExtTokenKind, TExtKind, TExtPat, TPtE> {
     pub(crate) fn type_check_platform_binding(&mut self, idx: &usize, span: &Span) -> Result<Type, Diagnostic> {
         match self.platform_bindings.get(*idx) {
             Some(wc) => Ok(Type::PlatformBinding(Box::new(wc.1.clone()), Box::new(wc.2.clone()))),

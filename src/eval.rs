@@ -336,7 +336,7 @@ impl<'ctx> Eval<'ctx> {
                     panic!("wrong type!")
                 }
             }
-            Extended(_, _) => panic!("extended pattern instructions shouldn't appear here in eval")
+            Extended(_) => panic!("extended pattern instructions shouldn't appear here in eval")
         }
     }
 }

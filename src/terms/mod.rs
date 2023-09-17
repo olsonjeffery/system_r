@@ -97,7 +97,7 @@ pub enum ExtKind<TExtPat: Default + Clone + fmt::Debug + PartialEq + PartialOrd,
     Case(Box<ExtTerm<TExtPat, TExtKind>>, Vec<Arm<TExtPat, TExtKind>>),
 
     // let expr with binding, value and then applied context
-    Let(Box<ExtPattern<TExtPat, TExtKind>>, Box<ExtTerm<TExtPat, TExtKind>>, Box<ExtTerm<TExtPat, TExtKind>>),
+    Let(Box<ExtPattern<TExtPat>>, Box<ExtTerm<TExtPat, TExtKind>>, Box<ExtTerm<TExtPat, TExtKind>>),
     /// A lambda abstraction
     Abs(Box<Type>, Box<ExtTerm<TExtPat, TExtKind>>),
     /// Application of a term to another term
@@ -132,8 +132,9 @@ impl<TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
 pub struct Arm<TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
                TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd> {
     pub span: Span,
-    pub pat: ExtPattern<TExtPat, TExtKind>,
+    pub pat: ExtPattern<TExtPat>,
     pub term: Box<ExtTerm<TExtPat, TExtKind>>,
+    pub _kind: TExtKind,
 }
 
 /// Constant literal expression or pattern

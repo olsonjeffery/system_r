@@ -114,7 +114,7 @@ pub trait MutTermVisitor<TExtPat: Clone + Default + fmt::Debug + PartialEq + Par
         self.visit(t2);
     }
 
-    fn visit_let(&mut self, sp: &mut Span, pat: &mut ExtPattern<TExtPat, TExtKind>, t1: &mut ExtTerm<TExtPat, TExtKind>, t2: &mut ExtTerm<TExtPat, TExtKind>) {
+    fn visit_let(&mut self, sp: &mut Span, pat: &mut ExtPattern<TExtPat>, t1: &mut ExtTerm<TExtPat, TExtKind>, t2: &mut ExtTerm<TExtPat, TExtKind>) {
         self.visit(t1);
         self.visit(t2);
     }
@@ -200,24 +200,24 @@ pub trait PatternVisitor<TExtPat: Clone + Default + fmt::Debug + PartialEq + Par
     fn visit_ext(&mut self, ext: &TExtPat) {}
     fn visit_literal(&mut self, lit: &Literal) {}
     fn visit_variable(&mut self, var: &String) {}
-    fn visit_product(&mut self, pats: &Vec<ExtPattern<TExtPat, TExtKind>>) {
+    fn visit_product(&mut self, pats: &Vec<ExtPattern<TExtPat>>) {
         for p in pats {
             self.visit_pattern(p);
         }
     }
 
-    fn visit_constructor(&mut self, label: &String, pat: &ExtPattern<TExtPat, TExtKind>) {
+    fn visit_constructor(&mut self, label: &String, pat: &ExtPattern<TExtPat>) {
         self.visit_pattern(pat);
     }
 
-    fn visit_pattern(&mut self, pattern: &ExtPattern<TExtPat, TExtKind>) {
+    fn visit_pattern(&mut self, pattern: &ExtPattern<TExtPat>) {
         match pattern {
             ExtPattern::Any => {}
             ExtPattern::Constructor(label, pat) => self.visit_constructor(label, pat),
             ExtPattern::Product(pat) => self.visit_product(pat),
             ExtPattern::Literal(lit) => self.visit_literal(lit),
             ExtPattern::Variable(var) => self.visit_variable(var),
-            ExtPattern::Extended(v, k) => panic!("FIXME impl PatternExtension check in this arm")
+            ExtPattern::Extended(v) => panic!("FIXME impl SystemRExtension check in this arm")
         }
     }
 }
