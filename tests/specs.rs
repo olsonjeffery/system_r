@@ -1,7 +1,7 @@
 extern crate chrono;
 extern crate cucumber;
 
-use cucumber::{given, then, when, writer, World, WriterExt};
+use cucumber::{writer, World, WriterExt};
 use std::fs;
 
 mod steps;

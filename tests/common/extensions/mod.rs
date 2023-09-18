@@ -14,6 +14,7 @@ pub enum OmniContext {
     TyLet(TyLetContext),
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Default, Debug)]
 pub enum OmniParser<'s> {
     #[default]
@@ -36,13 +37,16 @@ impl OmniContext {
 pub enum OmniKind {
     #[default]
     Empty,
+    #[allow(dead_code)]
     Bottom(Kind),
     TyLet(ExtKind<TyLetPattern, TyLetKind>),
 }
+
 #[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
 pub enum OmniTerm {
     #[default]
     Empty,
+    #[allow(dead_code)]
     Bottom(Term),
     TyLet(ExtTerm<TyLetPattern, TyLetKind>),
 }

@@ -3,7 +3,7 @@ use system_r::{
     diagnostics::Diagnostic,
     platform_bindings::WrappedContent,
     terms::{Kind, Literal, Term},
-    types::{Context, Type},
+    types::Type,
 };
 
 pub fn pull_u32_from(args: &Vec<Term>, idx: usize, span: &Span) -> Result<u32, Diagnostic> {

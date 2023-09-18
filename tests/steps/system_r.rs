@@ -17,7 +17,7 @@ static CTX_NAME: &'static str = "system_r_bottom";
 #[given(regex = r#"^a new sr ctx"#)]
 #[given(regex = r#"^a new system_r context"#)]
 fn given_a_new_context(world: &mut common::SpecsWorld) {
-    let mut new_ctx = Context::default();
+    let new_ctx = Context::default();
     world
         .contexts
         .insert(CTX_NAME.to_string(), OmniContext::Bottom(new_ctx));
@@ -32,7 +32,7 @@ fn given_a_code_snippet(world: &mut common::SpecsWorld, step: &Step) {
 
 #[given(regex = r#"an instrinsic for Nat addition named iiiNatAdd"#)]
 fn given_an_intrinsic_for_nat_addition_named_i_nat_add(world: &mut common::SpecsWorld) {
-    let mut pb = &mut world.platform_bindings;
+    let pb = &mut world.platform_bindings;
 
     pb.register("iiiNatAdd", common::platform_bindings::arith::pb_add());
 

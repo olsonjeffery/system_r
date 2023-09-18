@@ -2,25 +2,20 @@ extern crate cucumber;
 
 use core::fmt;
 
-use cucumber::{gherkin::Step, given, then, when};
+use cucumber::{given, then, when};
 
 use system_r::{
     diagnostics::Diagnostic,
     extensions::{
-        tylet::{TyLetContext, TyLetExtension, TyLetParser, TyLetPattern},
+        tylet::{TyLetContext, TyLetExtension, TyLetParser},
         SystemRExtension,
     },
-    platform_bindings::WrappedContent,
-    syntax::parser::ExtParser,
-    terms::{ExtKind, ExtTerm, Kind, Literal, Term},
-    testing::{self, code_format},
-    types::Context,
-    types::Type,
+    terms::ExtTerm, testing, syntax::parser::ExtParser,
 };
 
 use crate::common::{
     self,
-    extensions::{OmniContext, OmniKind, OmniParser, OmniTerm},
+    extensions::{OmniContext, OmniKind, OmniTerm},
     SpecsWorld,
 };
 
@@ -34,8 +29,8 @@ pub fn parse_for_extension<
     TLE: Clone + SystemRExtension<TExtTokenKind, TExtKind, TEXtPat>,
 >(
     input: &str,
-    mut parser: ExtParser<TExtTokenKind, TExtKind, TEXtPat, TLE>,
-    world: &mut SpecsWorld,
+    parser: ExtParser<TExtTokenKind, TExtKind, TEXtPat, TLE>,
+    _world: &mut SpecsWorld,
 ) -> Result<ExtTerm<TEXtPat, TExtKind>, Diagnostic> {
     testing::operate_parser_for(parser, input)
 }

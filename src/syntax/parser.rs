@@ -42,7 +42,7 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 use super::lexer::ExtLexer;
 use super::{ExtToken, ExtTokenKind};
 use crate::bottom::{BottomExtension, BottomKind, BottomPattern, BottomTokenKind};
-use crate::extensions::{SystemRExtension};
+use crate::extensions::SystemRExtension;
 
 use crate::system_r_util::diagnostic::Diagnostic;
 use crate::system_r_util::span::*;

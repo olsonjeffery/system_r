@@ -5,7 +5,7 @@ use cucumber::World;
 use system_r::{
     platform_bindings::PlatformBindings,
     terms::{Kind, Term},
-    types::{Context, Type},
+    types::Type,
 };
 
 use self::extensions::{OmniContext, OmniKind, OmniParser, OmniTerm};
