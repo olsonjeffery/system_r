@@ -97,11 +97,11 @@ pub enum ExtTokenKind<TExtTokenKind: PartialEq> {
     Dummy,
     Eof,
     Tag(String),
-    Extended(TExtTokenKind)
+    Extended(TExtTokenKind),
 }
 
 #[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
-pub struct ExtToken<TExtTokenKind: Sized + Clone + Default + PartialEq> where {
+pub struct ExtToken<TExtTokenKind: Sized + Clone + Default + PartialEq> {
     pub kind: ExtTokenKind<TExtTokenKind>,
     pub span: Span,
 }

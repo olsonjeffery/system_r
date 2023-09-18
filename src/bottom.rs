@@ -17,12 +17,12 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
-use crate::{patterns::ExtPattern, extensions::SystemRExtension};
+use crate::{extensions::SystemRExtension, patterns::ExtPattern};
 
 #[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
 pub enum BottomTokenKind {
     #[default]
-    Placeholder, 
+    Placeholder,
 }
 
 #[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
@@ -40,10 +40,9 @@ pub enum BottomPattern {
 #[derive(Clone, Default, Debug)]
 pub struct BottomExtension;
 
-
 impl SystemRExtension<BottomTokenKind, BottomKind, BottomPattern> for BottomExtension {
     fn lex_is_ext_single(&self, x: char) -> bool {
-       false 
+        false
     }
 
     fn lex_is_extended_single_pred(&self, x: char) -> bool {
@@ -66,7 +65,11 @@ impl SystemRExtension<BottomTokenKind, BottomKind, BottomPattern> for BottomExte
         false
     }
 
-    fn pat_add_ext_pattern<'a>(&'a self, parent: &crate::types::patterns::Matrix<'a, BottomPattern>, ext_pattern: &ExtPattern<BottomPattern>) -> bool {
+    fn pat_add_ext_pattern<'a>(
+        &'a self,
+        parent: &crate::types::patterns::Matrix<'a, BottomPattern>,
+        ext_pattern: &ExtPattern<BottomPattern>,
+    ) -> bool {
         false
     }
 

@@ -1,12 +1,14 @@
-use crate::{bottom::{BottomTokenKind, BottomKind, BottomPattern}, types::ExtContext, platform_bindings::PlatformBindings, syntax::parser::ExtParser};
-
+use crate::{
+    bottom::{BottomKind, BottomPattern, BottomTokenKind},
+    platform_bindings::PlatformBindings,
+    syntax::parser::ExtParser,
+    types::ExtContext,
+};
 
 use super::SystemRExtension;
 
 #[derive(Clone, Debug, Default)]
-pub struct TyLetExtension {
-    
-}
+pub struct TyLetExtension {}
 
 pub type TyLetContext = ExtContext<TyLetTokenKind, TyLetKind, TyLetPattern, TyLetExtension>;
 
@@ -19,7 +21,8 @@ impl<'s> TyLetParser<'s> {
 }
 
 /// Extension 1: TyLet
-/// - Extends the Bottom-dialect of system_r (ie system_f with some minor kind/type enhancement)
+/// - Extends the Bottom-dialect of system_r (ie system_f with some minor
+///   kind/type enhancement)
 #[derive(Clone, Debug, Default, PartialEq, PartialOrd)]
 pub enum TyLetTokenKind {
     #[default]
@@ -66,7 +69,11 @@ impl SystemRExtension<TyLetTokenKind, TyLetKind, TyLetPattern> for TyLetExtensio
         false
     }
 
-    fn pat_add_ext_pattern<'a>(&'a self, parent: &crate::types::patterns::Matrix<'a, TyLetPattern>, ext_pattern: &crate::patterns::ExtPattern<TyLetPattern>) -> bool {
+    fn pat_add_ext_pattern<'a>(
+        &'a self,
+        parent: &crate::types::patterns::Matrix<'a, TyLetPattern>,
+        ext_pattern: &crate::patterns::ExtPattern<TyLetPattern>,
+    ) -> bool {
         false
     }
 

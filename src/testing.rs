@@ -2,7 +2,7 @@ use core::fmt;
 
 use crate::bottom::BottomTokenKind;
 use crate::extensions::SystemRExtension;
-use crate::syntax::parser::{ExtParser};
+use crate::syntax::parser::ExtParser;
 /*
 Copyright (C) 2023 AUTHORS
 
@@ -24,8 +24,17 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 use crate::system_r_util::span::Span;
 
-use crate::{types::{self, Type}, terms::{ExtTerm, visit::InjRewriter, Term}, syntax::parser, syntax::parser::Parser,
-eval, diagnostics::Diagnostic, visit::MutTermVisitor, platform_bindings::PlatformBindings, bottom::{BottomKind, BottomExtension, BottomPattern}};
+use crate::{
+    bottom::{BottomExtension, BottomKind, BottomPattern},
+    diagnostics::Diagnostic,
+    eval,
+    platform_bindings::PlatformBindings,
+    syntax::parser,
+    syntax::parser::Parser,
+    terms::{visit::InjRewriter, ExtTerm, Term},
+    types::{self, Type},
+    visit::MutTermVisitor,
+};
 
 pub fn code_format(src: &str, diag: Diagnostic) -> String {
     let srcl = src.lines().collect::<Vec<&str>>();
@@ -52,13 +61,19 @@ pub fn code_format(src: &str, diag: Diagnostic) -> String {
     return output;
 }
 
-pub fn type_check_term(ctx: &mut types::ExtContext<BottomTokenKind, BottomKind, BottomPattern, BottomExtension>, term: &mut ExtTerm<BottomPattern, BottomKind>) -> Result<Type, Diagnostic> {
+pub fn type_check_term(
+    ctx: &mut types::ExtContext<BottomTokenKind, BottomKind, BottomPattern, BottomExtension>,
+    term: &mut ExtTerm<BottomPattern, BottomKind>,
+) -> Result<Type, Diagnostic> {
     // Step 1
     let ty = ctx.type_check(&term)?;
     Ok(ty)
 }
 
-pub fn dealias_and_type_check_term(ctx: &mut types::ExtContext<BottomTokenKind, BottomKind, BottomPattern, BottomExtension>, term: &mut ExtTerm<BottomPattern, BottomKind>) -> Result<Type, Diagnostic> {
+pub fn dealias_and_type_check_term(
+    ctx: &mut types::ExtContext<BottomTokenKind, BottomKind, BottomPattern, BottomExtension>,
+    term: &mut ExtTerm<BottomPattern, BottomKind>,
+) -> Result<Type, Diagnostic> {
     // Step 0
     ctx.de_alias(term);
     InjRewriter(BottomPattern::Placeholder, BottomKind::Placeholder).visit(term);
@@ -66,10 +81,16 @@ pub fn dealias_and_type_check_term(ctx: &mut types::ExtContext<BottomTokenKind, 
     type_check_term(ctx, term)
 }
 
-pub fn operate_parser_for<'s, TExtTokenKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-        TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-        TEXtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-        TLE: Clone + SystemRExtension<TExtTokenKind, TExtKind, TEXtPat>>(mut parser: ExtParser<'s, TExtTokenKind, TExtKind, TEXtPat, TLE>, input: &str) -> Result<ExtTerm<TEXtPat, TExtKind>, Diagnostic> {
+pub fn operate_parser_for<
+    's,
+    TExtTokenKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TEXtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TLE: Clone + SystemRExtension<TExtTokenKind, TExtKind, TEXtPat>,
+>(
+    mut parser: ExtParser<'s, TExtTokenKind, TExtKind, TEXtPat, TLE>,
+    input: &str,
+) -> Result<ExtTerm<TEXtPat, TExtKind>, Diagnostic> {
     return match parser.parse() {
         Ok(term) => Ok(term),
         Err(parser::Error {
@@ -85,7 +106,10 @@ pub fn operate_parser_for<'s, TExtTokenKind: Clone + fmt::Debug + Default + Part
     };
 }
 
-pub fn parse_single_block(platform_bindings: &PlatformBindings, input: &str) -> Result<ExtTerm<BottomPattern, BottomKind>, Diagnostic> {
+pub fn parse_single_block(
+    platform_bindings: &PlatformBindings,
+    input: &str,
+) -> Result<ExtTerm<BottomPattern, BottomKind>, Diagnostic> {
     let mut p = Parser::new(platform_bindings, input);
     return match p.parse() {
         Ok(term) => Ok(term),
@@ -102,9 +126,12 @@ pub fn parse_single_block(platform_bindings: &PlatformBindings, input: &str) -> 
     };
 }
 
-pub fn type_check_and_eval_single_block(ctx: &mut types::ExtContext<BottomTokenKind, BottomKind, BottomPattern, BottomExtension>,
-                                            term: &mut ExtTerm<BottomPattern, BottomKind>, src: &String, fail_on_type_mismatch: bool) -> Result<(Type, ExtTerm<BottomPattern, BottomKind>), Diagnostic>  {
-
+pub fn type_check_and_eval_single_block(
+    ctx: &mut types::ExtContext<BottomTokenKind, BottomKind, BottomPattern, BottomExtension>,
+    term: &mut ExtTerm<BottomPattern, BottomKind>,
+    src: &String,
+    fail_on_type_mismatch: bool,
+) -> Result<(Type, ExtTerm<BottomPattern, BottomKind>), Diagnostic> {
     // Step 0-1
     let tc_result = dealias_and_type_check_term(ctx, term);
     let Some(pre_ty) = tc_result.clone().ok() else {
@@ -126,7 +153,10 @@ pub fn type_check_and_eval_single_block(ctx: &mut types::ExtContext<BottomTokenK
     // Step 3 -- optional disable?
     let fin_ty = type_check_term(ctx, term)?;
     if fin_ty != pre_ty && fail_on_type_mismatch {
-        let msg = format!("Type change of term pre check typecheck to post-eval: {:?} {:?}", pre_ty, fin_ty);
+        let msg = format!(
+            "Type change of term pre check typecheck to post-eval: {:?} {:?}",
+            pre_ty, fin_ty
+        );
         return Err(Diagnostic::error(fin.span(), msg));
     }
 

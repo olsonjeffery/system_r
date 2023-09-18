@@ -44,10 +44,10 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 use core::fmt;
 
 use crate::patterns::{ExtPattern, PatternCount};
-use crate::terms::{Arm, ExtKind, Primitive, ExtTerm};
+use crate::system_r_util::span::Span;
+use crate::terms::{Arm, ExtKind, ExtTerm, Primitive};
 use crate::types::Type;
 use crate::visit::{MutTermVisitor, MutTypeVisitor};
-use crate::system_r_util::span::Span;
 
 pub struct Shift {
     cutoff: usize,
@@ -60,7 +60,11 @@ impl Shift {
     }
 }
 
-impl<TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default, TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default> MutTermVisitor<TExtPat, TExtKind> for Shift {
+impl<
+        TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+        TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    > MutTermVisitor<TExtPat, TExtKind> for Shift
+{
     fn visit_var(&mut self, sp: &mut Span, var: &mut usize) {
         if *var >= self.cutoff {
             *var = (*var as isize + self.shift) as usize;
@@ -73,7 +77,13 @@ impl<TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default, TExtKind: C
         self.cutoff -= 1;
     }
 
-    fn visit_let(&mut self, sp: &mut Span, pat: &mut ExtPattern<TExtPat>, t1: &mut ExtTerm<TExtPat, TExtKind>, t2: &mut ExtTerm<TExtPat, TExtKind>) {
+    fn visit_let(
+        &mut self,
+        sp: &mut Span,
+        pat: &mut ExtPattern<TExtPat>,
+        t1: &mut ExtTerm<TExtPat, TExtKind>,
+        t2: &mut ExtTerm<TExtPat, TExtKind>,
+    ) {
         self.visit(t1);
         let c = PatternCount::<TExtPat, TExtKind>::collect(pat);
         self.cutoff += c;
@@ -81,7 +91,12 @@ impl<TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default, TExtKind: C
         self.cutoff -= c;
     }
 
-    fn visit_case(&mut self, sp: &mut Span, term: &mut ExtTerm<TExtPat, TExtKind>, arms: &mut Vec<Arm<TExtPat, TExtKind>>) {
+    fn visit_case(
+        &mut self,
+        sp: &mut Span,
+        term: &mut ExtTerm<TExtPat, TExtKind>,
+        arms: &mut Vec<Arm<TExtPat, TExtKind>>,
+    ) {
         self.visit(term);
         for arm in arms {
             let c = PatternCount::<TExtPat, TExtKind>::collect(&mut arm.pat);
@@ -91,7 +106,12 @@ impl<TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default, TExtKind: C
         }
     }
 
-    fn visit_unpack(&mut self, _: &mut Span, package: &mut ExtTerm<TExtPat, TExtKind>, term: &mut ExtTerm<TExtPat, TExtKind>) {
+    fn visit_unpack(
+        &mut self,
+        _: &mut Span,
+        package: &mut ExtTerm<TExtPat, TExtKind>,
+        term: &mut ExtTerm<TExtPat, TExtKind>,
+    ) {
         self.visit(package);
         self.cutoff += 1;
         self.visit(term);
@@ -99,26 +119,42 @@ impl<TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default, TExtKind: C
     }
 }
 
-pub struct Subst<TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-                 TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default> {
+pub struct Subst<
+    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+> {
     cutoff: usize,
     term: ExtTerm<TExtPat, TExtKind>,
 }
 
-impl<TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default, TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default> Subst<TExtPat, TExtKind> {
+impl<
+        TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+        TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    > Subst<TExtPat, TExtKind>
+{
     pub fn new(term: ExtTerm<TExtPat, TExtKind>) -> Subst<TExtPat, TExtKind> {
         Subst { cutoff: 0, term }
     }
 }
 
-impl<TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default, TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default> MutTermVisitor<TExtPat, TExtKind> for Subst<TExtPat, TExtKind> {
+impl<
+        TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+        TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    > MutTermVisitor<TExtPat, TExtKind> for Subst<TExtPat, TExtKind>
+{
     fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type, term: &mut ExtTerm<TExtPat, TExtKind>) {
         self.cutoff += 1;
         self.visit(term);
         self.cutoff -= 1;
     }
 
-    fn visit_let(&mut self, sp: &mut Span, pat: &mut ExtPattern<TExtPat>, t1: &mut ExtTerm<TExtPat, TExtKind>, t2: &mut ExtTerm<TExtPat, TExtKind>) {
+    fn visit_let(
+        &mut self,
+        sp: &mut Span,
+        pat: &mut ExtPattern<TExtPat>,
+        t1: &mut ExtTerm<TExtPat, TExtKind>,
+        t2: &mut ExtTerm<TExtPat, TExtKind>,
+    ) {
         self.visit(t1);
         let c = PatternCount::<TExtPat, TExtKind>::collect(pat);
         self.cutoff += c;
@@ -126,7 +162,12 @@ impl<TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default, TExtKind: C
         self.cutoff -= c;
     }
 
-    fn visit_case(&mut self, sp: &mut Span, term: &mut ExtTerm<TExtPat, TExtKind>, arms: &mut Vec<Arm<TExtPat, TExtKind>>) {
+    fn visit_case(
+        &mut self,
+        sp: &mut Span,
+        term: &mut ExtTerm<TExtPat, TExtKind>,
+        arms: &mut Vec<Arm<TExtPat, TExtKind>>,
+    ) {
         self.visit(term);
         for arm in arms {
             let c = PatternCount::<TExtPat, TExtKind>::collect(&mut arm.pat);
@@ -136,7 +177,12 @@ impl<TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default, TExtKind: C
         }
     }
 
-    fn visit_unpack(&mut self, _: &mut Span, package: &mut ExtTerm<TExtPat, TExtKind>, term: &mut ExtTerm<TExtPat, TExtKind>) {
+    fn visit_unpack(
+        &mut self,
+        _: &mut Span,
+        package: &mut ExtTerm<TExtPat, TExtKind>,
+        term: &mut ExtTerm<TExtPat, TExtKind>,
+    ) {
         self.visit(package);
         self.cutoff += 1;
         self.visit(term);
@@ -177,7 +223,11 @@ impl TyTermSubst {
     }
 }
 
-impl<TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default, TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default> MutTermVisitor<TExtPat, TExtKind> for TyTermSubst {
+impl<
+        TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+        TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    > MutTermVisitor<TExtPat, TExtKind> for TyTermSubst
+{
     fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type, term: &mut ExtTerm<TExtPat, TExtKind>) {
         // self.cutoff += 1;
         self.visit_ty(ty);
@@ -206,7 +256,12 @@ impl<TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default, TExtKind: C
         self.visit(term);
     }
 
-    fn visit_unpack(&mut self, _: &mut Span, package: &mut ExtTerm<TExtPat, TExtKind>, term: &mut ExtTerm<TExtPat, TExtKind>) {
+    fn visit_unpack(
+        &mut self,
+        _: &mut Span,
+        package: &mut ExtTerm<TExtPat, TExtKind>,
+        term: &mut ExtTerm<TExtPat, TExtKind>,
+    ) {
         self.visit(package);
         self.cutoff += 1;
         self.visit(term);
@@ -219,7 +274,13 @@ impl<TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default, TExtKind: C
         self.visit_ty(sig);
     }
 
-    fn visit_injection(&mut self, sp: &mut Span, label: &mut String, term: &mut ExtTerm<TExtPat, TExtKind>, ty: &mut Type) {
+    fn visit_injection(
+        &mut self,
+        sp: &mut Span,
+        label: &mut String,
+        term: &mut ExtTerm<TExtPat, TExtKind>,
+        ty: &mut Type,
+    ) {
         self.visit_ty(ty);
         self.visit(term);
     }
@@ -230,9 +291,16 @@ impl<TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default, TExtKind: C
 ///
 /// Transform an [`Injection`] term of form: `Label tm of Rec(u.T)` into
 /// `fold [u.T] Label tm of [X->u.T] T`
-pub struct InjRewriter<TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default, TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default>(pub TExtPat, pub TExtKind);
+pub struct InjRewriter<
+    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+>(pub TExtPat, pub TExtKind);
 
-impl<TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default, TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default> MutTermVisitor<TExtPat, TExtKind> for InjRewriter<TExtPat, TExtKind> {
+impl<
+        TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+        TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    > MutTermVisitor<TExtPat, TExtKind> for InjRewriter<TExtPat, TExtKind>
+{
     fn visit(&mut self, term: &mut ExtTerm<TExtPat, TExtKind>) {
         match &mut term.kind {
             ExtKind::Injection(label, val, ty) => {

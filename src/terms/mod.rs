@@ -44,16 +44,18 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 //! Representation lambda calculus terms
 use crate::bottom::{BottomKind, BottomPattern};
 use crate::patterns::ExtPattern;
+use crate::system_r_util::span::Span;
 use crate::types::Type;
 use std::fmt;
-use crate::system_r_util::span::Span;
 pub mod visit;
 
 pub type Term = ExtTerm<BottomPattern, BottomKind>;
 
 #[derive(Clone, Default, PartialEq, PartialOrd)]
-pub struct ExtTerm<TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-                   TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default> {
+pub struct ExtTerm<
+    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+> {
     pub span: Span,
     pub kind: ExtKind<TExtPat, TExtKind>,
 }
@@ -70,8 +72,10 @@ pub type Kind = ExtKind<BottomPattern, BottomKind>;
 
 /// Abstract syntax of the parametric polymorphic lambda calculus
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
-pub enum ExtKind<TExtPat: Default + Clone + fmt::Debug + PartialEq + PartialOrd,
-                 TExtKind: Default + Clone + fmt::Debug + PartialEq + PartialOrd> {
+pub enum ExtKind<
+    TExtPat: Default + Clone + fmt::Debug + PartialEq + PartialOrd,
+    TExtKind: Default + Clone + fmt::Debug + PartialEq + PartialOrd,
+> {
     /// A literal value
     Lit(Literal),
     /// A bound variable, represented by it's de Bruijn index
@@ -97,7 +101,11 @@ pub enum ExtKind<TExtPat: Default + Clone + fmt::Debug + PartialEq + PartialOrd,
     Case(Box<ExtTerm<TExtPat, TExtKind>>, Vec<Arm<TExtPat, TExtKind>>),
 
     // let expr with binding, value and then applied context
-    Let(Box<ExtPattern<TExtPat>>, Box<ExtTerm<TExtPat, TExtKind>>, Box<ExtTerm<TExtPat, TExtKind>>),
+    Let(
+        Box<ExtPattern<TExtPat>>,
+        Box<ExtTerm<TExtPat, TExtKind>>,
+        Box<ExtTerm<TExtPat, TExtKind>>,
+    ),
     /// A lambda abstraction
     Abs(Box<Type>, Box<ExtTerm<TExtPat, TExtKind>>),
     /// Application of a term to another term
@@ -120,8 +128,11 @@ pub enum ExtKind<TExtPat: Default + Clone + fmt::Debug + PartialEq + PartialOrd,
     Unpack(Box<ExtTerm<TExtPat, TExtKind>>, Box<ExtTerm<TExtPat, TExtKind>>),
 }
 
-impl<TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-     TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd> Default for ExtKind<TExtPat, TExtKind> {
+impl<
+        TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+        TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+    > Default for ExtKind<TExtPat, TExtKind>
+{
     fn default() -> Self {
         ExtKind::Lit(Literal::Unit)
     }
@@ -129,8 +140,10 @@ impl<TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
 
 /// Arm of a case expression
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
-pub struct Arm<TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-               TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd> {
+pub struct Arm<
+    TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+    TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+> {
     pub span: Span,
     pub pat: ExtPattern<TExtPat>,
     pub term: Box<ExtTerm<TExtPat, TExtKind>>,
@@ -147,7 +160,11 @@ pub enum Literal {
     Tag(String),
 }
 
-impl<TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd, TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd> ExtTerm<TExtPat, TExtKind> {
+impl<
+        TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+        TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+    > ExtTerm<TExtPat, TExtKind>
+{
     pub fn new(kind: ExtKind<TExtPat, TExtKind>, span: Span) -> ExtTerm<TExtPat, TExtKind> {
         ExtTerm { span, kind }
     }
@@ -183,7 +200,11 @@ impl fmt::Display for Literal {
     }
 }
 
-impl<TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd, TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd> fmt::Display for ExtTerm<TExtPat, TExtKind> {
+impl<
+        TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+        TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+    > fmt::Display for ExtTerm<TExtPat, TExtKind>
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match &self.kind {
             ExtKind::Lit(lit) => write!(f, "{}", lit),
@@ -222,8 +243,11 @@ impl<TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd, TExtKind: C
     }
 }
 
-impl<TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-     TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd> fmt::Debug for ExtTerm<TExtPat, TExtKind> {
+impl<
+        TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+        TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    > fmt::Debug for ExtTerm<TExtPat, TExtKind>
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self.kind)
     }

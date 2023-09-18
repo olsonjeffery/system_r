@@ -42,15 +42,14 @@ along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-
 use core::fmt;
 
-use crate::bottom::{BottomPattern, BottomKind};
+use crate::bottom::{BottomKind, BottomPattern};
 use crate::extensions::SystemRExtension;
-use crate::terms::{ExtKind, Literal, ExtTerm};
+use crate::system_r_util::span::Span;
+use crate::terms::{ExtKind, ExtTerm, Literal};
 use crate::types::{variant_field, Type};
 use crate::visit::PatternVisitor;
-use crate::system_r_util::span::Span;
 
 pub type Pattern = ExtPattern<BottomPattern>;
 
@@ -67,18 +66,24 @@ pub enum ExtPattern<TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Defau
     Product(Vec<ExtPattern<TExtPat>>),
     /// Algebraic datatype constructor, along with binding pattern
     Constructor(String, Box<ExtPattern<TExtPat>>),
-    Extended(TExtPat)
+    Extended(TExtPat),
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct PatVarStack<TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-                       TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd> {
+pub struct PatVarStack<
+    TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+> {
     pub inner: Vec<String>,
     _pat: TExtPat,
     _kind: TExtKind,
 }
 
-impl<TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd, TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd> PatVarStack<TExtPat, TExtKind> {
+impl<
+        TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+        TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    > PatVarStack<TExtPat, TExtKind>
+{
     pub fn collect(pat: &mut ExtPattern<TExtPat>) -> Vec<String> {
         let mut p = Self::default();
         p.visit_pattern(pat);
@@ -86,7 +91,11 @@ impl<TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd, TExtKind: C
     }
 }
 
-impl<TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd, TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd> PatternVisitor<TExtPat, TExtKind> for PatVarStack<TExtPat, TExtKind> {
+impl<
+        TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+        TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    > PatternVisitor<TExtPat, TExtKind> for PatVarStack<TExtPat, TExtKind>
+{
     fn visit_variable(&mut self, var: &String) {
         self.inner.push(var.clone());
     }
@@ -94,9 +103,16 @@ impl<TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd, TExtKind: C
 
 /// Visitor that simply counts the number of binders (variables) within a
 /// pattern
-pub struct PatternCount<TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd, TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd>(pub usize, pub TExtPat, pub TExtKind);
+pub struct PatternCount<
+    TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+>(pub usize, pub TExtPat, pub TExtKind);
 
-impl<TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd, TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd> PatternCount<TExtPat, TExtKind> {
+impl<
+        TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+        TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    > PatternCount<TExtPat, TExtKind>
+{
     pub fn collect(pat: &mut ExtPattern<TExtPat>) -> usize {
         let mut p = PatternCount(0, TExtPat::default(), TExtKind::default());
         p.visit_pattern(pat);
@@ -104,7 +120,11 @@ impl<TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd, TExtKind: C
     }
 }
 
-impl<TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd, TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd> PatternVisitor<TExtPat, TExtKind> for PatternCount<TExtPat, TExtKind> {
+impl<
+        TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+        TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    > PatternVisitor<TExtPat, TExtKind> for PatternCount<TExtPat, TExtKind>
+{
     fn visit_variable(&mut self, var: &String) {
         self.0 += 1;
     }
@@ -112,9 +132,15 @@ impl<TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd, TExtKind: C
 
 impl<TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd> ExtPattern<TExtPat> {
     /// Does this pattern match the given [`Term`]?
-    pub fn matches<TExtTokenKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-            TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-            TPtE: SystemRExtension<TExtTokenKind, TExtKind, TExtPat>>(&self, term: &ExtTerm<TExtPat, TExtKind>, ext: &TPtE) -> bool {
+    pub fn matches<
+        TExtTokenKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+        TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+        TPtE: SystemRExtension<TExtTokenKind, TExtKind, TExtPat>,
+    >(
+        &self,
+        term: &ExtTerm<TExtPat, TExtKind>,
+        ext: &TPtE,
+    ) -> bool {
         match self {
             ExtPattern::Any => return true,
             ExtPattern::Variable(_) => return true,
@@ -134,7 +160,7 @@ impl<TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd> ExtPattern<
                         return inner.matches(&tm, ext);
                     }
                 }
-            },
+            }
             ExtPattern::Extended(v) => return ext.pat_ext_matches(v, term),
         }
         false
@@ -146,16 +172,23 @@ impl<TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd> ExtPattern<
 ///
 /// It is the caller's responsibiliy to track stack growth and pop off
 /// types after calling this function
-pub struct PatTyStack<'ty, TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-                      TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd> {
+pub struct PatTyStack<
+    'ty,
+    TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+> {
     pub ty: &'ty Type,
     pub inner: Vec<&'ty Type>,
     _pat: TExtPat,
     _kind: TExtKind,
 }
 
-impl<'ty, TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-          TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd> PatTyStack<'ty, TExtPat, TExtKind> {
+impl<
+        'ty,
+        TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+        TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    > PatTyStack<'ty, TExtPat, TExtKind>
+{
     pub fn collect(ty: &'ty Type, pat: &ExtPattern<TExtPat>) -> Vec<&'ty Type> {
         let mut p = PatTyStack {
             ty,
@@ -168,7 +201,12 @@ impl<'ty, TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
     }
 }
 
-impl<'ty, TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd, TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd> PatternVisitor<TExtPat, TExtKind> for PatTyStack<'_, TExtPat, TExtKind> {
+impl<
+        'ty,
+        TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+        TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    > PatternVisitor<TExtPat, TExtKind> for PatTyStack<'_, TExtPat, TExtKind>
+{
     fn visit_product(&mut self, pats: &Vec<ExtPattern<TExtPat>>) {
         if let Type::Product(tys) = self.ty {
             let ty = self.ty;
@@ -189,7 +227,7 @@ impl<'ty, TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd, TExtKi
         }
     }
 
-    fn visit_ext(&mut self, p: &TExtPat) { }
+    fn visit_ext(&mut self, p: &TExtPat) {}
 
     fn visit_pattern(&mut self, pattern: &ExtPattern<TExtPat>) {
         match pattern {
@@ -216,12 +254,18 @@ mod test {
     fn pattern_ty_stack() {
         let mut pat: Pattern = ExtPattern::Variable(String::new());
         let ty = Type::Nat;
-        assert_eq!(PatTyStack::<BottomPattern, BottomKind>::collect(&ty, &mut pat), vec![&ty]);
+        assert_eq!(
+            PatTyStack::<BottomPattern, BottomKind>::collect(&ty, &mut pat),
+            vec![&ty]
+        );
     }
 
     #[test]
     fn pattern_var_stack() {
         let mut pat: Pattern = ExtPattern::Variable("x".into());
-        assert_eq!(PatVarStack::<BottomPattern, BottomKind>::collect(&mut pat), vec![String::from("x")]);
+        assert_eq!(
+            PatVarStack::<BottomPattern, BottomKind>::collect(&mut pat),
+            vec![String::from("x")]
+        );
     }
 }

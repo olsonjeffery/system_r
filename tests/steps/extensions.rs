@@ -5,27 +5,46 @@ use core::fmt;
 use cucumber::{gherkin::Step, given, then, when};
 
 use system_r::{
+    diagnostics::Diagnostic,
+    extensions::{
+        tylet::{TyLetContext, TyLetExtension, TyLetParser, TyLetPattern},
+        SystemRExtension,
+    },
     platform_bindings::WrappedContent,
-    terms::{Kind, Literal, Term, ExtKind, ExtTerm},
+    syntax::parser::ExtParser,
+    terms::{ExtKind, ExtTerm, Kind, Literal, Term},
     testing::{self, code_format},
     types::Context,
-    types::Type, extensions::{tylet::{TyLetContext, TyLetPattern, TyLetParser, TyLetExtension}, SystemRExtension}, syntax::parser::ExtParser, diagnostics::Diagnostic,
+    types::Type,
 };
 
-use crate::common::{self, extensions::{OmniContext, OmniParser, OmniKind, OmniTerm}, SpecsWorld};
+use crate::common::{
+    self,
+    extensions::{OmniContext, OmniKind, OmniParser, OmniTerm},
+    SpecsWorld,
+};
 
 static TYLET_CTX_NAME: &'static str = "TyLet";
 
-pub fn parse_for_extension<'s, TExtTokenKind: fmt::Debug + Default + Clone + PartialEq + PartialOrd,
-        TExtKind: fmt::Debug + Default + Clone + PartialEq + PartialOrd,
-        TEXtPat: fmt::Debug + Default + Clone + PartialEq + PartialOrd,
-        TLE: Clone + SystemRExtension<TExtTokenKind, TExtKind, TEXtPat>>(input: &str, mut parser: ExtParser<TExtTokenKind, TExtKind, TEXtPat, TLE>, world: &mut SpecsWorld) -> Result<ExtTerm<TEXtPat, TExtKind>, Diagnostic> {
+pub fn parse_for_extension<
+    's,
+    TExtTokenKind: fmt::Debug + Default + Clone + PartialEq + PartialOrd,
+    TExtKind: fmt::Debug + Default + Clone + PartialEq + PartialOrd,
+    TEXtPat: fmt::Debug + Default + Clone + PartialEq + PartialOrd,
+    TLE: Clone + SystemRExtension<TExtTokenKind, TExtKind, TEXtPat>,
+>(
+    input: &str,
+    mut parser: ExtParser<TExtTokenKind, TExtKind, TEXtPat, TLE>,
+    world: &mut SpecsWorld,
+) -> Result<ExtTerm<TEXtPat, TExtKind>, Diagnostic> {
     testing::operate_parser_for(parser, input)
 }
 
 #[given(regex = r#"^a system_r toolchain extended for tylet"#)]
 fn given_a_new_tylet_context(world: &mut common::SpecsWorld) {
-    world.contexts.insert(TYLET_CTX_NAME.to_owned(), OmniContext::TyLet(TyLetContext::default()));
+    world
+        .contexts
+        .insert(TYLET_CTX_NAME.to_owned(), OmniContext::TyLet(TyLetContext::default()));
 }
 
 #[then("the last ext should parse successfully")]
@@ -45,7 +64,7 @@ fn when_it_is_processed_for_tylet(world: &mut common::SpecsWorld) {
             let k = OmniKind::TyLet(t.clone().kind);
             let t = OmniTerm::TyLet(t);
             (t, k)
-        },
+        }
         Err(e) => {
             world.last_ext_parse_msg = format!("error diag: {:?}", e);
             (OmniTerm::Empty, OmniKind::Empty)

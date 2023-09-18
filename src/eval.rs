@@ -43,13 +43,13 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 use core::fmt;
 
-use crate::bottom::{BottomKind, BottomPattern, BottomExtension};
+use crate::bottom::{BottomExtension, BottomKind, BottomPattern};
 use crate::diagnostics::Diagnostic;
 use crate::patterns::{ExtPattern, Pattern};
 use crate::platform_bindings::PlatformBindings;
 use crate::terms::visit::{Shift, Subst, TyTermSubst};
-use crate::terms::{ExtKind, Literal, Primitive, ExtTerm, Term};
-use crate::types::{ExtContext, Type, Context};
+use crate::terms::{ExtKind, ExtTerm, Literal, Primitive, Term};
+use crate::types::{Context, ExtContext, Type};
 use crate::visit::MutTermVisitor;
 
 pub struct Eval<'ctx> {
@@ -60,7 +60,10 @@ pub struct Eval<'ctx> {
 impl<'ctx> Eval<'ctx> {
     pub fn with_context(_context: &Context) -> Eval<'_> {
         let platform_bindings = _context.platform_bindings.clone();
-        Eval { _context, platform_bindings }
+        Eval {
+            _context,
+            platform_bindings,
+        }
     }
 
     fn normal_form(&self, term: &ExtTerm<BottomPattern, BottomKind>) -> bool {
@@ -111,23 +114,21 @@ impl<'ctx> Eval<'ctx> {
                             term_subst(*t2, abs.as_mut());
                             Ok(Some(*abs))
                         }
-                        ExtKind::PlatformBinding(idx) => {
-                            match self.platform_bindings.get(idx) {
-                                Some(wc) => {
-                                    let span = t1.span;
-                                    match (&wc.0)(*t2, &span) {
-                                        Ok(t) => return Ok(Some(t)),
-                                        Err(_) => return Ok(None),
-                                    }
-                                },
-                                _ => panic!("unable to get platform_binding with idx after parsing; shouldn't happen")
+                        ExtKind::PlatformBinding(idx) => match self.platform_bindings.get(idx) {
+                            Some(wc) => {
+                                let span = t1.span;
+                                match (&wc.0)(*t2, &span) {
+                                    Ok(t) => return Ok(Some(t)),
+                                    Err(_) => return Ok(None),
+                                }
                             }
-                        }
+                            _ => panic!("unable to get platform_binding with idx after parsing; shouldn't happen"),
+                        },
                         ExtKind::Primitive(p) => self.eval_primitive(p, *t2),
                         _ => {
                             match self.small_step(*t1)? {
                                 Some(t) => return Ok(Some(ExtTerm::new(ExtKind::App(Box::new(t), t2), term.span))),
-                                None => return Ok(None)
+                                None => return Ok(None),
                             };
                         }
                     }
@@ -137,8 +138,7 @@ impl<'ctx> Eval<'ctx> {
                     // App(t1, t2')
                     let t = self.small_step(*t2)?;
                     match t {
-                        Some(t) => 
-                            Ok(Some(ExtTerm::new(ExtKind::App(t1, Box::new(t)), term.span))),
+                        Some(t) => Ok(Some(ExtTerm::new(ExtKind::App(t1, Box::new(t)), term.span))),
                         None => Ok(None),
                     }
                 } else {
@@ -159,7 +159,7 @@ impl<'ctx> Eval<'ctx> {
                     let t = self.small_step(*bind)?;
                     match t {
                         None => return Ok(None),
-                        Some(t) => Ok(Some(ExtTerm::new(ExtKind::Let(pat, Box::new(t), body), term.span)))
+                        Some(t) => Ok(Some(ExtTerm::new(ExtKind::Let(pat, Box::new(t), body), term.span))),
                     }
                 }
             }
@@ -171,16 +171,21 @@ impl<'ctx> Eval<'ctx> {
                 _ => {
                     let t_prime = self.small_step(*tm)?;
                     match t_prime {
-                        Some(t_prime) => return Ok(Some(ExtTerm::new(ExtKind::TyApp(Box::new(t_prime), ty), term.span))),
-                        None => return Ok(None)
+                        Some(t_prime) => {
+                            return Ok(Some(ExtTerm::new(ExtKind::TyApp(Box::new(t_prime), ty), term.span)))
+                        }
+                        None => return Ok(None),
                     }
                 }
             },
             ExtKind::Injection(label, tm, ty) => {
                 let t_prime = self.small_step(*tm)?;
                 match t_prime {
-                    Some(t_prime) => Ok(Some(ExtTerm::new(ExtKind::Injection(label, Box::new(t_prime), ty), term.span)))
-                    , None => Ok(None)
+                    Some(t_prime) => Ok(Some(ExtTerm::new(
+                        ExtKind::Injection(label, Box::new(t_prime), ty),
+                        term.span,
+                    ))),
+                    None => Ok(None),
                 }
             }
             ExtKind::Projection(tm, idx) => {
@@ -193,8 +198,11 @@ impl<'ctx> Eval<'ctx> {
                 } else {
                     let t_prime = self.small_step(*tm)?;
                     match t_prime {
-                        Some(t_prime) => Ok(Some(ExtTerm::new(ExtKind::Projection(Box::new(t_prime), idx), term.span)))
-                        , None => Ok(None)
+                        Some(t_prime) => Ok(Some(ExtTerm::new(
+                            ExtKind::Projection(Box::new(t_prime), idx),
+                            term.span,
+                        ))),
+                        None => Ok(None),
                     }
                 }
             }
@@ -235,8 +243,10 @@ impl<'ctx> Eval<'ctx> {
                 if !self.normal_form(&expr) {
                     let t_prime = self.small_step(*expr)?;
                     match t_prime {
-                        Some(t_prime) => return Ok(Some(ExtTerm::new(ExtKind::Case(Box::new(t_prime), arms), term.span))),
-                        None => return Ok(None)
+                        Some(t_prime) => {
+                            return Ok(Some(ExtTerm::new(ExtKind::Case(Box::new(t_prime), arms), term.span)))
+                        }
+                        None => return Ok(None),
                     }
                 }
 
@@ -254,7 +264,7 @@ impl<'ctx> Eval<'ctx> {
                     let t_prime = self.small_step(*tm)?;
                     match t_prime {
                         Some(t_prime) => Ok(Some(ExtTerm::new(ExtKind::Fold(ty, Box::new(t_prime)), term.span))),
-                        None => Ok(None)
+                        None => Ok(None),
                     }
                 } else {
                     Ok(None)
@@ -265,8 +275,10 @@ impl<'ctx> Eval<'ctx> {
                 if !self.normal_form(&tm) {
                     let t_prime = self.small_step(*tm)?;
                     match t_prime {
-                        Some(t_prime) => return Ok(Some(ExtTerm::new(ExtKind::Unfold(ty, Box::new(t_prime)), term.span))),
-                        None => return Ok(None)
+                        Some(t_prime) => {
+                            return Ok(Some(ExtTerm::new(ExtKind::Unfold(ty, Box::new(t_prime)), term.span)))
+                        }
+                        None => return Ok(None),
                     }
                 }
 
@@ -279,8 +291,13 @@ impl<'ctx> Eval<'ctx> {
                 if !self.normal_form(&evidence) {
                     let t_prime = self.small_step(*evidence)?;
                     match t_prime {
-                        Some(t_prime) => return Ok(Some(ExtTerm::new(ExtKind::Pack(wit, Box::new(t_prime), sig), term.span))),
-                        None => return Ok(None)
+                        Some(t_prime) => {
+                            return Ok(Some(ExtTerm::new(
+                                ExtKind::Pack(wit, Box::new(t_prime), sig),
+                                term.span,
+                            )))
+                        }
+                        None => return Ok(None),
                     }
                 }
                 Ok(None)
@@ -295,8 +312,9 @@ impl<'ctx> Eval<'ctx> {
                     if !self.normal_form(&package) {
                         let t_prime = self.small_step(*package)?;
                         match t_prime {
-                            Some(t_prime) =>
-                                return Ok(Some(ExtTerm::new(ExtKind::Unpack(Box::new(t_prime), body), term.span))),
+                            Some(t_prime) => {
+                                return Ok(Some(ExtTerm::new(ExtKind::Unpack(Box::new(t_prime), body), term.span)))
+                            }
                             None => return Ok(None),
                         }
                     }
@@ -336,7 +354,7 @@ impl<'ctx> Eval<'ctx> {
                     panic!("wrong type!")
                 }
             }
-            Extended(_) => panic!("extended pattern instructions shouldn't appear here in eval")
+            Extended(_) => panic!("extended pattern instructions shouldn't appear here in eval"),
         }
     }
 }

@@ -8,7 +8,7 @@ use system_r::{
     types::{Context, Type},
 };
 
-use self::extensions::{OmniContext, OmniParser, OmniKind, OmniTerm};
+use self::extensions::{OmniContext, OmniKind, OmniParser, OmniTerm};
 
 pub mod extensions;
 pub mod platform_bindings;

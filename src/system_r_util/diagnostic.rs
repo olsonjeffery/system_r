@@ -37,7 +37,10 @@ pub struct Diagnostic<'s> {
 
 impl<'s> Default for Diagnostic<'s> {
     fn default() -> Self {
-        Self { src: Default::default(), messages: Default::default() }
+        Self {
+            src: Default::default(),
+            messages: Default::default(),
+        }
     }
 }
 

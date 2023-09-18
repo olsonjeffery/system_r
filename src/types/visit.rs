@@ -115,7 +115,7 @@ impl MutTypeVisitor for Subst {
     fn visit(&mut self, ty: &mut Type) {
         match ty {
             Type::Unit | Type::Bool | Type::Nat | Type::Tag(_) => {}
-            Type::PlatformBinding(i, r) => {},
+            Type::PlatformBinding(i, r) => {}
             Type::Var(v) if *v >= self.cutoff => {
                 Shift::new(self.cutoff as isize).visit(&mut self.ty);
                 *ty = self.ty.clone();

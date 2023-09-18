@@ -18,7 +18,9 @@ static CTX_NAME: &'static str = "system_r_bottom";
 #[given(regex = r#"^a new system_r context"#)]
 fn given_a_new_context(world: &mut common::SpecsWorld) {
     let mut new_ctx = Context::default();
-    world.contexts.insert(CTX_NAME.to_string(), OmniContext::Bottom(new_ctx));
+    world
+        .contexts
+        .insert(CTX_NAME.to_string(), OmniContext::Bottom(new_ctx));
 }
 
 #[given(regex = r#"^a code block:(\w?.*)$"#)]
@@ -32,12 +34,13 @@ fn given_a_code_snippet(world: &mut common::SpecsWorld, step: &Step) {
 fn given_an_intrinsic_for_nat_addition_named_i_nat_add(world: &mut common::SpecsWorld) {
     let mut pb = &mut world.platform_bindings;
 
-    pb.register(
-        "iiiNatAdd",
-        common::platform_bindings::arith::pb_add(),
-    );
+    pb.register("iiiNatAdd", common::platform_bindings::arith::pb_add());
 
-    world.contexts.get_mut(CTX_NAME).unwrap().set_platform_bindings(pb.clone());
+    world
+        .contexts
+        .get_mut(CTX_NAME)
+        .unwrap()
+        .set_platform_bindings(pb.clone());
 }
 
 #[when("it evals successfully")]
@@ -83,8 +86,7 @@ fn when_eval_is_ran(world: &mut common::SpecsWorld) {
     };
     let mut term = world.last_parse_term.clone();
 
-    let eval_res =
-        testing::type_check_and_eval_single_block(ctx, &mut term, &world.code_snippet, false);
+    let eval_res = testing::type_check_and_eval_single_block(ctx, &mut term, &world.code_snippet, false);
     let eval_pair = match eval_res {
         Ok(t) => t,
         Err(e) => {

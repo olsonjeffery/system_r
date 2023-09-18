@@ -45,9 +45,9 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 use core::fmt;
 
 use crate::patterns::ExtPattern;
-use crate::terms::{Arm, ExtKind, Literal, Primitive, ExtTerm};
-use crate::types::{Type, Variant};
 use crate::system_r_util::span::Span;
+use crate::terms::{Arm, ExtKind, ExtTerm, Literal, Primitive};
+use crate::types::{Type, Variant};
 
 pub trait MutTypeVisitor: Sized {
     fn visit_pb(&mut self, i: &mut Type, r: &mut Type) {}
@@ -99,8 +99,11 @@ pub trait MutTypeVisitor: Sized {
     }
 }
 
-pub trait MutTermVisitor<TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-                         TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd>: Sized {
+pub trait MutTermVisitor<
+    TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+    TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+>: Sized
+{
     fn visit_lit(&mut self, sp: &mut Span, lit: &mut Literal) {}
     fn visit_var(&mut self, sp: &mut Span, var: &mut usize) {}
     fn visit_pb(&mut self, sp: &mut Span, idx: &mut usize) {}
@@ -114,7 +117,13 @@ pub trait MutTermVisitor<TExtPat: Clone + Default + fmt::Debug + PartialEq + Par
         self.visit(t2);
     }
 
-    fn visit_let(&mut self, sp: &mut Span, pat: &mut ExtPattern<TExtPat>, t1: &mut ExtTerm<TExtPat, TExtKind>, t2: &mut ExtTerm<TExtPat, TExtKind>) {
+    fn visit_let(
+        &mut self,
+        sp: &mut Span,
+        pat: &mut ExtPattern<TExtPat>,
+        t1: &mut ExtTerm<TExtPat, TExtKind>,
+        t2: &mut ExtTerm<TExtPat, TExtKind>,
+    ) {
         self.visit(t1);
         self.visit(t2);
     }
@@ -128,11 +137,22 @@ pub trait MutTermVisitor<TExtPat: Clone + Default + fmt::Debug + PartialEq + Par
     }
 
     fn visit_primitive(&mut self, sp: &mut Span, prim: &mut Primitive) {}
-    fn visit_injection(&mut self, sp: &mut Span, label: &mut String, term: &mut ExtTerm<TExtPat, TExtKind>, ty: &mut Type) {
+    fn visit_injection(
+        &mut self,
+        sp: &mut Span,
+        label: &mut String,
+        term: &mut ExtTerm<TExtPat, TExtKind>,
+        ty: &mut Type,
+    ) {
         self.visit(term);
     }
 
-    fn visit_case(&mut self, sp: &mut Span, term: &mut ExtTerm<TExtPat, TExtKind>, arms: &mut Vec<Arm<TExtPat, TExtKind>>) {
+    fn visit_case(
+        &mut self,
+        sp: &mut Span,
+        term: &mut ExtTerm<TExtPat, TExtKind>,
+        arms: &mut Vec<Arm<TExtPat, TExtKind>>,
+    ) {
         self.visit(term);
         for arm in arms {
             self.visit(&mut arm.term);
@@ -156,11 +176,22 @@ pub trait MutTermVisitor<TExtPat: Clone + Default + fmt::Debug + PartialEq + Par
         self.visit(term);
     }
 
-    fn visit_pack(&mut self, sp: &mut Span, witness: &mut Type, evidence: &mut ExtTerm<TExtPat, TExtKind>, signature: &mut Type) {
+    fn visit_pack(
+        &mut self,
+        sp: &mut Span,
+        witness: &mut Type,
+        evidence: &mut ExtTerm<TExtPat, TExtKind>,
+        signature: &mut Type,
+    ) {
         self.visit(evidence);
     }
 
-    fn visit_unpack(&mut self, sp: &mut Span, package: &mut ExtTerm<TExtPat, TExtKind>, term: &mut ExtTerm<TExtPat, TExtKind>) {
+    fn visit_unpack(
+        &mut self,
+        sp: &mut Span,
+        package: &mut ExtTerm<TExtPat, TExtKind>,
+        term: &mut ExtTerm<TExtPat, TExtKind>,
+    ) {
         self.visit(package);
         self.visit(term);
     }
@@ -195,8 +226,11 @@ pub trait MutTermVisitor<TExtPat: Clone + Default + fmt::Debug + PartialEq + Par
     }
 }
 
-pub trait PatternVisitor<TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-                         TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd>: Sized {
+pub trait PatternVisitor<
+    TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+    TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+>: Sized
+{
     fn visit_ext(&mut self, ext: &TExtPat) {}
     fn visit_literal(&mut self, lit: &Literal) {}
     fn visit_variable(&mut self, var: &String) {}
@@ -217,7 +251,7 @@ pub trait PatternVisitor<TExtPat: Clone + Default + fmt::Debug + PartialEq + Par
             ExtPattern::Product(pat) => self.visit_product(pat),
             ExtPattern::Literal(lit) => self.visit_literal(lit),
             ExtPattern::Variable(var) => self.visit_variable(var),
-            ExtPattern::Extended(v) => panic!("FIXME impl SystemRExtension check in this arm")
+            ExtPattern::Extended(v) => panic!("FIXME impl SystemRExtension check in this arm"),
         }
     }
 }

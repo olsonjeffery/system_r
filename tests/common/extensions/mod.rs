@@ -1,5 +1,10 @@
-use system_r::{types::Context, extensions::tylet::{TyLetContext, TyLetParser, TyLetKind, TyLetPattern}, platform_bindings::PlatformBindings, syntax::parser::Parser, terms::{Kind, Term, ExtTerm, ExtKind}};
-
+use system_r::{
+    extensions::tylet::{TyLetContext, TyLetKind, TyLetParser, TyLetPattern},
+    platform_bindings::PlatformBindings,
+    syntax::parser::Parser,
+    terms::{ExtKind, ExtTerm, Kind, Term},
+    types::Context,
+};
 
 #[derive(Clone, Default, Debug)]
 pub enum OmniContext {
@@ -32,7 +37,7 @@ pub enum OmniKind {
     #[default]
     Empty,
     Bottom(Kind),
-    TyLet(ExtKind<TyLetPattern, TyLetKind>)
+    TyLet(ExtKind<TyLetPattern, TyLetKind>),
 }
 #[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
 pub enum OmniTerm {

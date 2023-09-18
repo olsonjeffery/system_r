@@ -45,15 +45,15 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 //! polymorphism
 pub mod patterns;
 pub mod visit;
-use crate::bottom::{BottomPattern, BottomKind, BottomExtension, BottomTokenKind};
+use crate::bottom::{BottomExtension, BottomKind, BottomPattern, BottomTokenKind};
 use crate::diagnostics::*;
 use crate::extensions::SystemRExtension;
 use crate::platform_bindings::PlatformBindings;
-use crate::terms::{ExtKind, Literal, Primitive, ExtTerm};
+use crate::system_r_util::span::Span;
+use crate::terms::{ExtKind, ExtTerm, Literal, Primitive};
 use crate::visit::{MutTermVisitor, MutTypeVisitor};
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
-use crate::system_r_util::span::Span;
 use visit::{Shift, Subst};
 
 #[derive(Default, Clone, PartialEq, PartialOrd, Eq, Hash)]
@@ -74,8 +74,7 @@ pub enum Type {
     Rec(Box<Type>),
 }
 
-#[derive(Debug, Default)]
-#[derive(Clone, PartialEq, PartialOrd, Eq, Hash)]
+#[derive(Debug, Default, Clone, PartialEq, PartialOrd, Eq, Hash)]
 pub struct Variant {
     pub label: String,
     pub ty: Type,
@@ -107,10 +106,12 @@ pub enum TypeErrorKind {
 pub type Context = ExtContext<BottomTokenKind, BottomKind, BottomPattern, BottomExtension>;
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct ExtContext<TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-                   TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-                    TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-                   TPtE: Default + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat> > {
+pub struct ExtContext<
+    TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+    TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+    TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+    TPtE: Default + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>,
+> {
     stack: VecDeque<Type>,
     map: HashMap<String, Type>,
     pub platform_bindings: PlatformBindings,
@@ -120,11 +121,14 @@ pub struct ExtContext<TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + 
     pub pat_ext: TPtE,
 }
 
-impl<TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-                   TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-                    TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-                   TPtE: Default + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat> > Default for ExtContext<TExtTokenKind, TExtKind, TExtPat, TPtE> {
-                    fn default() -> Self {
+impl<
+        TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+        TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+        TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+        TPtE: Default + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>,
+    > Default for ExtContext<TExtTokenKind, TExtKind, TExtPat, TPtE>
+{
+    fn default() -> Self {
         Self {
             stack: Default::default(),
             map: Default::default(),
@@ -132,14 +136,18 @@ impl<TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
             _token: Default::default(),
             _kind: Default::default(),
             _pat: Default::default(),
-            pat_ext: Default::default() }
+            pat_ext: Default::default(),
+        }
     }
-                }
+}
 
-impl<TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+impl<
+        TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
         TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
         TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-        TPtE: Clone + Default + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>> ExtContext<TExtTokenKind, TExtKind, TExtPat, TPtE> {
+        TPtE: Clone + Default + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>,
+    > ExtContext<TExtTokenKind, TExtKind, TExtPat, TPtE>
+{
     fn push(&mut self, ty: Type) {
         self.stack.push_front(ty);
     }
@@ -183,10 +191,13 @@ pub fn variant_field<'vs>(var: &'vs [Variant], label: &str, span: Span) -> Resul
     // })
 }
 
-impl<TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+impl<
+        TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
         TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
         TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-        TPtE: Clone + Default + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>> ExtContext<TExtTokenKind, TExtKind, TExtPat, TPtE> {
+        TPtE: Clone + Default + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>,
+    > ExtContext<TExtTokenKind, TExtKind, TExtPat, TPtE>
+{
     pub fn type_check(&mut self, term: &ExtTerm<TExtPat, TExtKind>) -> Result<Type, Diagnostic> {
         // dbg!(&self.stack);
 
@@ -235,7 +246,6 @@ impl<TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
                                 .message(t2.span, format!("Value has a type of {:?}", ty2));
                             Err(d)
                         }
-
                     }
                     _ => Err(Diagnostic::error(term.span, "app: Expected arrow type!")
                         .message(t1.span, format!("operator has type {:?}", ty1))),
@@ -457,7 +467,7 @@ impl<'ctx> MutTypeVisitor for Aliaser<'ctx> {
         match ty {
             Type::Unit | Type::Bool | Type::Nat | Type::Tag(_) => {}
             Type::Var(v) => {}
-            Type::PlatformBinding(i, r) => {},
+            Type::PlatformBinding(i, r) => {}
             Type::Alias(v) => {
                 if let Some(aliased) = self.map.get(v) {
                     *ty = aliased.clone();
@@ -474,10 +484,13 @@ impl<'ctx> MutTypeVisitor for Aliaser<'ctx> {
     }
 }
 
-impl<TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+impl<
+        TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
         TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
         TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-        TPtE: Clone + Default + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>>MutTermVisitor<TExtPat, TExtKind> for ExtContext<TExtTokenKind, TExtKind, TExtPat, TPtE> {
+        TPtE: Clone + Default + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>,
+    > MutTermVisitor<TExtPat, TExtKind> for ExtContext<TExtTokenKind, TExtKind, TExtPat, TPtE>
+{
     fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type, term: &mut ExtTerm<TExtPat, TExtKind>) {
         self.aliaser().visit(ty);
         self.visit(term);
@@ -488,7 +501,13 @@ impl<TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
         self.visit(term);
     }
 
-    fn visit_injection(&mut self, sp: &mut Span, label: &mut String, term: &mut ExtTerm<TExtPat, TExtKind>, ty: &mut Type) {
+    fn visit_injection(
+        &mut self,
+        sp: &mut Span,
+        label: &mut String,
+        term: &mut ExtTerm<TExtPat, TExtKind>,
+        ty: &mut Type,
+    ) {
         self.aliaser().visit(ty);
         self.visit(term);
     }

@@ -44,18 +44,18 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #![allow(unused_variables, unused_macros)]
 #[macro_use]
 pub mod macros;
+pub mod bottom;
 pub mod diagnostics;
 pub mod eval;
+pub mod extensions;
 pub mod patterns;
+pub mod platform_bindings;
 pub mod syntax;
+pub mod system_r_util;
 pub mod terms;
+pub mod testing;
 pub mod types;
 pub mod visit;
-pub mod testing;
-pub mod platform_bindings;
-pub mod bottom;
-pub mod system_r_util;
-pub mod extensions;
 
 #[macro_use]
 extern crate anyhow;

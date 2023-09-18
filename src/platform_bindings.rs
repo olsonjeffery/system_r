@@ -18,12 +18,17 @@ along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 use core::fmt;
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
 use crate::extensions::SystemRExtension;
 use crate::system_r_util::span::Span;
 
-use crate::{types::{ExtContext, Type}, diagnostics::Diagnostic, terms::{Term, Kind}, bottom::{BottomPattern, BottomKind, BottomExtension}};
+use crate::{
+    bottom::{BottomExtension, BottomKind, BottomPattern},
+    diagnostics::Diagnostic,
+    terms::{Kind, Term},
+    types::{ExtContext, Type},
+};
 
 pub type WrappedFn = fn(input: Term, span: &Span) -> Result<Term, Diagnostic>;
 
@@ -51,7 +56,7 @@ impl core::fmt::Debug for WrappedContent {
 #[derive(Default, Clone, Debug)]
 pub struct PlatformBindings {
     by_name: HashMap<String, usize>,
-    by_idx: Vec<WrappedContent>
+    by_idx: Vec<WrappedContent>,
 }
 
 impl PartialEq for PlatformBindings {
@@ -66,7 +71,10 @@ pub trait UnwrappedFnTrait {
 
 impl<'a> PlatformBindings {
     pub fn new() -> Self {
-        PlatformBindings { by_name: HashMap::new(), by_idx: Vec::new() }
+        PlatformBindings {
+            by_name: HashMap::new(),
+            by_idx: Vec::new(),
+        }
     }
 
     /// takes a &str alias and returns Some(usize) if that alias is
@@ -84,23 +92,29 @@ impl<'a> PlatformBindings {
         let idx = self.by_idx.len() - 1;
         match self.by_name.insert(alias.to_owned(), idx) {
             Some(_) => Some(wrapped),
-            None => None
+            None => None,
         }
     }
-    
+
     pub fn get(&'a self, idx: usize) -> Option<&'a WrappedContent> {
         self.by_idx.get(idx)
     }
 }
 
-impl<TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-                   TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-                    TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-                   TPtE: Default + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>> ExtContext<TExtTokenKind, TExtKind, TExtPat, TPtE> {
+impl<
+        TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+        TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+        TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+        TPtE: Default + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>,
+    > ExtContext<TExtTokenKind, TExtKind, TExtPat, TPtE>
+{
     pub(crate) fn type_check_platform_binding(&mut self, idx: &usize, span: &Span) -> Result<Type, Diagnostic> {
         match self.platform_bindings.get(*idx) {
             Some(wc) => Ok(Type::PlatformBinding(Box::new(wc.1.clone()), Box::new(wc.2.clone()))),
-            None => Err(Diagnostic::error(*span, format!("No matching platform_binding registration for idx {}", idx)))
+            None => Err(Diagnostic::error(
+                *span,
+                format!("No matching platform_binding registration for idx {}", idx),
+            )),
         }
     }
 }

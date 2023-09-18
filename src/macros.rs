@@ -103,14 +103,20 @@ macro_rules! tyapp {
 /// Type abstraction term
 macro_rules! tyabs {
     ( $t:expr) => {
-        crate::terms::Term::new(crate::terms::Kind::TyAbs(Box::new($t)), crate::system_r_util::span::Span::dummy())
+        crate::terms::Term::new(
+            crate::terms::Kind::TyAbs(Box::new($t)),
+            crate::system_r_util::span::Span::dummy(),
+        )
     };
 }
 
 /// Primitive term
 macro_rules! prim {
     ($t:expr) => {
-        crate::terms::Term::new(crate::terms::Kind::Primitive($t), crate::system_r_util::span::Span::dummy())
+        crate::terms::Term::new(
+            crate::terms::Kind::Primitive($t),
+            crate::system_r_util::span::Span::dummy(),
+        )
     };
 }
 

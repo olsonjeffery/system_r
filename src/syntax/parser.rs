@@ -41,19 +41,19 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
-use super::lexer::{ExtLexer};
+use super::lexer::ExtLexer;
 use super::{ExtToken, ExtTokenKind};
-use crate::bottom::{BottomTokenKind, BottomExtension, BottomKind, BottomPattern};
-use crate::extensions::{SystemRExtension, self};
+use crate::bottom::{BottomExtension, BottomKind, BottomPattern, BottomTokenKind};
+use crate::extensions::{self, SystemRExtension};
 
-use core::fmt;
-use std::collections::VecDeque;
 use crate::system_r_util::diagnostic::Diagnostic;
 use crate::system_r_util::span::*;
+use core::fmt;
+use std::collections::VecDeque;
 
-use crate::patterns::{PatVarStack, ExtPattern};
-use crate::terms::*;
+use crate::patterns::{ExtPattern, PatVarStack};
 use crate::platform_bindings::PlatformBindings;
+use crate::terms::*;
 use crate::types::*;
 
 #[derive(Clone, Debug, Default)]
@@ -95,10 +95,13 @@ impl DeBruijnIndexer {
 }
 
 #[derive(Default, Debug, Clone)]
-pub struct ExtParser<'s, TExtTokenKind: fmt::Debug + PartialEq + PartialOrd + Default + Sized + Clone,
-                         TExtKind: fmt::Debug + PartialEq + PartialOrd + Default + Sized + Clone,
-                         TExtPat: fmt::Debug + PartialEq + PartialOrd + Default + Sized + Clone,
-                         TLE: SystemRExtension<TExtTokenKind, TExtKind, TExtPat>> {
+pub struct ExtParser<
+    's,
+    TExtTokenKind: fmt::Debug + PartialEq + PartialOrd + Default + Sized + Clone,
+    TExtKind: fmt::Debug + PartialEq + PartialOrd + Default + Sized + Clone,
+    TExtPat: fmt::Debug + PartialEq + PartialOrd + Default + Sized + Clone,
+    TLE: SystemRExtension<TExtTokenKind, TExtKind, TExtPat>,
+> {
     tmvar: DeBruijnIndexer,
     tyvar: DeBruijnIndexer,
     diagnostic: Diagnostic<'s>,
@@ -135,13 +138,20 @@ pub enum ErrorKind<TExtTokenKind: PartialEq> {
     Unknown,
     Eof,
 }
-impl<'s, TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-         TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-         TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-         TLE: Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>,
-         > ExtParser<'s, TExtTokenKind, TExtKind, TExtPat, TLE> {
+impl<
+        's,
+        TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+        TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+        TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+        TLE: Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>,
+    > ExtParser<'s, TExtTokenKind, TExtKind, TExtPat, TLE>
+{
     /// Create a new [`Parser`] for the input `&str`
-    pub fn ext_new(platform_bindings: &'s PlatformBindings, input: &'s str, lexer_ext: TLE) -> ExtParser<'s, TExtTokenKind, TExtKind, TExtPat, TLE> {
+    pub fn ext_new(
+        platform_bindings: &'s PlatformBindings,
+        input: &'s str,
+        lexer_ext: TLE,
+    ) -> ExtParser<'s, TExtTokenKind, TExtKind, TExtPat, TLE> {
         let mut p = ExtParser {
             tmvar: DeBruijnIndexer::default(),
             tyvar: DeBruijnIndexer::default(),
@@ -163,12 +173,20 @@ impl<'s, TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     }
 }
 
-impl<'s, TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-         TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-         TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default, 
-         TLE: Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>> ExtParser<'s, TExtTokenKind, TExtKind, TExtPat, TLE> {
+impl<
+        's,
+        TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+        TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+        TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+        TLE: Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>,
+    > ExtParser<'s, TExtTokenKind, TExtKind, TExtPat, TLE>
+{
     /// Kleene Plus combinator
-    fn once_or_more<T, F>(&mut self, func: F, delimiter: ExtTokenKind<TExtTokenKind>) -> Result<Vec<T>, Error<TExtTokenKind>>
+    fn once_or_more<T, F>(
+        &mut self,
+        func: F,
+        delimiter: ExtTokenKind<TExtTokenKind>,
+    ) -> Result<Vec<T>, Error<TExtTokenKind>>
     where
         F: Fn(&mut ExtParser<TExtTokenKind, TExtKind, TExtPat, TLE>) -> Result<T, Error<TExtTokenKind>>,
     {
@@ -197,10 +215,14 @@ impl<'s, TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     }
 }
 
-impl<'s, TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-         TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-         TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-         TLE: Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>> ExtParser<'s, TExtTokenKind, TExtKind, TExtPat, TLE> {
+impl<
+        's,
+        TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+        TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+        TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+        TLE: Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>,
+    > ExtParser<'s, TExtTokenKind, TExtKind, TExtPat, TLE>
+{
     fn error<T>(&self, kind: ErrorKind<TExtTokenKind>) -> Result<T, Error<TExtTokenKind>> {
         Err(Error {
             span: self.token.span,
@@ -396,7 +418,10 @@ impl<'s, TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
         let sp = self.span;
         let ty = self.once(|p| p.ty(), "type annotation required after `unfold`")?;
         let tm = self.once(|p| p.parse(), "term required after `unfold`")?;
-        Ok(ExtTerm::new(ExtKind::Unfold(Box::new(ty), Box::new(tm)), sp + self.span))
+        Ok(ExtTerm::new(
+            ExtKind::Unfold(Box::new(ty), Box::new(tm)),
+            sp + self.span,
+        ))
     }
 
     fn fix(&mut self) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
@@ -600,7 +625,12 @@ impl<'s, TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
 
         span = span + self.span;
 
-        Ok(Arm { span, pat, term, _kind: Default::default() })
+        Ok(Arm {
+            span,
+            pat,
+            term,
+            _kind: Default::default(),
+        })
     }
 
     fn case(&mut self) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
@@ -683,15 +713,21 @@ impl<'s, TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
                     Some(idx) => Ok(ExtTerm::new(ExtKind::Var(idx), self.span)),
                     None => {
                         match self.platform_bindings.has(&var) {
-                            Some(idx) => {return Ok(ExtTerm::new(ExtKind::PlatformBinding(idx), self.span));},
+                            Some(idx) => {
+                                return Ok(ExtTerm::new(ExtKind::PlatformBinding(idx), self.span));
+                            }
                             None => {}
                         }
-                        self.diagnostic.push(format!("parser: unbound variable {}", var), self.span);
+                        self.diagnostic
+                            .push(format!("parser: unbound variable {}", var), self.span);
                         self.error(ErrorKind::UnboundTypeVar)
                     }
                 }
             }
-            ExtTokenKind::Nat(_) | ExtTokenKind::True | ExtTokenKind::False | ExtTokenKind::Unit
+            ExtTokenKind::Nat(_)
+            | ExtTokenKind::True
+            | ExtTokenKind::False
+            | ExtTokenKind::Unit
             | ExtTokenKind::Tag(_) => self.literal(),
             ExtTokenKind::Eof => self.error(ErrorKind::Eof),
             ExtTokenKind::Semicolon => {
