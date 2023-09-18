@@ -791,10 +791,11 @@ impl<
     }
 
     pub fn parse(&mut self) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
-        match self.kind() {
+        match self.kind().clone() {
             ExtTokenKind::Case => self.case(),
             ExtTokenKind::Lambda => self.lambda(),
             ExtTokenKind::Let => self.letexpr(),
+            ExtTokenKind::Extended(tk) if self.extension.parser_has_top_level_ext(&tk) => self.extension.parser_top_level_ext(&tk),
             _ => self.application(),
         }
     }

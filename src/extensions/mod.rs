@@ -1,6 +1,6 @@
 use core::fmt;
 
-use crate::{patterns::ExtPattern, terms::ExtTerm, types::Type};
+use crate::{patterns::ExtPattern, terms::ExtTerm, types::Type, syntax::parser::Error};
 
 pub mod tylet;
 
@@ -15,6 +15,8 @@ pub trait SystemRExtension<
     fn lex_is_ext_keyword(&self, data: &str) -> bool;
     fn lex_extended_single(&mut self, data: &str) -> TExtTokenKind;
     fn lex_ext_keyword(&mut self, data: &str) -> TExtTokenKind;
+    fn parser_has_top_level_ext(&mut self, tk: &TExtTokenKind) -> bool;
+    fn parser_top_level_ext(&mut self, tk: &TExtTokenKind) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>>; 
     fn pat_ext_pattern_type_eq(&self, pat: &TExtPat, ty: &Type) -> bool;
     fn pat_add_ext_pattern<'a>(
         &'a self,

@@ -17,7 +17,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
-use crate::{extensions::SystemRExtension, patterns::ExtPattern};
+use crate::{extensions::SystemRExtension, patterns::ExtPattern, terms::ExtTerm, syntax::parser::Error};
 
 #[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
 pub enum BottomTokenKind {
@@ -75,5 +75,13 @@ impl SystemRExtension<BottomTokenKind, BottomKind, BottomPattern> for BottomExte
 
     fn pat_ext_matches(&self, pat: &BottomPattern, term: &crate::terms::ExtTerm<BottomPattern, BottomKind>) -> bool {
         false
+    }
+
+    fn parser_has_top_level_ext(&mut self, tk: &BottomTokenKind) -> bool {
+        false 
+    }
+
+    fn parser_top_level_ext(&mut self, tk: &BottomTokenKind) -> Result<crate::terms::ExtTerm<BottomPattern, BottomKind>, Error<BottomTokenKind>> {
+       Ok(ExtTerm::default()) 
     }
 }

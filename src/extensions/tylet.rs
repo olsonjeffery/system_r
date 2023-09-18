@@ -2,7 +2,7 @@ use crate::{
     bottom::{BottomKind, BottomPattern, BottomTokenKind},
     platform_bindings::PlatformBindings,
     syntax::parser::ExtParser,
-    types::ExtContext,
+    types::ExtContext, terms::ExtTerm,
 };
 
 use super::SystemRExtension;
@@ -79,5 +79,13 @@ impl SystemRExtension<TyLetTokenKind, TyLetKind, TyLetPattern> for TyLetExtensio
 
     fn pat_ext_matches(&self, pat: &TyLetPattern, term: &crate::terms::ExtTerm<TyLetPattern, TyLetKind>) -> bool {
         false
+    }
+
+    fn parser_has_top_level_ext(&mut self, tk: &TyLetTokenKind) -> bool {
+        false 
+    }
+
+    fn parser_top_level_ext(&mut self, tk: &TyLetTokenKind) -> Result<crate::terms::ExtTerm<TyLetPattern, TyLetKind>, crate::syntax::parser::Error<TyLetTokenKind>> {
+        Ok(ExtTerm::default())
     }
 }
