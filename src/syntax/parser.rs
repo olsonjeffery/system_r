@@ -44,7 +44,7 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 use super::lexer::ExtLexer;
 use super::{ExtToken, ExtTokenKind};
 use crate::bottom::{BottomExtension, BottomKind, BottomPattern, BottomTokenKind};
-use crate::extensions::{self, SystemRExtension};
+use crate::extensions::{SystemRExtension};
 
 use crate::system_r_util::diagnostic::Diagnostic;
 use crate::system_r_util::span::*;
@@ -91,6 +91,10 @@ impl DeBruijnIndexer {
 
     pub fn len(&self) -> usize {
         self.inner.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }
 
@@ -434,13 +438,13 @@ impl<
     fn letexpr(&mut self) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
         let sp = self.span;
         self.expect(ExtTokenKind::Let)?;
-        let mut pat = self.once(|p| p.pattern(), "missing pattern")?;
+        let pat = self.once(|p| p.pattern(), "missing pattern")?;
 
         self.expect(ExtTokenKind::Equals)?;
 
         let t1 = self.once(|p| p.parse(), "let binder required")?;
         let len = self.tmvar.len();
-        for var in PatVarStack::<TExtPat, TExtKind>::collect(&mut pat).into_iter().rev() {
+        for var in PatVarStack::<TExtPat, TExtKind>::collect(&pat).into_iter().rev() {
             self.tmvar.push(var);
         }
         self.expect(ExtTokenKind::In)?;
@@ -605,9 +609,9 @@ impl<
         let len = self.tmvar.len();
         let mut span = self.span;
 
-        let mut pat = self.once(|p| p.pattern(), "missing pattern")?;
+        let pat = self.once(|p| p.pattern(), "missing pattern")?;
 
-        for var in PatVarStack::<TExtPat, TExtKind>::collect(&mut pat).into_iter().rev() {
+        for var in PatVarStack::<TExtPat, TExtKind>::collect(&pat).into_iter().rev() {
             self.tmvar.push(var);
         }
 
@@ -623,7 +627,7 @@ impl<
             self.tmvar.pop();
         }
 
-        span = span + self.span;
+        span += self.span;
 
         Ok(Arm {
             span,
@@ -712,11 +716,8 @@ impl<
                 match self.tmvar.lookup(&var) {
                     Some(idx) => Ok(ExtTerm::new(ExtKind::Var(idx), self.span)),
                     None => {
-                        match self.platform_bindings.has(&var) {
-                            Some(idx) => {
-                                return Ok(ExtTerm::new(ExtKind::PlatformBinding(idx), self.span));
-                            }
-                            None => {}
+                        if let Some(idx) = self.platform_bindings.has(&var) {
+                            return Ok(ExtTerm::new(ExtKind::PlatformBinding(idx), self.span));
                         }
                         self.diagnostic
                             .push(format!("parser: unbound variable {}", var), self.span);

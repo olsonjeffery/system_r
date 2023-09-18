@@ -44,7 +44,7 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 use core::fmt;
 
-use crate::bottom::{BottomKind, BottomPattern};
+use crate::bottom::BottomPattern;
 use crate::extensions::SystemRExtension;
 use crate::system_r_util::span::Span;
 use crate::terms::{ExtKind, ExtTerm, Literal};
@@ -84,7 +84,7 @@ impl<
         TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
     > PatVarStack<TExtPat, TExtKind>
 {
-    pub fn collect(pat: &mut ExtPattern<TExtPat>) -> Vec<String> {
+    pub fn collect(pat: &ExtPattern<TExtPat>) -> Vec<String> {
         let mut p = Self::default();
         p.visit_pattern(pat);
         p.inner
@@ -96,8 +96,8 @@ impl<
         TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
     > PatternVisitor<TExtPat, TExtKind> for PatVarStack<TExtPat, TExtKind>
 {
-    fn visit_variable(&mut self, var: &String) {
-        self.inner.push(var.clone());
+    fn visit_variable(&mut self, var: &str) {
+        self.inner.push(var.to_owned());
     }
 }
 
@@ -113,7 +113,7 @@ impl<
         TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
     > PatternCount<TExtPat, TExtKind>
 {
-    pub fn collect(pat: &mut ExtPattern<TExtPat>) -> usize {
+    pub fn collect(pat: &ExtPattern<TExtPat>) -> usize {
         let mut p = PatternCount(0, TExtPat::default(), TExtKind::default());
         p.visit_pattern(pat);
         p.0
@@ -125,7 +125,7 @@ impl<
         TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
     > PatternVisitor<TExtPat, TExtKind> for PatternCount<TExtPat, TExtKind>
 {
-    fn visit_variable(&mut self, var: &String) {
+    fn visit_variable(&mut self, var: &str) {
         self.0 += 1;
     }
 }
@@ -157,7 +157,7 @@ impl<TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd> ExtPattern<
             ExtPattern::Constructor(label, inner) => {
                 if let ExtKind::Injection(label_, tm, _) = &term.kind {
                     if label == label_ {
-                        return inner.matches(&tm, ext);
+                        return inner.matches(tm, ext);
                     }
                 }
             }
@@ -201,11 +201,8 @@ impl<
     }
 }
 
-impl<
-        'ty,
-        TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-        TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    > PatternVisitor<TExtPat, TExtKind> for PatTyStack<'_, TExtPat, TExtKind>
+impl<TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd> PatternVisitor<TExtPat, TExtKind> for PatTyStack<'_, TExtPat, TExtKind>
 {
     fn visit_product(&mut self, pats: &Vec<ExtPattern<TExtPat>>) {
         if let Type::Product(tys) = self.ty {
@@ -218,10 +215,10 @@ impl<
         }
     }
 
-    fn visit_constructor(&mut self, label: &String, pat: &ExtPattern<TExtPat>) {
+    fn visit_constructor(&mut self, label: &str, pat: &ExtPattern<TExtPat>) {
         if let Type::Variant(vs) = self.ty {
             let ty = self.ty;
-            self.ty = variant_field(&vs, label, Span::zero()).unwrap();
+            self.ty = variant_field(vs, label, Span::zero()).unwrap();
             self.visit_pattern(pat);
             self.ty = ty;
         }
@@ -242,6 +239,8 @@ impl<
 
 #[cfg(test)]
 mod test {
+
+    use crate::bottom::BottomKind;
 
     use super::*;
     #[test]

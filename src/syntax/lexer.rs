@@ -179,14 +179,14 @@ impl<
     fn tag(&mut self) -> ExtToken<TExtTokenKind> {
         let (data, span) = self.consume_while(|ch| is_tag(ch) || ch.is_ascii_alphanumeric());
         let kind = ExtTokenKind::Tag(data);
-        return ExtToken::new(kind, span);
+        ExtToken::new(kind, span)
     }
 
     fn extended_single(&mut self) -> ExtToken<TExtTokenKind> {
         let ext = self.extension.clone();
         let (data, span) = self.consume_while(|ch| ext.lex_is_extended_single_pred(ch));
         let kind = self.extension.lex_extended_single(&data);
-        return ExtToken::new(ExtTokenKind::Extended(kind), span);
+        ExtToken::new(ExtTokenKind::Extended(kind), span)
     }
 
     /// Lex a reserved keyword or an identifier

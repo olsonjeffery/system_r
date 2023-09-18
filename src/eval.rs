@@ -41,7 +41,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
-use core::fmt;
+
 
 use crate::bottom::{BottomExtension, BottomKind, BottomPattern};
 use crate::diagnostics::Diagnostic;
@@ -49,7 +49,7 @@ use crate::patterns::{ExtPattern, Pattern};
 use crate::platform_bindings::PlatformBindings;
 use crate::terms::visit::{Shift, Subst, TyTermSubst};
 use crate::terms::{ExtKind, ExtTerm, Literal, Primitive, Term};
-use crate::types::{Context, ExtContext, Type};
+use crate::types::{Context, Type};
 use crate::visit::MutTermVisitor;
 
 pub struct Eval<'ctx> {
@@ -66,17 +66,17 @@ impl<'ctx> Eval<'ctx> {
         }
     }
 
-    fn normal_form(&self, term: &ExtTerm<BottomPattern, BottomKind>) -> bool {
+    fn normal_form(term: &ExtTerm<BottomPattern, BottomKind>) -> bool {
         match &term.kind {
             ExtKind::Lit(_) => true,
             ExtKind::Abs(_, _) => true,
             ExtKind::TyAbs(_) => true,
             ExtKind::Primitive(_) => true,
-            ExtKind::Injection(_, tm, _) => self.normal_form(tm),
-            ExtKind::Product(fields) => fields.iter().all(|f| self.normal_form(f)),
-            ExtKind::Fold(_, tm) => self.normal_form(tm),
-            ExtKind::Pack(_, tm, _) => self.normal_form(tm),
-            // Kind::Unpack(pack, tm) => self.normal_form(tm),
+            ExtKind::Injection(_, tm, _) => Eval::normal_form(tm),
+            ExtKind::Product(fields) => fields.iter().all(Eval::normal_form),
+            ExtKind::Fold(_, tm) => Eval::normal_form(tm),
+            ExtKind::Pack(_, tm, _) => Eval::normal_form(tm),
+            // Kind::Unpack(pack, tm) => Eval::normal_form(tm),
             _ => false,
         }
     }
@@ -103,12 +103,12 @@ impl<'ctx> Eval<'ctx> {
     }
 
     pub fn small_step(&self, term: Term) -> Result<Option<Term>, Diagnostic> {
-        if self.normal_form(&term) {
+        if Eval::normal_form(&term) {
             return Ok(None);
         }
         match term.kind {
             ExtKind::App(t1, t2) => {
-                if self.normal_form(&t2) {
+                if Eval::normal_form(&t2) {
                     match t1.kind {
                         ExtKind::Abs(_, mut abs) => {
                             term_subst(*t2, abs.as_mut());
@@ -117,9 +117,9 @@ impl<'ctx> Eval<'ctx> {
                         ExtKind::PlatformBinding(idx) => match self.platform_bindings.get(idx) {
                             Some(wc) => {
                                 let span = t1.span;
-                                match (&wc.0)(*t2, &span) {
-                                    Ok(t) => return Ok(Some(t)),
-                                    Err(_) => return Ok(None),
+                                match (wc.0)(*t2, &span) {
+                                    Ok(t) => Ok(Some(t)),
+                                    Err(_) => Ok(None),
                                 }
                             }
                             _ => panic!("unable to get platform_binding with idx after parsing; shouldn't happen"),
@@ -127,12 +127,12 @@ impl<'ctx> Eval<'ctx> {
                         ExtKind::Primitive(p) => self.eval_primitive(p, *t2),
                         _ => {
                             match self.small_step(*t1)? {
-                                Some(t) => return Ok(Some(ExtTerm::new(ExtKind::App(Box::new(t), t2), term.span))),
-                                None => return Ok(None),
-                            };
+                                Some(t) => Ok(Some(ExtTerm::new(ExtKind::App(Box::new(t), t2), term.span))),
+                                None => Ok(None),
+                            }
                         }
                     }
-                } else if self.normal_form(&t1) {
+                } else if Eval::normal_form(&t1) {
                     // t1 is in normal form, but t2 is not, so we will
                     // carry out the reducton t2 -> t2', and return
                     // App(t1, t2')
@@ -151,14 +151,14 @@ impl<'ctx> Eval<'ctx> {
                 }
             }
             ExtKind::Let(pat, bind, mut body) => {
-                if self.normal_form(&bind) {
+                if Eval::normal_form(&bind) {
                     // term_subst(*bind, &mut body);
-                    self.case_subst(&pat, &bind, body.as_mut());
+                    Eval::case_subst(&pat, &bind, body.as_mut());
                     Ok(Some(*body))
                 } else {
                     let t = self.small_step(*bind)?;
                     match t {
-                        None => return Ok(None),
+                        None => Ok(None),
                         Some(t) => Ok(Some(ExtTerm::new(ExtKind::Let(pat, Box::new(t), body), term.span))),
                     }
                 }
@@ -172,9 +172,9 @@ impl<'ctx> Eval<'ctx> {
                     let t_prime = self.small_step(*tm)?;
                     match t_prime {
                         Some(t_prime) => {
-                            return Ok(Some(ExtTerm::new(ExtKind::TyApp(Box::new(t_prime), ty), term.span)))
+                            Ok(Some(ExtTerm::new(ExtKind::TyApp(Box::new(t_prime), ty), term.span)))
                         }
-                        None => return Ok(None),
+                        None => Ok(None),
                     }
                 }
             },
@@ -189,7 +189,7 @@ impl<'ctx> Eval<'ctx> {
                 }
             }
             ExtKind::Projection(tm, idx) => {
-                if self.normal_form(&tm) {
+                if Eval::normal_form(&tm) {
                     match tm.kind {
                         // Typechecker ensures that idx is in bounds
                         ExtKind::Product(terms) => Ok(terms.get(idx).cloned()),
@@ -209,7 +209,7 @@ impl<'ctx> Eval<'ctx> {
             ExtKind::Product(terms) => {
                 let mut v = Vec::with_capacity(terms.len());
                 for term in terms {
-                    if self.normal_form(&term) {
+                    if Eval::normal_form(&term) {
                         v.push(term);
                     } else {
                         let res = self.small_step(term)?;
@@ -222,7 +222,7 @@ impl<'ctx> Eval<'ctx> {
                 Ok(Some(ExtTerm::new(ExtKind::Product(v), term.span)))
             }
             ExtKind::Fix(tm) => {
-                if !self.normal_form(&tm) {
+                if !Eval::normal_form(&tm) {
                     let t_prime = self.small_step(*tm)?;
                     match t_prime {
                         Some(t_prime) => return Ok(Some(ExtTerm::new(ExtKind::Fix(Box::new(t_prime)), term.span))),
@@ -240,7 +240,7 @@ impl<'ctx> Eval<'ctx> {
                 }
             }
             ExtKind::Case(expr, arms) => {
-                if !self.normal_form(&expr) {
+                if !Eval::normal_form(&expr) {
                     let t_prime = self.small_step(*expr)?;
                     match t_prime {
                         Some(t_prime) => {
@@ -252,7 +252,7 @@ impl<'ctx> Eval<'ctx> {
 
                 for mut arm in arms {
                     if arm.pat.matches(&expr, &BottomExtension) {
-                        self.case_subst(&arm.pat, &expr, arm.term.as_mut());
+                        Eval::case_subst(&arm.pat, &expr, arm.term.as_mut());
                         return Ok(Some(*arm.term));
                     }
                 }
@@ -260,7 +260,7 @@ impl<'ctx> Eval<'ctx> {
                 Ok(None)
             }
             ExtKind::Fold(ty, tm) => {
-                if !self.normal_form(&tm) {
+                if !Eval::normal_form(&tm) {
                     let t_prime = self.small_step(*tm)?;
                     match t_prime {
                         Some(t_prime) => Ok(Some(ExtTerm::new(ExtKind::Fold(ty, Box::new(t_prime)), term.span))),
@@ -272,7 +272,7 @@ impl<'ctx> Eval<'ctx> {
             }
 
             ExtKind::Unfold(ty, tm) => {
-                if !self.normal_form(&tm) {
+                if !Eval::normal_form(&tm) {
                     let t_prime = self.small_step(*tm)?;
                     match t_prime {
                         Some(t_prime) => {
@@ -288,7 +288,7 @@ impl<'ctx> Eval<'ctx> {
                 }
             }
             ExtKind::Pack(wit, evidence, sig) => {
-                if !self.normal_form(&evidence) {
+                if !Eval::normal_form(&evidence) {
                     let t_prime = self.small_step(*evidence)?;
                     match t_prime {
                         Some(t_prime) => {
@@ -309,7 +309,7 @@ impl<'ctx> Eval<'ctx> {
                     Ok(Some(*body))
                 }
                 _ => {
-                    if !self.normal_form(&package) {
+                    if !Eval::normal_form(&package) {
                         let t_prime = self.small_step(*package)?;
                         match t_prime {
                             Some(t_prime) => {
@@ -326,7 +326,7 @@ impl<'ctx> Eval<'ctx> {
         }
     }
 
-    fn case_subst(&self, pat: &Pattern, expr: &Term, term: &mut Term) {
+    fn case_subst(pat: &Pattern, expr: &Term, term: &mut Term) {
         use ExtPattern::*;
         match pat {
             Any => {}
@@ -336,10 +336,8 @@ impl<'ctx> Eval<'ctx> {
             }
             Product(v) => {
                 if let ExtKind::Product(terms) = &expr.kind {
-                    let mut idx = 0;
-                    for tm in terms.iter() {
-                        self.case_subst(&v[idx], tm, term);
-                        idx += 1;
+                    for (idx, tm) in terms.iter().enumerate() {
+                        Eval::case_subst(&v[idx], tm, term);
                     }
                 } else {
                     panic!("wrong type!")
@@ -348,7 +346,7 @@ impl<'ctx> Eval<'ctx> {
             Constructor(label, v) => {
                 if let ExtKind::Injection(label_, tm, _) = &expr.kind {
                     if label == label_ {
-                        self.case_subst(&v, &tm, term);
+                        Eval::case_subst(v, tm, term);
                     }
                 } else {
                     panic!("wrong type!")

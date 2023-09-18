@@ -45,7 +45,7 @@ use core::fmt;
 
 use crate::patterns::{ExtPattern, PatternCount};
 use crate::system_r_util::span::Span;
-use crate::terms::{Arm, ExtKind, ExtTerm, Primitive};
+use crate::terms::{Arm, ExtKind, ExtTerm};
 use crate::types::Type;
 use crate::visit::{MutTermVisitor, MutTypeVisitor};
 
@@ -99,7 +99,7 @@ impl<
     ) {
         self.visit(term);
         for arm in arms {
-            let c = PatternCount::<TExtPat, TExtKind>::collect(&mut arm.pat);
+            let c = PatternCount::<TExtPat, TExtKind>::collect(&arm.pat);
             self.cutoff += c;
             self.visit(&mut arm.term);
             self.cutoff -= c;
@@ -170,7 +170,7 @@ impl<
     ) {
         self.visit(term);
         for arm in arms {
-            let c = PatternCount::<TExtPat, TExtKind>::collect(&mut arm.pat);
+            let c = PatternCount::<TExtPat, TExtKind>::collect(&arm.pat);
             self.cutoff += c;
             self.visit(&mut arm.term);
             self.cutoff -= c;
@@ -304,17 +304,14 @@ impl<
     fn visit(&mut self, term: &mut ExtTerm<TExtPat, TExtKind>) {
         match &mut term.kind {
             ExtKind::Injection(label, val, ty) => {
-                match *ty.clone() {
-                    Type::Rec(inner) => {
-                        let ty_prime = crate::types::subst(*ty.clone(), *inner.clone());
-                        let rewrite_ty = ExtTerm::new(
-                            ExtKind::Injection(label.clone(), val.clone(), Box::new(ty_prime)),
-                            term.span,
-                        );
+                if let Type::Rec(inner) = *ty.clone() {
+                    let ty_prime = crate::types::subst(*ty.clone(), *inner.clone());
+                    let rewrite_ty = ExtTerm::new(
+                        ExtKind::Injection(label.clone(), val.clone(), Box::new(ty_prime)),
+                        term.span,
+                    );
 
-                        *term = ExtTerm::new(ExtKind::Fold(ty.clone(), Box::new(rewrite_ty)), term.span);
-                    }
-                    _ => {}
+                    *term = ExtTerm::new(ExtKind::Fold(ty.clone(), Box::new(rewrite_ty)), term.span);
                 }
                 self.walk(term);
             }

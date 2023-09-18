@@ -95,7 +95,7 @@ pub struct Matrix<'pat, TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + D
     matrix: Vec<Vec<&'pat ExtPattern<TExtPat>>>,
 }
 
-impl<'a, 'pat, TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default> Matrix<'pat, TExtPat> {
+impl<'pat, TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default> Matrix<'pat, TExtPat> {
     /// Create a new [`Matrix`] for a given type
     pub fn new(expr_ty: Type) -> Matrix<'pat, TExtPat> {
         let len = match &expr_ty {
@@ -364,7 +364,7 @@ impl<
             ExtPattern::Constructor(label, inner) => match ty {
                 Type::Variant(v) => {
                     for discriminant in v {
-                        if label == &discriminant.label && self.pattern_type_eq(&inner, &discriminant.ty) {
+                        if label == &discriminant.label && self.pattern_type_eq(inner, &discriminant.ty) {
                             return true;
                         }
                     }

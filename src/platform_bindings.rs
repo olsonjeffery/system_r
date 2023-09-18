@@ -24,7 +24,6 @@ use crate::extensions::SystemRExtension;
 use crate::system_r_util::span::Span;
 
 use crate::{
-    bottom::{BottomExtension, BottomKind, BottomPattern},
     diagnostics::Diagnostic,
     terms::{Kind, Term},
     types::{ExtContext, Type},
@@ -61,7 +60,7 @@ pub struct PlatformBindings {
 
 impl PartialEq for PlatformBindings {
     fn eq(&self, other: &Self) -> bool {
-        return self.by_name == other.by_name;
+        self.by_name == other.by_name
     }
 }
 
@@ -90,10 +89,7 @@ impl<'a> PlatformBindings {
     pub fn register(&mut self, alias: &str, wrapped: WrappedContent) -> Option<WrappedContent> {
         self.by_idx.push(wrapped.clone());
         let idx = self.by_idx.len() - 1;
-        match self.by_name.insert(alias.to_owned(), idx) {
-            Some(_) => Some(wrapped),
-            None => None,
-        }
+        self.by_name.insert(alias.to_owned(), idx).map(|_| wrapped)
     }
 
     pub fn get(&'a self, idx: usize) -> Option<&'a WrappedContent> {

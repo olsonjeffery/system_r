@@ -233,14 +233,14 @@ pub trait PatternVisitor<
 {
     fn visit_ext(&mut self, ext: &TExtPat) {}
     fn visit_literal(&mut self, lit: &Literal) {}
-    fn visit_variable(&mut self, var: &String) {}
+    fn visit_variable(&mut self, var: &str) {}
     fn visit_product(&mut self, pats: &Vec<ExtPattern<TExtPat>>) {
         for p in pats {
             self.visit_pattern(p);
         }
     }
 
-    fn visit_constructor(&mut self, label: &String, pat: &ExtPattern<TExtPat>) {
+    fn visit_constructor(&mut self, label: &str, pat: &ExtPattern<TExtPat>) {
         self.visit_pattern(pat);
     }
 

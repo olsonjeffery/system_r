@@ -323,16 +323,16 @@ impl<
             )),
             ExtKind::Let(pat, t1, t2) => {
                 let ty = self.type_check(t1)?;
-                if !self.pattern_type_eq(&pat, &ty) {
+                if !self.pattern_type_eq(pat, &ty) {
                     return Err(Diagnostic::error(
                         t1.span,
-                        format!("pattern does not match type of binder"),
+                        "pattern does not match type of binder".to_string(),
                     ));
                 }
 
                 let height = self.stack.len();
 
-                let binds = crate::patterns::PatTyStack::<TExtPat, TExtKind>::collect(&ty, &pat);
+                let binds = crate::patterns::PatTyStack::<TExtPat, TExtKind>::collect(&ty, pat);
                 for b in binds.into_iter().rev() {
                     self.push(b.clone());
                 }
@@ -346,14 +346,16 @@ impl<
                 y
             }
             ExtKind::TyAbs(term) => {
-                self.stack.iter_mut().for_each(|ty| match ty {
-                    Type::Var(v) => *v += 1,
-                    _ => {}
+                self.stack.iter_mut().for_each(|ty| {
+                    if let Type::Var(v) = ty {
+                        *v += 1;
+                    }
                 });
                 let ty2 = self.type_check(term)?;
-                self.stack.iter_mut().for_each(|ty| match ty {
-                    Type::Var(v) => *v -= 1,
-                    _ => {}
+                self.stack.iter_mut().for_each(|ty| {
+                    if let Type::Var(v) = ty {
+                        *v -= 1;
+                    }
                 });
                 Ok(Type::Universal(Box::new(ty2)))
             }
@@ -379,7 +381,7 @@ impl<
 
             ExtKind::Unfold(rec, tm) => match rec.as_ref() {
                 Type::Rec(inner) => {
-                    let ty_ = self.type_check(&tm)?;
+                    let ty_ = self.type_check(tm)?;
                     if ty_ == *rec.clone() {
                         let s = subst(*rec.clone(), *inner.clone());
                         Ok(s)
@@ -398,7 +400,7 @@ impl<
 
             ExtKind::Fold(rec, tm) => match rec.as_ref() {
                 Type::Rec(inner) => {
-                    let ty_ = self.type_check(&tm)?;
+                    let ty_ = self.type_check(tm)?;
                     let s = subst(*rec.clone(), *inner.clone());
                     if ty_ == s {
                         Ok(*rec.clone())
