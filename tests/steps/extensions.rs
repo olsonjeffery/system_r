@@ -27,7 +27,7 @@ pub fn parse_for_extension<
     TExtTokenKind: fmt::Debug + Default + Clone + PartialEq + PartialOrd,
     TExtKind: fmt::Debug + Default + Clone + PartialEq + PartialOrd,
     TEXtPat: fmt::Debug + Default + Clone + PartialEq + PartialOrd,
-    TLE: Clone + SystemRExtension<TExtTokenKind, TExtKind, TEXtPat>,
+    TLE: Default + Clone + SystemRExtension<TExtTokenKind, TExtKind, TEXtPat>,
 >(
     input: &str,
     parser: ExtParser<TExtTokenKind, TExtKind, TEXtPat, TLE>,

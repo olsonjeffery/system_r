@@ -3,15 +3,15 @@ use std::{rc::Rc, cell::RefCell};
 use crate::{
     bottom::{BottomKind, BottomPattern, BottomTokenKind},
     platform_bindings::PlatformBindings,
-    syntax::parser::ExtParser,
+    syntax::{parser::{ExtParser, Error}, ExtTokenKind},
     types::ExtContext, terms::{ExtTerm, ExtKind},
-    diagnostics::Diagnostic, system_r_util::span::Span,
+    diagnostics::Diagnostic, system_r_util::span::Span, patterns::PatVarStack,
 };
 
 use super::{SystemRExtension, ParserOp, ParserOpCompletion};
 
 #[derive(Clone, Debug, Default)]
-pub struct TyLetExtension {}
+pub struct TyLetExtension;
 
 pub type TyLetContext = ExtContext<TyLetTokenKind, TyLetKind, TyLetPattern, TyLetExtension>;
 
@@ -94,7 +94,26 @@ impl SystemRExtension<TyLetTokenKind, TyLetKind, TyLetPattern> for TyLetExtensio
         tk == &TyLetTokenKind::TyLet
     }
 
-    fn parser_top_level_ext<'s>(&mut self, c: ParserOpCompletion<TyLetTokenKind, TyLetKind, TyLetPattern>) -> Result<ParserOpCompletion<TyLetTokenKind, TyLetKind, TyLetPattern>, Diagnostic> {
-        Err(Diagnostic::error(Span::default(), "tylet parser top level ext unimpl"))
+    fn parser_use_top_level_ext<'s>(&mut self, parser: &mut ExtParser<'s, TyLetTokenKind, TyLetKind, TyLetPattern, Self>) -> Result<ExtTerm<TyLetPattern, TyLetKind>, Error<TyLetTokenKind>> {
+        let sp = parser.span;
+        parser.expect(ExtTokenKind::Let)?;
+        let pat = parser.once(|p| p.pattern(), "missing pattern")?;
+
+        parser.expect(ExtTokenKind::Equals)?;
+
+        let t1 = parser.once(|p| p.parse(), "let binder required")?;
+        let len = parser.tmvar.len();
+        for var in PatVarStack::<TyLetPattern, TyLetKind>::collect(&pat).into_iter().rev() {
+            parser.tmvar.push(var);
+        }
+        parser.expect(ExtTokenKind::In)?;
+        let t2 = parser.once(|p| p.parse(), "let body required")?;
+        while parser.tmvar.len() > len {
+            parser.tmvar.pop();
+        }
+        Ok(ExtTerm::new(
+            ExtKind::Let(Box::new(pat), Box::new(t1), Box::new(t2)),
+            sp + parser.span,
+        ))
     }
 }

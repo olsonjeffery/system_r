@@ -47,7 +47,7 @@ use crate::extensions::{SystemRExtension, ParserOpCompletion};
 use crate::system_r_util::diagnostic::Diagnostic;
 use crate::system_r_util::span::*;
 use core::fmt;
-use std::cell::RefCell;
+use std::cell::{RefCell, Ref};
 use std::collections::VecDeque;
 use std::rc::Rc;
 
@@ -104,7 +104,7 @@ pub struct ExtParser<
     TExtTokenKind: fmt::Debug + PartialEq + PartialOrd + Default + Sized + Clone,
     TExtKind: fmt::Debug + PartialEq + PartialOrd + Default + Sized + Clone,
     TExtPat: fmt::Debug + PartialEq + PartialOrd + Default + Sized + Clone,
-    TLE: SystemRExtension<TExtTokenKind, TExtKind, TExtPat>,
+    TLE: ?Sized + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>,
 > {
     pub tmvar: DeBruijnIndexer,
     pub tyvar: DeBruijnIndexer,
@@ -146,7 +146,7 @@ impl<
         TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
         TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
         TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-        TLE: Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>,
+        TLE: Default + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>,
     > ExtParser<'s, TExtTokenKind, TExtKind, TExtPat, TLE>
 {
     /// Create a new [`Parser`] for the input `&str`
@@ -202,7 +202,7 @@ impl<
     /// Combinator that must return Ok or a message will be pushed to
     /// diagnostic. This method should only be called after a token has
     /// already been bumped.
-    fn once<T, F>(&mut self, func: F, message: &str) -> Result<T, Error<TExtTokenKind>>
+    pub fn once<T, F>(&mut self, func: F, message: &str) -> Result<T, Error<TExtTokenKind>>
     where
         F: Fn(&mut ExtParser<TExtTokenKind, TExtKind, TExtPat, TLE>) -> Result<T, Error<TExtTokenKind>>,
     {
@@ -247,7 +247,7 @@ impl<
         }
     }
 
-    fn expect(&mut self, kind: ExtTokenKind<TExtTokenKind>) -> Result<(), Error<TExtTokenKind>> {
+    pub fn expect(&mut self, kind: ExtTokenKind<TExtTokenKind>) -> Result<(), Error<TExtTokenKind>> {
         if self.token.kind == kind {
             self.bump();
             Ok(())
@@ -575,7 +575,7 @@ impl<
         }
     }
 
-    fn pattern(&mut self) -> Result<ExtPattern<TExtPat>, Error<TExtTokenKind>> {
+    pub fn pattern(&mut self) -> Result<ExtPattern<TExtPat>, Error<TExtTokenKind>> {
         match self.kind() {
             ExtTokenKind::LParen => {
                 self.bump();
@@ -788,14 +788,19 @@ impl<
     }
 
     fn ext_parse(&mut self) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
-        // generator logic for parser_ext_parse() call
-        let comp = ParserOpCompletion("".to_owned(), self.token.clone(), ExtTerm { span: Span::default(), kind: ExtKind::default() });
-        let out_comp = match self.extension.borrow_mut().parser_top_level_ext(comp) {
-            Ok(v) => v,
-            Err(d) => return self.error(ErrorKind::ExtendedError(d.primary.info)),
+        let r = {
+            let mut p_clone = self.clone();
+            let mut ext_bottom = self.extension.borrow_mut();
+            match ext_bottom.parser_use_top_level_ext(&mut p_clone) {
+                Err(e) => {
+                    p_clone.diagnostic.emit();
+                    return Err(e)
+                },
+                Ok(t) => t,
+            }
         };
-        // FIXME update lexer/parser state
-        Ok(out_comp.2)
+        // FIXME: consume returned parser (p) and integrate into state;
+        return Ok(r);
     }
 
     pub fn parse(&mut self) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {

@@ -60,7 +60,7 @@ pub struct ExtLexer<
     TExtTokenKind: PartialOrd + PartialEq + Default + fmt::Debug + Clone,
     TExtKind: PartialOrd + PartialEq + Default + fmt::Debug + Clone,
     TExtPattern: PartialOrd + PartialEq + Default + fmt::Debug + Clone,
-    TLE: SystemRExtension<TExtTokenKind, TExtKind, TExtPattern>,
+    TLE: ?Sized + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern>,
 > {
     input: Peekable<Chars<'s>>,
     current: Location,

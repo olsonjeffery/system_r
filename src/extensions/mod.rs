@@ -27,7 +27,7 @@ TExtTokenKind: fmt::Debug + PartialEq + PartialOrd + Default + Clone,
     fn lex_extended_single(&mut self, data: &str) -> TExtTokenKind;
     fn lex_ext_keyword(&mut self, data: &str) -> TExtTokenKind;
     fn parser_has_top_level_ext(&self, tk: &TExtTokenKind) -> bool;
-    fn parser_top_level_ext<'s>(&mut self, c: ParserOpCompletion<TExtTokenKind, TExtKind, TExtPat>) -> Result<ParserOpCompletion<TExtTokenKind, TExtKind, TExtPat>, Diagnostic>; 
+    fn parser_use_top_level_ext<'s>(&mut self, parser: &mut ExtParser<'s, TExtTokenKind, TExtKind, TExtPat, Self>) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>>;
     fn pat_ext_pattern_type_eq(&self, pat: &TExtPat, ty: &Type) -> bool;
     fn pat_add_ext_pattern<'a>(
         &'a self,

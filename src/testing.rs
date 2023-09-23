@@ -85,7 +85,7 @@ pub fn operate_parser_for<
     TExtTokenKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
     TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
     TEXtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TLE: Clone + SystemRExtension<TExtTokenKind, TExtKind, TEXtPat>,
+    TLE: Default + Clone + SystemRExtension<TExtTokenKind, TExtKind, TEXtPat>,
 >(
     mut parser: ExtParser<'_, TExtTokenKind, TExtKind, TEXtPat, TLE>,
     input: &str,

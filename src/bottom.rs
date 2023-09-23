@@ -17,7 +17,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
-use crate::{extensions::{SystemRExtension, ParserOp}, patterns::ExtPattern, terms::{ExtTerm, ExtKind}, syntax::parser::Error, system_r_util::span::Span, diagnostics::Diagnostic};
+use crate::{extensions::{SystemRExtension, ParserOp}, patterns::ExtPattern, terms::{ExtTerm, ExtKind}, syntax::{parser::{Error, ErrorKind, ExtParser}, lexer::ExtLexer}, system_r_util::span::Span, diagnostics::Diagnostic};
 
 #[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
 pub enum BottomTokenKind {
@@ -81,9 +81,7 @@ impl SystemRExtension<BottomTokenKind, BottomKind, BottomPattern> for BottomExte
         false 
     }
 
-    fn parser_top_level_ext<'s>(&mut self,
-        c: crate::extensions::ParserOpCompletion<BottomTokenKind, BottomKind, BottomPattern>)
-        -> Result<crate::extensions::ParserOpCompletion<BottomTokenKind, BottomKind, BottomPattern>, crate::diagnostics::Diagnostic> {
-            Err(Diagnostic::error(Span::default(), "BottomExtension.parser_top_level_ext shouldn't be called"))
+    fn parser_use_top_level_ext<'s>(&mut self, parser: &mut ExtParser<'s, BottomTokenKind, BottomKind, BottomPattern, Self>) -> Result<ExtTerm<BottomPattern, BottomKind>, Error<BottomTokenKind>> {
+       Err(Error { span: parser.span, tok: parser.token.clone(), kind: ErrorKind::ExtendedError("bottom parser use unimpl'd; shouldn't be called".to_owned()) })
     }
 }
