@@ -1,11 +1,14 @@
+use std::{rc::Rc, cell::RefCell};
+
 use crate::{
     bottom::{BottomKind, BottomPattern, BottomTokenKind},
     platform_bindings::PlatformBindings,
     syntax::parser::ExtParser,
-    types::ExtContext, terms::ExtTerm,
+    types::ExtContext, terms::{ExtTerm, ExtKind},
+    diagnostics::Diagnostic, system_r_util::span::Span,
 };
 
-use super::SystemRExtension;
+use super::{SystemRExtension, ParserOp, ParserOpCompletion};
 
 #[derive(Clone, Debug, Default)]
 pub struct TyLetExtension {}
@@ -15,7 +18,7 @@ pub type TyLetContext = ExtContext<TyLetTokenKind, TyLetKind, TyLetPattern, TyLe
 pub type TyLetParser<'s> = ExtParser<'s, TyLetTokenKind, TyLetKind, TyLetPattern, TyLetExtension>;
 
 impl<'s> TyLetParser<'s> {
-    pub fn new(platform_bindings: &'s PlatformBindings, input: &'s str, ty_let: TyLetExtension) -> TyLetParser<'s> {
+    pub fn new(platform_bindings: &'s PlatformBindings, input: &'s str, ty_let: Rc<RefCell<TyLetExtension>>) -> TyLetParser<'s> {
         ExtParser::ext_new(platform_bindings, input, ty_let)
     }
 }
@@ -27,6 +30,7 @@ impl<'s> TyLetParser<'s> {
 pub enum TyLetTokenKind {
     #[default]
     Placeholder,
+    TyLet,
     Below(BottomTokenKind),
 }
 
@@ -44,6 +48,8 @@ pub enum TyLetPattern {
     Below(BottomPattern),
 }
 
+pub const TYLET_KW: &str = "tylet";
+
 impl SystemRExtension<TyLetTokenKind, TyLetKind, TyLetPattern> for TyLetExtension {
     fn lex_is_ext_single(&self, x: char) -> bool {
         false
@@ -54,7 +60,7 @@ impl SystemRExtension<TyLetTokenKind, TyLetKind, TyLetPattern> for TyLetExtensio
     }
 
     fn lex_is_ext_keyword(&self, data: &str) -> bool {
-        false
+        data == TYLET_KW
     }
 
     fn lex_extended_single(&mut self, data: &str) -> TyLetTokenKind {
@@ -62,7 +68,10 @@ impl SystemRExtension<TyLetTokenKind, TyLetKind, TyLetPattern> for TyLetExtensio
     }
 
     fn lex_ext_keyword(&mut self, data: &str) -> TyLetTokenKind {
-        TyLetTokenKind::Placeholder
+        if data == TYLET_KW {
+            return TyLetTokenKind::TyLet;
+        }
+        panic!("called lex_ext_keyword with a data str that wasn't tylet; shouldn't happen");
     }
 
     fn pat_ext_pattern_type_eq(&self, pat: &TyLetPattern, ty: &crate::types::Type) -> bool {
@@ -81,11 +90,11 @@ impl SystemRExtension<TyLetTokenKind, TyLetKind, TyLetPattern> for TyLetExtensio
         false
     }
 
-    fn parser_has_top_level_ext(&mut self, tk: &TyLetTokenKind) -> bool {
-        false 
+    fn parser_has_top_level_ext(&self, tk: &TyLetTokenKind) -> bool {
+        tk == &TyLetTokenKind::TyLet
     }
 
-    fn parser_top_level_ext(&mut self, tk: &TyLetTokenKind) -> Result<crate::terms::ExtTerm<TyLetPattern, TyLetKind>, crate::syntax::parser::Error<TyLetTokenKind>> {
-        Ok(ExtTerm::default())
+    fn parser_top_level_ext<'s>(&mut self, c: ParserOpCompletion<TyLetTokenKind, TyLetKind, TyLetPattern>) -> Result<ParserOpCompletion<TyLetTokenKind, TyLetKind, TyLetPattern>, Diagnostic> {
+        Err(Diagnostic::error(Span::default(), "tylet parser top level ext unimpl"))
     }
 }

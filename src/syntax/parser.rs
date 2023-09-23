@@ -42,12 +42,14 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 use super::lexer::ExtLexer;
 use super::{ExtToken, ExtTokenKind};
 use crate::bottom::{BottomExtension, BottomKind, BottomPattern, BottomTokenKind};
-use crate::extensions::SystemRExtension;
+use crate::extensions::{SystemRExtension, ParserOpCompletion};
 
 use crate::system_r_util::diagnostic::Diagnostic;
 use crate::system_r_util::span::*;
 use core::fmt;
+use std::cell::RefCell;
 use std::collections::VecDeque;
+use std::rc::Rc;
 
 use crate::patterns::{ExtPattern, PatVarStack};
 use crate::platform_bindings::PlatformBindings;
@@ -63,7 +65,7 @@ pub type Parser<'s> = ExtParser<'s, BottomTokenKind, BottomKind, BottomPattern, 
 
 impl<'s> Parser<'s> {
     pub fn new(platform_bindings: &'s PlatformBindings, input: &'s str) -> Self {
-        ExtParser::ext_new(platform_bindings, input, BottomExtension)
+        ExtParser::ext_new(platform_bindings, input, Rc::new(RefCell::new(BottomExtension)))
     }
 }
 
@@ -104,16 +106,14 @@ pub struct ExtParser<
     TExtPat: fmt::Debug + PartialEq + PartialOrd + Default + Sized + Clone,
     TLE: SystemRExtension<TExtTokenKind, TExtKind, TExtPat>,
 > {
-    tmvar: DeBruijnIndexer,
-    tyvar: DeBruijnIndexer,
-    diagnostic: Diagnostic<'s>,
+    pub tmvar: DeBruijnIndexer,
+    pub tyvar: DeBruijnIndexer,
+    pub diagnostic: Diagnostic<'s>,
     pub lexer: ExtLexer<'s, TExtTokenKind, TExtKind, TExtPat, TLE>,
-    span: Span,
-    token: ExtToken<TExtTokenKind>,
-    platform_bindings: PlatformBindings,
-    pub extension: TLE,
-    _kind: TExtKind,
-    _pat: TExtPat,
+    pub span: Span,
+    pub token: ExtToken<TExtTokenKind>,
+    pub platform_bindings: PlatformBindings,
+    pub extension: Rc<RefCell<TLE>>,
 }
 
 #[derive(Clone)]
@@ -123,9 +123,9 @@ pub struct Error<TExtTokenKind: PartialEq + Default + Sized + Clone> {
     pub kind: ErrorKind<TExtTokenKind>,
 }
 
-impl<TExtTokenKind: Default + Sized + Clone + PartialEq> fmt::Debug for Error<TExtTokenKind> {
+impl<TExtTokenKind: Default + Sized + Clone + PartialEq + fmt::Debug> fmt::Debug for Error<TExtTokenKind> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Error").finish()
+        f.debug_struct("Error").field("kind", &format!("{:?}", self.kind)).finish()
     }
 }
 
@@ -139,6 +139,7 @@ pub enum ErrorKind<TExtTokenKind: PartialEq> {
     UnboundTypeVar,
     Unknown,
     Eof,
+    ExtendedError(String),
 }
 impl<
         's,
@@ -152,7 +153,7 @@ impl<
     pub fn ext_new(
         platform_bindings: &'s PlatformBindings,
         input: &'s str,
-        lexer_ext: TLE,
+        lexer_ext: Rc<RefCell<TLE>>,
     ) -> ExtParser<'s, TExtTokenKind, TExtKind, TExtPat, TLE> {
         let mut p = ExtParser {
             tmvar: DeBruijnIndexer::default(),
@@ -163,8 +164,6 @@ impl<
             token: ExtToken::dummy(),
             platform_bindings: platform_bindings.clone(),
             extension: lexer_ext,
-            _kind: TExtKind::default(),
-            _pat: TExtPat::default(),
         };
         p.bump();
         p
@@ -208,11 +207,11 @@ impl<
         F: Fn(&mut ExtParser<TExtTokenKind, TExtKind, TExtPat, TLE>) -> Result<T, Error<TExtTokenKind>>,
     {
         match func(self) {
-            Ok(t) => Ok(t),
             Err(e) => {
                 self.diagnostic.push(message, self.span);
                 Err(e)
-            }
+            },
+            t => t
         }
     }
 }
@@ -788,12 +787,23 @@ impl<
         Ok(app)
     }
 
+    fn ext_parse(&mut self) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
+        // generator logic for parser_ext_parse() call
+        let comp = ParserOpCompletion("".to_owned(), self.token.clone(), ExtTerm { span: Span::default(), kind: ExtKind::default() });
+        let out_comp = match self.extension.borrow_mut().parser_top_level_ext(comp) {
+            Ok(v) => v,
+            Err(d) => return self.error(ErrorKind::ExtendedError(d.primary.info)),
+        };
+        // FIXME update lexer/parser state
+        Ok(out_comp.2)
+    }
+
     pub fn parse(&mut self) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
         match self.kind().clone() {
             ExtTokenKind::Case => self.case(),
             ExtTokenKind::Lambda => self.lambda(),
             ExtTokenKind::Let => self.letexpr(),
-            ExtTokenKind::Extended(tk) if self.extension.parser_has_top_level_ext(&tk) => self.extension.parser_top_level_ext(&tk),
+            ExtTokenKind::Extended(tk) if self.extension.borrow().parser_has_top_level_ext(&tk) => self.ext_parse(),
             _ => self.application(),
         }
     }

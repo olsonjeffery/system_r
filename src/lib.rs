@@ -39,6 +39,8 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
+#![feature(generators, generator_trait)]
+#![feature(return_position_impl_trait_in_trait)]
 #![allow(unused_variables, unused_macros)]
 #[macro_use]
 pub mod macros;

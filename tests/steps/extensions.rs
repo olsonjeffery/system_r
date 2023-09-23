@@ -1,6 +1,7 @@
 extern crate cucumber;
 
 use core::fmt;
+use std::{rc::Rc, cell::RefCell};
 
 use cucumber::{given, then, when};
 
@@ -50,7 +51,7 @@ fn then_the_last_ext_should_parse_successfully(world: &mut common::SpecsWorld) {
 #[when("it is processed for the tylet extension")]
 fn when_it_is_processed_for_tylet(world: &mut common::SpecsWorld) {
     let input = world.code_snippet.clone();
-    let ext = TyLetExtension {};
+    let ext = Rc::new(RefCell::new(TyLetExtension {}));
     let pb = world.platform_bindings.clone();
     let parser = TyLetParser::new(&pb, &input, ext);
     let res = parse_for_extension(&input, parser, world);

@@ -46,8 +46,10 @@ use crate::{
     extensions::SystemRExtension,
 };
 use core::fmt;
+use std::cell::RefCell;
 use std::char;
 use std::iter::Peekable;
+use std::rc::Rc;
 use std::str::Chars;
 
 pub type Lexer<'s> = ExtLexer<'s, BottomTokenKind, BottomExtension, BottomPattern, BottomExtension>;
@@ -62,7 +64,7 @@ pub struct ExtLexer<
 > {
     input: Peekable<Chars<'s>>,
     current: Location,
-    extension: TLE,
+    extension: Rc<RefCell<TLE>>,
     _token: TExtTokenKind,
     _kind: TExtKind,
     _pat: TExtPattern,
@@ -80,7 +82,7 @@ impl<
         Self {
             input: "".chars().peekable(),
             current: Default::default(),
-            extension: TLE::default(),
+            extension: Rc::new(RefCell::new(TLE::default())),
             _token: Default::default(),
             _kind: TExtKind::default(),
             _pat: Default::default(),
@@ -103,7 +105,7 @@ impl<
         TLE: Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern>,
     > ExtLexer<'s, TExtTokenKind, TExtKind, TExtPattern, TLE>
 {
-    pub fn new(input: Chars<'s>, extension: TLE) -> ExtLexer<'s, TExtTokenKind, TExtKind, TExtPattern, TLE> {
+    pub fn new(input: Chars<'s>, extension: Rc<RefCell<TLE>>) -> ExtLexer<'s, TExtTokenKind, TExtKind, TExtPattern, TLE> {
         ExtLexer {
             input: input.peekable(),
             current: Location {
@@ -116,6 +118,12 @@ impl<
             _kind: TExtKind::default(),
             _pat: Default::default(),
         }
+    }
+
+    fn rest(&mut self) -> String {
+        let rest = self.input.clone().take(usize::MAX).collect();
+        println!("remaining content in lexer buffer: {}", rest);
+        rest
     }
 
     /// Peek at the next [`char`] in the input stream
@@ -182,8 +190,8 @@ impl<
 
     fn extended_single(&mut self) -> ExtToken<TExtTokenKind> {
         let ext = self.extension.clone();
-        let (data, span) = self.consume_while(|ch| ext.lex_is_extended_single_pred(ch));
-        let kind = self.extension.lex_extended_single(&data);
+        let (data, span) = self.consume_while(|ch| ext.borrow_mut().lex_is_extended_single_pred(ch));
+        let kind = self.extension.borrow_mut().lex_extended_single(&data);
         ExtToken::new(ExtTokenKind::Extended(kind), span)
     }
 
@@ -191,9 +199,8 @@ impl<
     fn keyword(&mut self) -> ExtToken<TExtTokenKind> {
         let (data, span) = self.consume_while(|ch| ch.is_ascii_alphanumeric());
         let kind = match data.as_ref() {
-            data if self.extension.lex_is_ext_keyword(data) => {
-                ExtTokenKind::Extended(self.extension.lex_ext_keyword(data))
-            }
+            data if self.extension.borrow().lex_is_ext_keyword(data) => 
+                ExtTokenKind::Extended(self.extension.borrow_mut().lex_ext_keyword(data)),
             "if" => ExtTokenKind::If,
             "then" => ExtTokenKind::Then,
             "else" => ExtTokenKind::Else,
@@ -253,7 +260,7 @@ impl<
             None => return ExtToken::new(ExtTokenKind::Eof, Span::new(self.current, self.current)),
         };
         match next {
-            x if self.extension.lex_is_ext_single(x) => self.extended_single(),
+            x if self.extension.borrow().lex_is_ext_single(x) => self.extended_single(),
             x if is_tag(x) => self.tag(),
             x if x.is_ascii_alphabetic() => self.keyword(),
             x if x.is_numeric() => self.number(),
@@ -316,7 +323,7 @@ mod test {
 
         let expected = vec![Succ, LParen, Succ, LParen, Succ, LParen, Nat(0), RParen, RParen, RParen];
         let stub_ext = BottomExtension;
-        let output = ExtLexer::new(input.chars(), stub_ext)
+        let output = ExtLexer::new(input.chars(), Rc::new(RefCell::new(stub_ext)))
             .into_iter()
             .map(|t| t.kind)
             .collect::<Vec<ExtTokenKind<BottomTokenKind>>>();
@@ -351,7 +358,7 @@ mod test {
             RParen,
         ];
         let stub_ext = BottomExtension;
-        let output = ExtLexer::new(input.chars(), stub_ext)
+        let output = ExtLexer::new(input.chars(), Rc::new(RefCell::new(stub_ext)))
             .into_iter()
             .map(|t| t.kind)
             .collect::<Vec<ExtTokenKind<BottomTokenKind>>>();

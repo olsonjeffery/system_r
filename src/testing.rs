@@ -99,7 +99,7 @@ pub fn operate_parser_for<
         Err(e) => {
             //dbg!(e);
             let diagnostic_message = parser.diagnostic().emit();
-            let msg = format!("ERROR {:?}\r\nDIAGNOSTIC: {:?}", e.clone(), diagnostic_message);
+            let msg = format!("operate ERROR {:?}\r\nDIAGNOSTIC: {:?}", e.clone(), diagnostic_message);
             return Err(Diagnostic::error(Span::default(), msg));
         }
     };
@@ -119,7 +119,7 @@ pub fn parse_single_block(
         Err(e) => {
             //dbg!(e);
             let diagnostic_message = p.diagnostic().emit();
-            let msg = format!("ERROR {:?}\r\nDIAGNOSTIC: {:?}", e.clone(), diagnostic_message);
+            let msg = format!("bottom parse ERROR {:?}\r\nDIAGNOSTIC: {:?}", e.clone(), diagnostic_message);
             return Err(Diagnostic::error(Span::default(), msg));
         }
     };
