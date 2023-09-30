@@ -77,11 +77,19 @@ impl SystemRExtension<BottomTokenKind, BottomKind, BottomPattern> for BottomExte
         false
     }
 
-    fn parser_has_top_level_ext(&self, tk: &BottomTokenKind) -> bool {
+    fn parser_has_ext_parse(&self, tk: &BottomTokenKind) -> bool {
         false 
     }
 
-    fn parser_use_top_level_ext<'s>(&mut self, parser: &mut ExtParser<'s, BottomTokenKind, BottomKind, BottomPattern, Self>) -> Result<ExtTerm<BottomPattern, BottomKind>, Error<BottomTokenKind>> {
-       Err(Error { span: parser.span, tok: parser.token.clone(), kind: ErrorKind::ExtendedError("bottom parser use unimpl'd; shouldn't be called".to_owned()) })
+    fn parser_ext_parse<'s>(&mut self, parser: &mut ExtParser<'s, BottomTokenKind, BottomKind, BottomPattern, Self>) -> Result<ExtTerm<BottomPattern, BottomKind>, Error<BottomTokenKind>> {
+        panic!("should never be called")
+    }
+
+    fn parser_has_ext_atom(&self, tk: &BottomTokenKind) -> bool {
+        false
+    }
+
+    fn parser_ext_atom<'s>(&mut self, parser: &mut ExtParser<'s, BottomTokenKind, BottomKind, BottomPattern, Self>) -> Result<ExtTerm<BottomPattern, BottomKind>, Error<BottomTokenKind>> {
+        panic!("should never be called")
     }
 }

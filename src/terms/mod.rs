@@ -124,6 +124,8 @@ pub enum ExtKind<
     /// open {∃X, bind} in body -- X is bound as a TyVar, and bind as Var(0)
     /// Eliminate an existential type
     Unpack(Box<ExtTerm<TExtPat, TExtKind>>, Box<ExtTerm<TExtPat, TExtKind>>),
+    /// Extension
+    Extended(TExtKind),
 }
 
 impl<
@@ -237,6 +239,7 @@ impl<
             ExtKind::Unfold(ty, term) => write!(f, "unfold [{:?}] {}", ty, term),
             ExtKind::Pack(witness, body, sig) => write!(f, "[|pack {{*{:?}, {}}} as {:?} |]", witness, body, sig),
             ExtKind::Unpack(m, n) => write!(f, "unpack {} as {}", m, n),
+            ExtKind::Extended(k) => write!(f, "extended (kind: {:?})", k),
         }
     }
 }

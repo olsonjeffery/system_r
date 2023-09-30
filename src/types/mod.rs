@@ -200,6 +200,7 @@ impl<
         // dbg!(&self.stack);
 
         match term.kind() {
+            ExtKind::Extended(_) => self.type_check_ext(term),
             ExtKind::Lit(Literal::Unit) => Ok(Type::Unit),
             ExtKind::Lit(Literal::Bool(_)) => Ok(Type::Bool),
             ExtKind::Lit(Literal::Nat(_)) => Ok(Type::Nat),
@@ -448,6 +449,9 @@ impl<
                 }
             }
         }
+    }
+    pub fn type_check_ext(&mut self, t: &ExtTerm<TExtPat, TExtKind>) -> Result<Type, Diagnostic> {
+        panic!("Context::type_check_ext unimplemented");
     }
 }
 

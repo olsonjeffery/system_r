@@ -15,11 +15,11 @@ Feature: Extension of system_r
     # Notes: Eval ONLY operates against TExtKind<BottomKind
 
     @wip
-    Scenario: tylet happy path
-        # Add structural type/data-shape capture with the tylet
-        # keyword, all tylet alias application with $TypeName[Of V]
-        # where V is a TyAbs in the tylet value
-        # tylet $TypeAlias = \V. \K {Left V | Right K} in body
+    Scenario: StructData happy path
+        # Add structural type/data-shape capture with the StructData
+        # keyword, all StructData alias application with $TypeName[Of V]
+        # where V is a TyAbs in the StructData value
+        # StructData $TypeAlias = \V. \K {Left V | Right K} in body
         #
         # For this scenario, the below code will convert to
         # vanilla system_r equiv to:
@@ -31,10 +31,10 @@ Feature: Extension of system_r
         # let Some(res) = tripler [Nat] (Some 7 of {None|Some Nat}) (\x: Nat. (x, x, x)) in
         # res ;
 
-        Given a system_r toolchain extended for tylet
+        Given a system_r toolchain extended for StructData
         And a code block:
         """
-tylet $Option = \V {None | Some V} in
+type $Option = \V {None | Some V} in
 let tripler = \X (\c: $Option[of X]. \x: X->(X, X, X). 
 	case c of 
 		| None => None of $Option[of (X, X, X)]
@@ -42,7 +42,7 @@ let tripler = \X (\c: $Option[of X]. \x: X->(X, X, X).
 let Some(res) = tripler [Nat] (Some 7 of $Option[of Nat]) (\x: Nat. (x, x, x)) in
 res ;
         """
-        When it is processed for the tylet extension
+        When it is processed for the StructData extension
         Then the last ext should parse successfully
         #When it is converted to bottom-dialect system_r
         #When eval is ran
@@ -54,9 +54,9 @@ res ;
     #   - As a Uppercase var (we will say NOT a TyAbs, but shouldn't collide w/ local TyAbs, etc)
     #     - maybe leading $ ?
     #     - make all TyAbs leading ? lol?
-    #     - needs to include application, eg tylet $List = X/ { Nil | Cons ($List[of X]) }
+    #     - needs to include application, eg StructData $List = X/ { Nil | Cons ($List[of X]) }
 
-    # Scenario: tylet pattern matching/destructing? more application?
+    # Scenario: StructData pattern matching/destructing? more application?
      
     # Scenario: Exclude/enforce: allow specifying constraints where certain 
     # TokenKinds/Kinds/Types are kept OUT of a Term-tree

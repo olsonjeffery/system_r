@@ -8,7 +8,7 @@ use cucumber::{given, then, when};
 use system_r::{
     diagnostics::Diagnostic,
     extensions::{
-        tylet::{TyLetContext, TyLetExtension, TyLetParser},
+        struct_data::{StructDataContext, StructDataExtension, StructDataParser},
         SystemRExtension,
     },
     terms::ExtTerm, testing, syntax::parser::ExtParser,
@@ -20,7 +20,7 @@ use crate::common::{
     SpecsWorld,
 };
 
-static TYLET_CTX_NAME: &'static str = "TyLet";
+static StructData_CTX_NAME: &'static str = "StructData";
 
 pub fn parse_for_extension<
     's,
@@ -36,11 +36,11 @@ pub fn parse_for_extension<
     testing::operate_parser_for(parser, input)
 }
 
-#[given(regex = r#"^a system_r toolchain extended for tylet"#)]
-fn given_a_new_tylet_context(world: &mut common::SpecsWorld) {
+#[given(regex = r#"^a system_r toolchain extended for StructData"#)]
+fn given_a_new_StructData_context(world: &mut common::SpecsWorld) {
     world
         .contexts
-        .insert(TYLET_CTX_NAME.to_owned(), OmniContext::TyLet(TyLetContext::default()));
+        .insert(StructData_CTX_NAME.to_owned(), OmniContext::StructData(StructDataContext::default()));
 }
 
 #[then("the last ext should parse successfully")]
@@ -48,17 +48,17 @@ fn then_the_last_ext_should_parse_successfully(world: &mut common::SpecsWorld) {
     assert!(world.last_ext_parse_success, "fail msg: {:?}", world.last_ext_parse_msg);
 }
 
-#[when("it is processed for the tylet extension")]
-fn when_it_is_processed_for_tylet(world: &mut common::SpecsWorld) {
+#[when("it is processed for the StructData extension")]
+fn when_it_is_processed_for_StructData(world: &mut common::SpecsWorld) {
     let input = world.code_snippet.clone();
-    let ext = Rc::new(RefCell::new(TyLetExtension {}));
+    let ext = Rc::new(RefCell::new(StructDataExtension {}));
     let pb = world.platform_bindings.clone();
-    let parser = TyLetParser::new(&pb, &input, ext);
+    let parser = StructDataParser::new(&pb, &input, ext);
     let res = parse_for_extension(&input, parser, world);
     let (term, kind) = match res {
         Ok(t) => {
-            let k = OmniKind::TyLet(t.clone().kind);
-            let t = OmniTerm::TyLet(t);
+            let k = OmniKind::StructData(t.clone().kind);
+            let t = OmniTerm::StructData(t);
             (t, k)
         }
         Err(e) => {

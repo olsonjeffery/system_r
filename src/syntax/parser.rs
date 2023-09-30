@@ -224,7 +224,7 @@ impl<
         TLE: Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>,
     > ExtParser<'s, TExtTokenKind, TExtKind, TExtPat, TLE>
 {
-    fn error<T>(&self, kind: ErrorKind<TExtTokenKind>) -> Result<T, Error<TExtTokenKind>> {
+    pub fn error<T>(&self, kind: ErrorKind<TExtTokenKind>) -> Result<T, Error<TExtTokenKind>> {
         Err(Error {
             span: self.token.span,
             tok: self.token.clone(),
@@ -232,7 +232,7 @@ impl<
         })
     }
 
-    fn bump(&mut self) -> ExtTokenKind<TExtTokenKind> {
+    pub fn bump(&mut self) -> ExtTokenKind<TExtTokenKind> {
         let prev = std::mem::replace(&mut self.token, self.lexer.lex());
         self.span = prev.span;
         prev.kind
@@ -481,7 +481,7 @@ impl<
         }
     }
 
-    fn uppercase_id(&mut self) -> Result<String, Error<TExtTokenKind>> {
+    pub fn uppercase_id(&mut self) -> Result<String, Error<TExtTokenKind>> {
         match self.bump() {
             ExtTokenKind::Uppercase(s) => Ok(s),
             tk => {
@@ -698,8 +698,9 @@ impl<
         ))
     }
 
-    fn atom(&mut self) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
+    pub fn atom(&mut self) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
         match self.kind() {
+            ExtTokenKind::Extended(tk) => self.ext_atom(),
             ExtTokenKind::LParen => self.paren(),
             ExtTokenKind::Fix => self.fix(),
             ExtTokenKind::Fold => self.fold(),
@@ -787,11 +788,27 @@ impl<
         Ok(app)
     }
 
+    pub fn ext_atom(&mut self) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
+        let r = {
+            let mut p_clone = self.clone();
+            let mut ext_bottom = self.extension.borrow_mut();
+            match ext_bottom.parser_ext_atom(&mut p_clone) {
+                Err(e) => {
+                    p_clone.diagnostic.emit();
+                    return Err(e)
+                },
+                Ok(t) => t,
+            }
+        };
+        // FIXME: consume returned parser (p) and integrate into state;
+        return Ok(r);
+    }
+
     fn ext_parse(&mut self) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
         let r = {
             let mut p_clone = self.clone();
             let mut ext_bottom = self.extension.borrow_mut();
-            match ext_bottom.parser_use_top_level_ext(&mut p_clone) {
+            match ext_bottom.parser_ext_parse(&mut p_clone) {
                 Err(e) => {
                     p_clone.diagnostic.emit();
                     return Err(e)
@@ -808,7 +825,7 @@ impl<
             ExtTokenKind::Case => self.case(),
             ExtTokenKind::Lambda => self.lambda(),
             ExtTokenKind::Let => self.letexpr(),
-            ExtTokenKind::Extended(tk) if self.extension.borrow().parser_has_top_level_ext(&tk) => self.ext_parse(),
+            ExtTokenKind::Extended(tk) if self.extension.borrow().parser_has_ext_parse(&tk) => self.ext_parse(),
             _ => self.application(),
         }
     }

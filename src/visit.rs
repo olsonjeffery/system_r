@@ -198,9 +198,14 @@ pub trait MutTermVisitor<
         self.walk(term);
     }
 
+    fn visit_ext(&mut self, sp: &mut Span, k: &mut TExtKind) {
+        panic!("visit_ext unimpl; shouldn't be left this way lol..")
+    }
+
     fn walk(&mut self, term: &mut ExtTerm<TExtPat, TExtKind>) {
         let sp = &mut term.span;
         match &mut term.kind {
+            ExtKind::Extended(k) => self.visit_ext(sp, k),
             ExtKind::Lit(l) => self.visit_lit(sp, l),
             ExtKind::Var(v) => self.visit_var(sp, v),
             ExtKind::PlatformBinding(v) => self.visit_pb(sp, v),

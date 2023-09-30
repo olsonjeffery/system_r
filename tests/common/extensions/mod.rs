@@ -1,5 +1,5 @@
 use system_r::{
-    extensions::tylet::{TyLetContext, TyLetKind, TyLetParser, TyLetPattern},
+    extensions::struct_data::{StructDataContext, StructDataKind, StructDataParser, StructDataPattern},
     platform_bindings::PlatformBindings,
     syntax::parser::Parser,
     terms::{ExtKind, ExtTerm, Kind, Term},
@@ -11,7 +11,7 @@ pub enum OmniContext {
     #[default]
     Empty,
     Bottom(Context),
-    TyLet(TyLetContext),
+    StructData(StructDataContext),
 }
 
 #[allow(dead_code)]
@@ -20,7 +20,7 @@ pub enum OmniParser<'s> {
     #[default]
     Empty,
     Bottom(Parser<'s>),
-    TyLet(TyLetParser<'s>),
+    StructData(StructDataParser<'s>),
 }
 
 impl OmniContext {
@@ -28,7 +28,7 @@ impl OmniContext {
         match self {
             OmniContext::Empty => todo!(),
             OmniContext::Bottom(ctx) => ctx.platform_bindings = pb,
-            OmniContext::TyLet(_) => todo!(),
+            OmniContext::StructData(_) => todo!(),
         }
     }
 }
@@ -39,7 +39,7 @@ pub enum OmniKind {
     Empty,
     #[allow(dead_code)]
     Bottom(Kind),
-    TyLet(ExtKind<TyLetPattern, TyLetKind>),
+    StructData(ExtKind<StructDataPattern, StructDataKind>),
 }
 
 #[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
@@ -48,5 +48,5 @@ pub enum OmniTerm {
     Empty,
     #[allow(dead_code)]
     Bottom(Term),
-    TyLet(ExtTerm<TyLetPattern, TyLetKind>),
+    StructData(ExtTerm<StructDataPattern, StructDataKind>),
 }
