@@ -17,7 +17,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
-use crate::{extensions::{SystemRExtension, ParserOp}, patterns::ExtPattern, terms::{ExtTerm, ExtKind}, syntax::{parser::{Error, ErrorKind, ExtParser}, lexer::ExtLexer}, system_r_util::span::Span, diagnostics::Diagnostic};
+use crate::{extensions::{SystemRExtension, ParserOp}, patterns::ExtPattern, terms::{ExtTerm, ExtKind}, syntax::{parser::{Error, ErrorKind, ExtParser}, lexer2::ExtLexer}, system_r_util::span::Span, diagnostics::Diagnostic};
 
 #[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
 pub enum BottomTokenKind {

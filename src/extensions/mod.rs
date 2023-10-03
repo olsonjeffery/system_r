@@ -1,6 +1,6 @@
 use core::fmt;
 
-use crate::{patterns::ExtPattern, terms::ExtTerm, types::Type, syntax::{parser::{Error, ExtParser}, ExtToken, lexer::{Lexer, ExtLexer}}, diagnostics::Diagnostic};
+use crate::{patterns::ExtPattern, terms::ExtTerm, types::Type, syntax::{parser::{Error, ExtParser}, ExtToken, lexer2::{Lexer, ExtLexer}}, diagnostics::Diagnostic};
 
 pub mod struct_data;
 
