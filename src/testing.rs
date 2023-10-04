@@ -1,8 +1,4 @@
-use core::fmt;
-
-use crate::bottom::BottomTokenKind;
-use crate::extensions::SystemRExtension;
-use crate::syntax::parser::ExtParser;
+use crate::syntax::parser::ParserState;
 /*
 Copyright (C) 2023 AUTHORS
 
@@ -23,14 +19,21 @@ along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 use crate::system_r_util::span::Span;
+use core::fmt;
+
+use crate::bottom::BottomTokenKind;
+use crate::extensions::SystemRExtension;
 
 use crate::{
     bottom::{BottomExtension, BottomKind, BottomPattern},
     diagnostics::Diagnostic,
     eval,
     platform_bindings::PlatformBindings,
-    syntax::parser,
-    syntax::parser::Parser,
+    syntax::{
+        error::Error,
+        parser::{ErrorKind},
+        parser,
+    },
     terms::{visit::InjRewriter, ExtTerm, Term},
     types::{self, Type},
     visit::MutTermVisitor,
@@ -81,24 +84,25 @@ pub fn dealias_and_type_check_term(
     type_check_term(ctx, term)
 }
 
-pub fn operate_parser_for<
+pub fn operate_parser_for<'s,
     TExtTokenKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
     TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
     TEXtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TLE: Default + Clone + SystemRExtension<TExtTokenKind, TExtKind, TEXtPat>,
+    TExt: Default + Copy+ Clone + SystemRExtension<TExtTokenKind, TExtKind, TEXtPat>,
 >(
-    mut parser: ExtParser<'_, TExtTokenKind, TExtKind, TEXtPat, TLE>,
     input: &str,
+    ps: &mut ParserState<'s, TExtTokenKind, TExtKind, TEXtPat>,
+    ext: &mut TExt,
 ) -> Result<ExtTerm<TEXtPat, TExtKind>, Diagnostic> {
-    return match parser.parse() {
+    return match parser::parse(ps, ext) {
         Ok(term) => Ok(term),
-        Err(parser::Error {
-            kind: parser::ErrorKind::Eof,
+        Err(Error {
+            kind: ErrorKind::Eof,
             ..
         }) => return Err(Diagnostic::error(Span::default(), "Unexpected EOF")),
         Err(e) => {
             //dbg!(e);
-            let diagnostic_message = parser.diagnostic().emit();
+            let diagnostic_message = parser::diagnostic(ps.clone()).emit();
             let msg = format!("operate ERROR {:?}\r\nDIAGNOSTIC: {:?}", e.clone(), diagnostic_message);
             return Err(Diagnostic::error(Span::default(), msg));
         }
@@ -109,17 +113,22 @@ pub fn parse_single_block(
     platform_bindings: &PlatformBindings,
     input: &str,
 ) -> Result<ExtTerm<BottomPattern, BottomKind>, Diagnostic> {
-    let mut p = Parser::new(platform_bindings, input);
-    return match p.parse() {
+    let mut ps = parser::new(platform_bindings, input);
+    let mut ext = BottomExtension;
+    return match parser::parse(&mut ps, &mut ext) {
         Ok(term) => Ok(term),
-        Err(parser::Error {
-            kind: parser::ErrorKind::Eof,
+        Err(Error {
+            kind: ErrorKind::Eof,
             ..
         }) => return Err(Diagnostic::error(Span::default(), "Unexpected EOF")),
         Err(e) => {
             //dbg!(e);
-            let diagnostic_message = p.diagnostic().emit();
-            let msg = format!("bottom parse ERROR {:?}\r\nDIAGNOSTIC: {:?}", e.clone(), diagnostic_message);
+            let diagnostic_message = parser::diagnostic(ps).emit();
+            let msg = format!(
+                "bottom parse ERROR {:?}\r\nDIAGNOSTIC: {:?}",
+                e.clone(),
+                diagnostic_message
+            );
             return Err(Diagnostic::error(Span::default(), msg));
         }
     };

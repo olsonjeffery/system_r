@@ -39,82 +39,25 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
-//! Extended Lexical analysis and recursive descent parser for System F
-pub mod error;
-pub mod debruijn;
-pub mod lexer;
-pub mod parser;
+use core::fmt;
+
 use crate::system_r_util::span::Span;
 
-#[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
-pub enum ExtTokenKind<TExtTokenKind: PartialEq> {
-    Uppercase(String),
-    Lowercase(String),
-    Nat(u32),
-    TyNat,
-    TyBool,
-    TyArrow,
-    TyUnit,
-    #[default]
-    Unit,
-    True,
-    False,
-    Lambda,
-    Forall,
-    Exists,
-    As,
-    Pack,
-    Unpack,
-    Succ,
-    Pred,
-    If,
-    Then,
-    Else,
-    Let,
-    In,
-    IsZero,
-    Semicolon,
-    Colon,
-    Comma,
-    Proj,
-    LParen,
-    RParen,
-    LBrace,
-    RBrace,
-    LSquare,
-    RSquare,
-    Equals,
-    Bar,
-    Wildcard,
-    Gt,
-    Case,
-    Of,
-    Fix,
-    Fold,
-    Unfold,
-    Rec,
-    Invalid(char),
-    Dummy,
-    Eof,
-    Tag(String),
-    Extended(TExtTokenKind),
-}
+use super::{ExtToken, parser::ErrorKind};
 
-#[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
-pub struct ExtToken<TExtTokenKind: Sized + Clone + Default + PartialEq> {
-    pub kind: ExtTokenKind<TExtTokenKind>,
+
+
+#[derive(Clone)]
+pub struct Error<TExtTokenKind: PartialEq + Default + Sized + Clone> {
     pub span: Span,
+    pub tok: ExtToken<TExtTokenKind>,
+    pub kind: ErrorKind<TExtTokenKind>,
 }
 
-impl<TExtTokenKind: Default + PartialEq + Sized + Clone> ExtToken<TExtTokenKind> {
-    pub const fn dummy() -> ExtToken<TExtTokenKind> {
-        ExtToken {
-            kind: ExtTokenKind::Dummy,
-            span: Span::zero(),
-        }
-    }
-
-    pub const fn new(kind: ExtTokenKind<TExtTokenKind>, span: Span) -> ExtToken<TExtTokenKind> {
-        ExtToken { kind, span }
+impl<TExtTokenKind: Default + Sized + Clone + PartialEq + fmt::Debug> fmt::Debug for Error<TExtTokenKind> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Error")
+            .field("kind", &format!("{:?}", self.kind))
+            .finish()
     }
 }

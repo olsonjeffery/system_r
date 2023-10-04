@@ -39,82 +39,38 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
-//! Extended Lexical analysis and recursive descent parser for System F
-pub mod error;
-pub mod debruijn;
-pub mod lexer;
-pub mod parser;
-use crate::system_r_util::span::Span;
+use std::collections::VecDeque;
 
-#[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
-pub enum ExtTokenKind<TExtTokenKind: PartialEq> {
-    Uppercase(String),
-    Lowercase(String),
-    Nat(u32),
-    TyNat,
-    TyBool,
-    TyArrow,
-    TyUnit,
-    #[default]
-    Unit,
-    True,
-    False,
-    Lambda,
-    Forall,
-    Exists,
-    As,
-    Pack,
-    Unpack,
-    Succ,
-    Pred,
-    If,
-    Then,
-    Else,
-    Let,
-    In,
-    IsZero,
-    Semicolon,
-    Colon,
-    Comma,
-    Proj,
-    LParen,
-    RParen,
-    LBrace,
-    RBrace,
-    LSquare,
-    RSquare,
-    Equals,
-    Bar,
-    Wildcard,
-    Gt,
-    Case,
-    Of,
-    Fix,
-    Fold,
-    Unfold,
-    Rec,
-    Invalid(char),
-    Dummy,
-    Eof,
-    Tag(String),
-    Extended(TExtTokenKind),
+#[derive(Clone, Debug, Default)]
+pub struct DeBruijnIndexer {
+    inner: VecDeque<String>,
 }
 
-#[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
-pub struct ExtToken<TExtTokenKind: Sized + Clone + Default + PartialEq> {
-    pub kind: ExtTokenKind<TExtTokenKind>,
-    pub span: Span,
-}
-
-impl<TExtTokenKind: Default + PartialEq + Sized + Clone> ExtToken<TExtTokenKind> {
-    pub const fn dummy() -> ExtToken<TExtTokenKind> {
-        ExtToken {
-            kind: ExtTokenKind::Dummy,
-            span: Span::zero(),
-        }
+impl DeBruijnIndexer {
+    pub fn push(&mut self, hint: String) -> usize {
+        let idx = self.inner.len();
+        self.inner.push_front(hint);
+        idx
     }
 
-    pub const fn new(kind: ExtTokenKind<TExtTokenKind>, span: Span) -> ExtToken<TExtTokenKind> {
-        ExtToken { kind, span }
+    pub fn pop(&mut self) {
+        self.inner.pop_front();
+    }
+
+    pub fn lookup(&self, key: &str) -> Option<usize> {
+        for (idx, s) in self.inner.iter().enumerate() {
+            if key == s {
+                return Some(idx);
+            }
+        }
+        None
+    }
+
+    pub fn len(&self) -> usize {
+        self.inner.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }

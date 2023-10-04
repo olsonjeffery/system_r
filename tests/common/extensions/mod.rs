@@ -1,9 +1,8 @@
 use system_r::{
-    extensions::struct_data::{StructDataContext, StructDataKind, StructDataParser, StructDataPattern},
+    extensions::struct_data::{StructDataContext, StructDataKind, StructDataPattern, StructDataTokenKind},
     platform_bindings::PlatformBindings,
-    syntax::parser::Parser,
     terms::{ExtKind, ExtTerm, Kind, Term},
-    types::Context,
+    types::Context, syntax::parser::ParserState, bottom::{BottomTokenKind, BottomKind, BottomPattern},
 };
 
 #[derive(Clone, Default, Debug)]
@@ -19,8 +18,8 @@ pub enum OmniContext {
 pub enum OmniParser<'s> {
     #[default]
     Empty,
-    Bottom(Parser<'s>),
-    StructData(StructDataParser<'s>),
+    Bottom(ParserState<'s, BottomTokenKind, BottomKind, BottomPattern>),
+    StructData(ParserState<'s, StructDataTokenKind, StructDataKind, StructDataPattern>),
 }
 
 impl OmniContext {

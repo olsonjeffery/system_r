@@ -17,7 +17,17 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
-use crate::{extensions::{SystemRExtension, ParserOp}, patterns::ExtPattern, terms::{ExtTerm, ExtKind}, syntax::{parser::{Error, ErrorKind, ExtParser}, lexer2::ExtLexer}, system_r_util::span::Span, diagnostics::Diagnostic};
+use crate::{
+    diagnostics::Diagnostic,
+    extensions::{ParserOp, SystemRExtension},
+    patterns::ExtPattern,
+    syntax::{
+        lexer::ExtLexer, /* lexer2::extlexer2 */
+        error::Error,
+    },
+    system_r_util::span::Span,
+    terms::{ExtKind, ExtTerm},
+};
 
 #[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
 pub enum BottomTokenKind {
@@ -37,7 +47,7 @@ pub enum BottomPattern {
     Placeholder,
 }
 
-#[derive(Clone, Default, Debug)]
+#[derive(Copy, Clone, Default, Debug)]
 pub struct BottomExtension;
 
 impl SystemRExtension<BottomTokenKind, BottomKind, BottomPattern> for BottomExtension {
@@ -78,18 +88,24 @@ impl SystemRExtension<BottomTokenKind, BottomKind, BottomPattern> for BottomExte
     }
 
     fn parser_has_ext_parse(&self, tk: &BottomTokenKind) -> bool {
-        false 
-    }
-
-    fn parser_ext_parse<'s>(&mut self, parser: &mut ExtParser<'s, BottomTokenKind, BottomKind, BottomPattern, Self>) -> Result<ExtTerm<BottomPattern, BottomKind>, Error<BottomTokenKind>> {
-        panic!("should never be called")
+        false
     }
 
     fn parser_has_ext_atom(&self, tk: &BottomTokenKind) -> bool {
         false
     }
 
-    fn parser_ext_atom<'s>(&mut self, parser: &mut ExtParser<'s, BottomTokenKind, BottomKind, BottomPattern, Self>) -> Result<ExtTerm<BottomPattern, BottomKind>, Error<BottomTokenKind>> {
-        panic!("should never be called")
+    fn parser_ext_parse<'s>(
+        &mut self,
+        ps: &mut crate::syntax::parser::ParserState<BottomTokenKind, BottomKind, BottomPattern>,
+    ) -> Result<ExtTerm<BottomPattern, BottomKind>, Error<BottomTokenKind>> {
+        panic!("shouldn't be called");
+    }
+
+    fn parser_ext_atom<'s>(
+        &mut self,
+        ps: &mut crate::syntax::parser::ParserState<BottomTokenKind, BottomKind, BottomPattern>,
+    ) -> Result<ExtTerm<BottomPattern, BottomKind>, Error<BottomTokenKind>> {
+        panic!("shouldn't be called");
     }
 }

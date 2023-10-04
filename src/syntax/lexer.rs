@@ -52,7 +52,7 @@ use std::iter::Peekable;
 use std::rc::Rc;
 use std::str::Chars;
 
-pub type Lexer<'s> = ExtLexer<'s, BottomTokenKind, BottomExtension, BottomPattern, BottomExtension>;
+pub type Lexer<'s> = ExtLexer<'s, BottomTokenKind, BottomExtension, BottomPattern>;
 
 #[derive(Clone, Debug)]
 pub struct ExtLexer<
@@ -60,11 +60,9 @@ pub struct ExtLexer<
     TExtTokenKind: PartialOrd + PartialEq + Default + fmt::Debug + Clone,
     TExtKind: PartialOrd + PartialEq + Default + fmt::Debug + Clone,
     TExtPattern: PartialOrd + PartialEq + Default + fmt::Debug + Clone,
-    TLE: ?Sized + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern>,
 > {
     input: Peekable<Chars<'s>>,
     current: Location,
-    extension: Rc<RefCell<TLE>>,
     _token: TExtTokenKind,
     _kind: TExtKind,
     _pat: TExtPattern,
@@ -75,14 +73,12 @@ impl<
         TExtTokenKind: PartialEq + PartialOrd + Default + fmt::Debug + Clone,
         TExtKind: PartialEq + PartialOrd + Default + fmt::Debug + Clone,
         TExtPattern: PartialEq + PartialOrd + Default + fmt::Debug + Clone,
-        TLE: Default + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern>,
-    > Default for ExtLexer<'s, TExtTokenKind, TExtKind, TExtPattern, TLE>
+    > Default for ExtLexer<'s, TExtTokenKind, TExtKind, TExtPattern>
 {
     fn default() -> Self {
         Self {
             input: "".chars().peekable(),
             current: Default::default(),
-            extension: Rc::new(RefCell::new(TLE::default())),
             _token: Default::default(),
             _kind: TExtKind::default(),
             _pat: Default::default(),
@@ -102,10 +98,9 @@ impl<
         TExtTokenKind: PartialEq + PartialOrd + Default + Clone + fmt::Debug,
         TExtKind: PartialEq + PartialOrd + Default + Clone + fmt::Debug,
         TExtPattern: PartialEq + PartialOrd + Default + Clone + fmt::Debug,
-        TLE: Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern>,
-    > ExtLexer<'s, TExtTokenKind, TExtKind, TExtPattern, TLE>
+    > ExtLexer<'s, TExtTokenKind, TExtKind, TExtPattern>
 {
-    pub fn new(input: Chars<'s>, extension: Rc<RefCell<TLE>>) -> ExtLexer<'s, TExtTokenKind, TExtKind, TExtPattern, TLE> {
+    pub fn new(input: Chars<'s>) -> ExtLexer<'s, TExtTokenKind, TExtKind, TExtPattern> {
         ExtLexer {
             input: input.peekable(),
             current: Location {
@@ -113,7 +108,6 @@ impl<
                 col: 0,
                 abs: 0,
             },
-            extension,
             _token: TExtTokenKind::default(),
             _kind: TExtKind::default(),
             _pat: Default::default(),
@@ -188,19 +182,24 @@ impl<
         ExtToken::new(kind, span)
     }
 
-    fn extended_single(&mut self) -> ExtToken<TExtTokenKind> {
-        let ext = self.extension.clone();
-        let (data, span) = self.consume_while(|ch| ext.borrow_mut().lex_is_extended_single_pred(ch));
-        let kind = self.extension.borrow_mut().lex_extended_single(&data);
+    fn extended_single<TExt: Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern>>(
+        &mut self,
+        ext: &mut TExt,
+    ) -> ExtToken<TExtTokenKind> {
+        let (data, span) = self.consume_while(|ch| ext.lex_is_extended_single_pred(ch));
+        let kind = ext.lex_extended_single(&data);
         ExtToken::new(ExtTokenKind::Extended(kind), span)
     }
+    //TLE: Default + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern>,
 
     /// Lex a reserved keyword or an identifier
-    fn keyword(&mut self) -> ExtToken<TExtTokenKind> {
+    fn keyword<TExt: Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern>>(
+        &mut self,
+        ext: &mut TExt,
+    ) -> ExtToken<TExtTokenKind> {
         let (data, span) = self.consume_while(|ch| ch.is_ascii_alphanumeric());
         let kind = match data.as_ref() {
-            data if self.extension.borrow().lex_is_ext_keyword(data) => 
-                ExtTokenKind::Extended(self.extension.borrow_mut().lex_ext_keyword(data)),
+            data if ext.lex_is_ext_keyword(data) => ExtTokenKind::Extended(ext.lex_ext_keyword(data)),
             "if" => ExtTokenKind::If,
             "then" => ExtTokenKind::Then,
             "else" => ExtTokenKind::Else,
@@ -253,16 +252,19 @@ impl<
     }
 
     /// Return the next lexeme in the input as a [`Token`]
-    pub fn lex(&mut self) -> ExtToken<TExtTokenKind> {
+    pub fn lex<TExt: Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern>>(
+        &mut self,
+        ext: &mut TExt,
+    ) -> ExtToken<TExtTokenKind> {
         self.consume_delimiter();
         let next = match self.peek() {
             Some(ch) => ch,
             None => return ExtToken::new(ExtTokenKind::Eof, Span::new(self.current, self.current)),
         };
         match next {
-            x if self.extension.borrow().lex_is_ext_single(x) => self.extended_single(),
+            x if ext.lex_is_ext_single(x) => self.extended_single(ext),
             x if is_tag(x) => self.tag(),
-            x if x.is_ascii_alphabetic() => self.keyword(),
+            x if x.is_ascii_alphabetic() => self.keyword(ext),
             x if x.is_numeric() => self.number(),
             '(' => self.eat('(', ExtTokenKind::LParen),
             ')' => self.eat(')', ExtTokenKind::RParen),
@@ -296,12 +298,13 @@ impl<
         TExtTokenKind: PartialEq + PartialOrd + Default + Clone + fmt::Debug,
         TExtKind: PartialEq + PartialOrd + Default + Clone + fmt::Debug,
         TExtPattern: PartialEq + PartialOrd + Default + Clone + fmt::Debug,
-        TLE: Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern>,
-    > Iterator for ExtLexer<'s, TExtTokenKind, TExtKind, TExtPattern, TLE>
+    > ExtLexer<'s, TExtTokenKind, TExtKind, TExtPattern>
 {
-    type Item = ExtToken<TExtTokenKind>;
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.lex() {
+    fn next<TExt: Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern>>(
+        &mut self,
+        ext: &mut TExt,
+    ) -> Option<ExtToken<TExtTokenKind>> {
+        match self.lex::<TExt>(ext) {
             ExtToken {
                 kind: ExtTokenKind::Eof,
                 ..
@@ -313,20 +316,31 @@ impl<
 
 #[cfg(test)]
 mod test {
-    use crate::bottom::{BottomExtension, BottomTokenKind};
+    use crate::bottom::{BottomExtension, BottomKind, BottomTokenKind};
 
     use super::*;
     use ExtTokenKind::*;
+
+    fn get_tokens_from<'s>(input: &'s str) -> Vec<ExtTokenKind<BottomTokenKind>> {
+        let mut stub_ext = BottomExtension;
+        let mut ret_val = Vec::new();
+        let mut lexer: ExtLexer<'s, BottomTokenKind, BottomKind, BottomPattern> = ExtLexer::new(input.chars());
+
+        let mut next_token = lexer.next(&mut stub_ext);
+        while next_token.is_some() {
+            ret_val.push(next_token.unwrap().kind);
+            next_token = lexer.next(&mut stub_ext);
+        }
+
+        ret_val
+    }
+
     #[test]
     fn nested() {
         let input = "succ(succ(succ(0)))";
 
         let expected = vec![Succ, LParen, Succ, LParen, Succ, LParen, Nat(0), RParen, RParen, RParen];
-        let stub_ext = BottomExtension;
-        let output = ExtLexer::new(input.chars(), Rc::new(RefCell::new(stub_ext)))
-            .into_iter()
-            .map(|t| t.kind)
-            .collect::<Vec<ExtTokenKind<BottomTokenKind>>>();
+        let output = get_tokens_from(input);
         assert_eq!(expected, output);
     }
 
@@ -357,11 +371,7 @@ mod test {
             Lowercase("x".into()),
             RParen,
         ];
-        let stub_ext = BottomExtension;
-        let output = ExtLexer::new(input.chars(), Rc::new(RefCell::new(stub_ext)))
-            .into_iter()
-            .map(|t| t.kind)
-            .collect::<Vec<ExtTokenKind<BottomTokenKind>>>();
+        let output = get_tokens_from(input);
         assert_eq!(expected, output);
     }
 }

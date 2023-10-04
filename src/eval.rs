@@ -40,7 +40,6 @@ along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-
 use crate::bottom::{BottomExtension, BottomKind, BottomPattern};
 use crate::diagnostics::Diagnostic;
 use crate::patterns::{ExtPattern, Pattern};
@@ -123,12 +122,10 @@ impl<'ctx> Eval<'ctx> {
                             _ => panic!("unable to get platform_binding with idx after parsing; shouldn't happen"),
                         },
                         ExtKind::Primitive(p) => self.eval_primitive(p, *t2),
-                        _ => {
-                            match self.small_step(*t1)? {
-                                Some(t) => Ok(Some(ExtTerm::new(ExtKind::App(Box::new(t), t2), term.span))),
-                                None => Ok(None),
-                            }
-                        }
+                        _ => match self.small_step(*t1)? {
+                            Some(t) => Ok(Some(ExtTerm::new(ExtKind::App(Box::new(t), t2), term.span))),
+                            None => Ok(None),
+                        },
                     }
                 } else if Eval::normal_form(&t1) {
                     // t1 is in normal form, but t2 is not, so we will
@@ -169,9 +166,7 @@ impl<'ctx> Eval<'ctx> {
                 _ => {
                     let t_prime = self.small_step(*tm)?;
                     match t_prime {
-                        Some(t_prime) => {
-                            Ok(Some(ExtTerm::new(ExtKind::TyApp(Box::new(t_prime), ty), term.span)))
-                        }
+                        Some(t_prime) => Ok(Some(ExtTerm::new(ExtKind::TyApp(Box::new(t_prime), ty), term.span))),
                         None => Ok(None),
                     }
                 }

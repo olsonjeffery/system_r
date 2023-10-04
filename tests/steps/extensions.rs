@@ -1,17 +1,18 @@
 extern crate cucumber;
 
 use core::fmt;
-use std::{rc::Rc, cell::RefCell};
+use std::{cell::RefCell, rc::Rc};
 
 use cucumber::{given, then, when};
 
 use system_r::{
     diagnostics::Diagnostic,
     extensions::{
-        struct_data::{StructDataContext, StructDataExtension, StructDataParser},
+        struct_data::{StructDataContext, StructDataExtension},
         SystemRExtension,
     },
-    terms::ExtTerm, testing, syntax::parser::ExtParser,
+    terms::ExtTerm,
+    testing, syntax::parser::{ParserState, self},
 };
 
 use crate::common::{
@@ -27,20 +28,21 @@ pub fn parse_for_extension<
     TExtTokenKind: fmt::Debug + Default + Clone + PartialEq + PartialOrd,
     TExtKind: fmt::Debug + Default + Clone + PartialEq + PartialOrd,
     TEXtPat: fmt::Debug + Default + Clone + PartialEq + PartialOrd,
-    TLE: Default + Clone + SystemRExtension<TExtTokenKind, TExtKind, TEXtPat>,
+    TLE: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TEXtPat>,
 >(
     input: &str,
-    parser: ExtParser<TExtTokenKind, TExtKind, TEXtPat, TLE>,
-    _world: &mut SpecsWorld,
+    ps: &mut ParserState<'s, TExtTokenKind, TExtKind, TEXtPat>,
+    ext: &mut TLE,
 ) -> Result<ExtTerm<TEXtPat, TExtKind>, Diagnostic> {
-    testing::operate_parser_for(parser, input)
+    testing::operate_parser_for(input, ps, ext)
 }
 
 #[given(regex = r#"^a system_r toolchain extended for StructData"#)]
 fn given_a_new_StructData_context(world: &mut common::SpecsWorld) {
-    world
-        .contexts
-        .insert(StructData_CTX_NAME.to_owned(), OmniContext::StructData(StructDataContext::default()));
+    world.contexts.insert(
+        StructData_CTX_NAME.to_owned(),
+        OmniContext::StructData(StructDataContext::default()),
+    );
 }
 
 #[then("the last ext should parse successfully")]
@@ -51,10 +53,10 @@ fn then_the_last_ext_should_parse_successfully(world: &mut common::SpecsWorld) {
 #[when("it is processed for the StructData extension")]
 fn when_it_is_processed_for_StructData(world: &mut common::SpecsWorld) {
     let input = world.code_snippet.clone();
-    let ext = Rc::new(RefCell::new(StructDataExtension {}));
+    let mut ext = StructDataExtension;
     let pb = world.platform_bindings.clone();
-    let parser = StructDataParser::new(&pb, &input, ext);
-    let res = parse_for_extension(&input, parser, world);
+    let mut parser = parser::ext_new(&pb, &input, &mut ext);
+    let res = parse_for_extension(&input, &mut parser, &mut ext);
     let (term, kind) = match res {
         Ok(t) => {
             let k = OmniKind::StructData(t.clone().kind);

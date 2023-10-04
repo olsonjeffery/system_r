@@ -1,37 +1,46 @@
-use std::{rc::Rc, cell::RefCell};
+use std::{cell::RefCell, rc::Rc};
 
 use crate::{
-    bottom::{BottomKind, BottomPattern, BottomTokenKind},
+    bottom::{BottomKind, BottomPattern, BottomTokenKind, BottomExtension},
+    diagnostics::Diagnostic,
+    patterns::PatVarStack,
     platform_bindings::PlatformBindings,
-    syntax::{parser::{ExtParser, Error, ErrorKind}, ExtTokenKind},
-    types::{ExtContext, Type}, terms::{ExtTerm, ExtKind},
-    diagnostics::Diagnostic, system_r_util::span::Span, patterns::PatVarStack,
+    syntax::{
+        parser,
+        parser::{ErrorKind, ParserState},
+        error::Error,
+        ExtTokenKind,
+    },
+    system_r_util::span::Span,
+    terms::{ExtKind, ExtTerm},
+    types::{ExtContext, Type},
 };
 
-use super::{SystemRExtension, ParserOp, ParserOpCompletion};
+use super::{ParserOp, ParserOpCompletion, SystemRExtension};
 
-#[derive(Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct StructDataExtension;
 
-impl StructDataExtension {
-    fn struct_data_bind<'s>(&mut self, parser: &mut StructDataParser<'s>) -> Result<ExtTerm<StructDataPattern, StructDataKind>, Error<StructDataTokenKind>> {
-        // struct decl contents
-        let tyvar = parser.uppercase_id()?;
-        let sp = parser.span;
-        let ty = Box::new(Type::Var(parser.tyvar.push(tyvar)));
-        let body = parser.once(|p| p.parse(), "abstraction body required")?;
-        Ok(ExtTerm::new(ExtKind::TyAbs(Box::new(body)), sp + parser.span))
-    }
+pub fn struct_data_bind<'s>(
+    ps: &mut ParserState<'s, StructDataTokenKind, StructDataKind, StructDataPattern>,
+) -> Result<ExtTerm<StructDataPattern, StructDataKind>, Error<StructDataTokenKind>> {
+    // struct decl contents
+    let tyvar = parser::uppercase_id(ps, &mut StructDataExtension)?;
+    let sp = ps.span;
+    let ty = Box::new(Type::Var(ps.tyvar.push(tyvar)));
+    let body = parser::once(ps, |p| parser::parse(p, &mut StructDataExtension), "abstraction body required")?;
+    Ok(ExtTerm::new(ExtKind::TyAbs(Box::new(body)), sp + ps.span))
 }
 
 pub type StructDataContext = ExtContext<StructDataTokenKind, StructDataKind, StructDataPattern, StructDataExtension>;
 
-pub type StructDataParser<'s> = ExtParser<'s, StructDataTokenKind, StructDataKind, StructDataPattern, StructDataExtension>;
 
-impl<'s> StructDataParser<'s> {
-    pub fn new(platform_bindings: &'s PlatformBindings, input: &'s str, ty_let: Rc<RefCell<StructDataExtension>>) -> StructDataParser<'s> {
-        ExtParser::ext_new(platform_bindings, input, ty_let)
-    }
+pub fn new<'s>(
+    platform_bindings: &'s PlatformBindings,
+    input: &'s str,
+    ty_let: Rc<RefCell<StructDataExtension>>,
+) -> ParserState<'s, StructDataTokenKind, StructDataKind, StructDataPattern> {
+    parser::ext_new(platform_bindings, input, &mut StructDataExtension)
 }
 
 /// Extension 1: StructData
@@ -50,8 +59,13 @@ pub enum StructDataKind {
     #[default]
     Empty,
     StructIdent(String),
-    /// fields: struct identifier with leading $, type shape, struct scope body (in let-polymorphism style)
-    StructDataExpr(String, Box<ExtTerm<StructDataPattern, Self>>, Box<ExtTerm<StructDataPattern, Self>>),
+    /// fields: struct identifier with leading $, type shape, struct scope body
+    /// (in let-polymorphism style)
+    StructDataExpr(
+        String,
+        Box<ExtTerm<StructDataPattern, Self>>,
+        Box<ExtTerm<StructDataPattern, Self>>,
+    ),
     Below(BottomKind),
 }
 
@@ -100,7 +114,11 @@ impl SystemRExtension<StructDataTokenKind, StructDataKind, StructDataPattern> fo
         false
     }
 
-    fn pat_ext_matches(&self, pat: &StructDataPattern, term: &crate::terms::ExtTerm<StructDataPattern, StructDataKind>) -> bool {
+    fn pat_ext_matches(
+        &self,
+        pat: &StructDataPattern,
+        term: &crate::terms::ExtTerm<StructDataPattern, StructDataKind>,
+    ) -> bool {
         false
     }
 
@@ -108,31 +126,45 @@ impl SystemRExtension<StructDataTokenKind, StructDataKind, StructDataPattern> fo
         tk == &StructDataTokenKind::StructData
     }
 
-    fn parser_ext_parse<'s>(&mut self, parser: &mut StructDataParser<'s>) -> Result<ExtTerm<StructDataPattern, StructDataKind>, Error<StructDataTokenKind>> {
-        let sp = parser.span;
-        parser.expect(ExtTokenKind::Extended(StructDataTokenKind::StructData))?;
+    fn parser_ext_parse<'s>(
+        &mut self,
+        ps: &mut ParserState<'s, StructDataTokenKind, StructDataKind, StructDataPattern>,
+    ) -> Result<ExtTerm<StructDataPattern, StructDataKind>, Error<StructDataTokenKind>> {
+        let sp = ps.span;
+        parser::expect(ps, self, ExtTokenKind::Extended(StructDataTokenKind::StructData))?;
 
-        let struct_ident = parser.once(|p| p.ext_atom(), "missing struct identifier $Binding")?;
+        let struct_ident = parser::once(ps, |p| parser::ext_atom(p, self), "missing struct identifier $Binding")?;
         let struct_ident = match struct_ident.kind {
             ExtKind::Extended(StructDataKind::StructIdent(s)) => s,
-            e => return Err(Error { span: parser.span, tok: parser.token.clone(), kind: ErrorKind::ExtendedError(format!("expected a StructIdent, got {:?}", e))})
+            e => {
+                return Err(Error {
+                    span: ps.span,
+                    tok: ps.token.clone(),
+                    kind: ErrorKind::ExtendedError(format!("expected a StructIdent, got {:?}", e)),
+                })
+            }
         };
 
-        parser.expect(ExtTokenKind::Equals)?;
+        parser::expect(ps, self, ExtTokenKind::Equals)?;
 
-        //let new_struct_data = parser.once(|p| p.ty(), "type annotation required in struct data decl")?;
-        let struct_shape = self.struct_data_bind(parser)?;
+        //let new_struct_data = parser.once(|p| p.ty(), "type annotation required in
+        // struct data decl")?;
+        let struct_shape = struct_data_bind(ps)?;
 
-        let len = parser.tmvar.len();
+        let len = ps.tmvar.len();
         //parser.tmvar.push(var);
-        parser.expect(ExtTokenKind::In)?;
-        let t2 = parser.once(|p| p.parse(), "struct body required")?;
-        while parser.tmvar.len() > len {
-            parser.tmvar.pop();
+        parser::expect(ps, self, ExtTokenKind::In)?;
+        let t2 = parser::once(ps, |p| parser::parse(p, self), "struct body required")?;
+        while ps.tmvar.len() > len {
+            ps.tmvar.pop();
         }
         Ok(ExtTerm::new(
-            ExtKind::Extended(StructDataKind::StructDataExpr(struct_ident, Box::new(struct_shape), Box::new(t2))),
-            sp + parser.span,
+            ExtKind::Extended(StructDataKind::StructDataExpr(
+                struct_ident,
+                Box::new(struct_shape),
+                Box::new(t2),
+            )),
+            sp + ps.span,
         ))
     }
 
@@ -140,7 +172,10 @@ impl SystemRExtension<StructDataTokenKind, StructDataKind, StructDataPattern> fo
         false
     }
 
-    fn parser_ext_atom<'s>(&mut self, parser: &mut ExtParser<'s, StructDataTokenKind, StructDataKind, StructDataPattern, Self>) -> Result<ExtTerm<StructDataPattern, StructDataKind>, Error<StructDataTokenKind>> {
-        todo!()
+    fn parser_ext_atom<'s>(
+        &mut self,
+        ps: &mut ParserState<'s, StructDataTokenKind, StructDataKind, StructDataPattern>,
+    ) -> Result<ExtTerm<StructDataPattern, StructDataKind>, Error<StructDataTokenKind>> {
+        panic!("parser ext atom not implemented");
     }
 }

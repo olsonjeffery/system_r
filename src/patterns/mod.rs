@@ -199,8 +199,10 @@ impl<
     }
 }
 
-impl<TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd> PatternVisitor<TExtPat, TExtKind> for PatTyStack<'_, TExtPat, TExtKind>
+impl<
+        TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+        TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    > PatternVisitor<TExtPat, TExtKind> for PatTyStack<'_, TExtPat, TExtKind>
 {
     fn visit_product(&mut self, pats: &Vec<ExtPattern<TExtPat>>) {
         if let Type::Product(tys) = self.ty {
