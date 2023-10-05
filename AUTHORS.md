@@ -1,1 +1,1 @@
-* Jeffery Olson <http://github.com/olsonjeffery>
++ Jeffery Olson <olson.jeffery@gmail.com>
