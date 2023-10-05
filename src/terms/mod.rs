@@ -124,6 +124,7 @@ pub enum ExtKind<
     /// open {∃X, bind} in body -- X is bound as a TyVar, and bind as Var(0)
     /// Eliminate an existential type
     Unpack(Box<ExtTerm<TExtPat, TExtKind>>, Box<ExtTerm<TExtPat, TExtKind>>),
+
     /// Extension
     Extended(TExtKind),
 }

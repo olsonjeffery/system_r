@@ -1,4 +1,3 @@
-use crate::syntax::parser::ParserState;
 /*
 Copyright (C) 2023 AUTHORS
 
@@ -18,6 +17,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
+use crate::syntax::parser::ParserState;
 use crate::system_r_util::span::Span;
 use core::fmt;
 
