@@ -73,6 +73,12 @@ pub trait SystemRExtension<
         ext_pattern: &ExtPattern<TExtPat>,
     ) -> bool;
     fn pat_ext_matches(&self, pat: &TExtPat, term: &ExtTerm<TExtPat, TExtKind>) -> bool;
+    fn parser_ty(&mut self, 
+        ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat>,
+    ) -> Result<Type, Error<TExtTokenKind>>;
+    fn parser_ty_bump_if(&mut self, 
+        ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat>,
+    ) -> bool;
 }
 
 pub struct ParserOpCompletion<

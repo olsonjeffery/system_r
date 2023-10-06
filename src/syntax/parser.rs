@@ -89,6 +89,18 @@ pub enum ErrorKind<TExtTokenKind: PartialEq> {
     ExtendedError(String),
 }
 
+impl<
+    's,
+    TExtTokenKind: fmt::Debug + PartialEq + PartialOrd + Default + Sized + Clone,
+    TExtKind: fmt::Debug + PartialEq + PartialOrd + Default + Sized + Clone,
+    TExtPat: fmt::Debug + PartialEq + PartialOrd + Default + Sized + Clone,
+> ParserState<'s, TExtTokenKind, TExtKind, TExtPat> {
+    pub fn die(self) -> String {
+        let d = self.diagnostic;
+        d.emit()
+    }
+}
+
 pub fn new<'s>(platform_bindings: &'s PlatformBindings, input: &'s str) -> Parser<'s> {
     let mut ext = BottomExtension;
     ext_new(platform_bindings, input, &mut ext)
@@ -205,7 +217,7 @@ pub fn bump<
     prev.kind
 }
 
-fn bump_if<
+pub fn bump_if<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
@@ -351,7 +363,7 @@ pub fn ty_atom<
             expect(ps, ext, ExtTokenKind::RBrace)?;
             Ok(Type::Variant(fields))
         }
-        _ => error(ps, ErrorKind::ExpectedType),
+        v => error(ps, ErrorKind::ExpectedType),
     }
 }
 
@@ -396,6 +408,10 @@ pub fn ty<
         _ => {}
     };
     */
+    if ext.parser_ty_bump_if(ps) {
+        return ext.parser_ty(ps);
+    }
+
     if bump_if(ps, ext, &ExtTokenKind::Rec) {
         let name = uppercase_id(ps, ext)?;
         expect(ps, ext, ExtTokenKind::Equals)?;

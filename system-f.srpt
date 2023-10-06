@@ -46,7 +46,6 @@ case unfold NatList Cons (10, Cons (20, Nil of NatList) of NatList) of NatList o
 	| Nil => Nil of NatList 
 	| Cons (10, xs) => Cons (11, xs) of NatList
 	| Cons (x, xs) => xs
-
 ;
 
 let nil = Nil of NatList in 
@@ -77,7 +76,7 @@ let x = \A \B \C \tuple: (A, B, (C, C)).
 
 let package = (pack Nat, ((\x: Nat. succ (succ x)), 0) as exists X. (X->Nat, X)) in
 	unpack package as T, mod in mod.0 ((\x: T. x) mod.1)
-;;
+;
 
 let package = (pack Bool, ((\x: Bool. case x of | true => 10 | false => 0), true) as exists REPR. (REPR->Nat, REPR)) in
 let x = (\x: exists T. (T->Nat, T). unpack x as T, mod in succ (mod.0 mod.1)) in

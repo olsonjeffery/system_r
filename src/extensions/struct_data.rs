@@ -40,19 +40,7 @@ use super::{ParserOp, ParserOpCompletion, SystemRExtension};
 #[derive(Copy, Clone, Debug, Default)]
 pub struct StructDataExtension;
 
-pub fn struct_data_bind<'s>(
-    ps: &mut ParserState<'s, StructDataTokenKind, StructDataKind, StructDataPattern>,
-) -> Result<ExtTerm<StructDataPattern, StructDataKind>, Error<StructDataTokenKind>> {
-    // struct decl contents
-    let tyvar = parser::uppercase_id(ps, &mut StructDataExtension)?;
-    let sp = ps.span;
-    let ty = Box::new(Type::Var(ps.tyvar.push(tyvar)));
-    let body = parser::once(ps, |p| parser::parse(p, &mut StructDataExtension), "abstraction body required")?;
-    Ok(ExtTerm::new(ExtKind::TyAbs(Box::new(body)), sp + ps.span))
-}
-
 pub type StructDataContext = ExtContext<StructDataTokenKind, StructDataKind, StructDataPattern, StructDataExtension>;
-
 
 pub fn new<'s>(
     platform_bindings: &'s PlatformBindings,
@@ -70,6 +58,7 @@ pub enum StructDataTokenKind {
     #[default]
     Placeholder,
     StructData,
+    TypeBindingVar(String),
     Below(BottomTokenKind),
 }
 
@@ -77,6 +66,7 @@ pub enum StructDataTokenKind {
 pub enum StructDataKind {
     #[default]
     Empty,
+    Declaration(Box<Type>),
     StructIdent(String),
     /// fields: struct identifier with leading $, type shape, struct scope body
     /// (in let-polymorphism style)
@@ -99,11 +89,11 @@ pub const KEYWORD_TYPE: &str = "type";
 
 impl SystemRExtension<StructDataTokenKind, StructDataKind, StructDataPattern> for StructDataExtension {
     fn lex_is_ext_single(&self, x: char) -> bool {
-        false
+        x == '$'
     }
 
     fn lex_is_extended_single_pred(&self, x: char) -> bool {
-        false
+        x == '$' || (!x.is_whitespace() && x.is_ascii_alphanumeric())
     }
 
     fn lex_is_ext_keyword(&self, data: &str) -> bool {
@@ -111,7 +101,7 @@ impl SystemRExtension<StructDataTokenKind, StructDataKind, StructDataPattern> fo
     }
 
     fn lex_extended_single(&mut self, data: &str) -> StructDataTokenKind {
-        StructDataTokenKind::Placeholder
+        StructDataTokenKind::TypeBindingVar(data.to_owned())
     }
 
     fn lex_ext_keyword(&mut self, data: &str) -> StructDataTokenKind {
@@ -152,7 +142,7 @@ impl SystemRExtension<StructDataTokenKind, StructDataKind, StructDataPattern> fo
         let sp = ps.span;
         parser::expect(ps, self, ExtTokenKind::Extended(StructDataTokenKind::StructData))?;
 
-        let struct_ident = parser::once(ps, |p| parser::ext_atom(p, self), "missing struct identifier $Binding")?;
+        let struct_ident = parser::once(ps, |p| parser::atom(p, self), "missing struct identifier $Binding")?;
         let struct_ident = match struct_ident.kind {
             ExtKind::Extended(StructDataKind::StructIdent(s)) => s,
             e => {
@@ -168,12 +158,13 @@ impl SystemRExtension<StructDataTokenKind, StructDataKind, StructDataPattern> fo
 
         //let new_struct_data = parser.once(|p| p.ty(), "type annotation required in
         // struct data decl")?;
-        let struct_shape = struct_data_bind(ps)?;
+        let struct_shape = struct_data_bind(ps, self)?;
 
         let len = ps.tmvar.len();
         //parser.tmvar.push(var);
         parser::expect(ps, self, ExtTokenKind::In)?;
-        let t2 = parser::once(ps, |p| parser::parse(p, self), "struct body required")?;
+        //panic!("about to parser type scope body, have name: {:?} have type: {:?}", struct_ident, struct_shape);
+        let t2 = parser::once(ps, |p| parser::parse(p, self), "type scope body required")?;
         while ps.tmvar.len() > len {
             ps.tmvar.pop();
         }
@@ -195,6 +186,70 @@ impl SystemRExtension<StructDataTokenKind, StructDataKind, StructDataPattern> fo
         &mut self,
         ps: &mut ParserState<'s, StructDataTokenKind, StructDataKind, StructDataPattern>,
     ) -> Result<ExtTerm<StructDataPattern, StructDataKind>, Error<StructDataTokenKind>> {
-        panic!("parser ext atom not implemented");
+        let name_tok = ps.token.clone();
+        let name_val = match name_tok.kind.clone() {
+            ExtTokenKind::Extended(n) => match n {
+                StructDataTokenKind::TypeBindingVar(name) => name,
+                v => return Err(Error {span: name_tok.span.clone(), tok: name_tok.clone(), kind: ErrorKind::ExtendedError(format!("Expected a TypeBindingVar, got {:?}", v))})
+            },
+            v => return Err(Error {span: name_tok.span.clone(), tok: name_tok.clone(), kind: ErrorKind::ExtendedError(format!("Expected a ExtendedTokenKind, got {:?}", v))})
+        };
+        parser::bump(ps, self);
+        Ok(ExtTerm { span: name_tok.span.clone(), kind: ExtKind::Extended(StructDataKind::StructIdent(name_val))})
     }
+
+    fn parser_ty_bump_if(&mut self, 
+        ps: &mut ParserState<StructDataTokenKind, StructDataKind, StructDataPattern>,
+    ) -> bool {
+        match &ps.token.kind {
+            ExtTokenKind::Extended(StructDataTokenKind::TypeBindingVar(_)) => {
+                true
+            },
+            _ => false
+        }
+    }
+
+    fn parser_ty(&mut self, 
+        ps: &mut ParserState<StructDataTokenKind, StructDataKind, StructDataPattern>,
+    ) -> Result<Type, Error<StructDataTokenKind>> {
+        let binding = ps.token.kind.clone();
+        let ExtTokenKind::Extended(StructDataTokenKind::TypeBindingVar(type_decl_key)) = binding else {
+            return Err(Error {span: ps.span, tok: ps.token.clone(), kind: ErrorKind::ExtendedError(format!("Expected a TypeBindingVar, got {:?}", binding))})
+        };
+        parser::bump(ps, self);
+
+        let ty = extract_type_from_tyapp(ps, self)?;
+
+        panic!("parser_ty unimpl, type_decl_key: {:?} type: {:?}", type_decl_key, ty);
+    }
+}
+
+pub fn extract_type_from_tyapp(
+        ps: &mut ParserState<StructDataTokenKind, StructDataKind, StructDataPattern>,
+        ext: &mut StructDataExtension,
+) -> Result<Type, Error<StructDataTokenKind>> {
+    if !parser::bump_if(ps, ext, &ExtTokenKind::LSquare) {
+        return parser::error(ps, ErrorKind::ExpectedToken(ExtTokenKind::LSquare));
+    }
+    parser::expect(ps, ext, ExtTokenKind::Of)?;
+    let ty = parser::ty(ps, ext)?;
+    parser::expect(ps, ext, ExtTokenKind::RSquare)?;
+    // FIXME sub out with what's in parser ext state
+    Ok(ty)
+}
+
+pub fn struct_data_bind<'s>(
+    ps: &mut ParserState<'s, StructDataTokenKind, StructDataKind, StructDataPattern>,
+    ext: &mut StructDataExtension,
+) -> Result<ExtTerm<StructDataPattern, StructDataKind>, Error<StructDataTokenKind>> {
+    // struct decl contents
+    parser::expect(ps, ext, ExtTokenKind::Lambda)?;
+    let tyvar = parser::uppercase_id(ps, ext)?;
+
+    let sp = ps.span;
+    let ty = Box::new(Type::Var(ps.tyvar.push(tyvar)));
+    
+    let body = parser::once(ps, |p| parser::ty_atom(p, &mut StructDataExtension), "abstraction body required")?;
+    let kind = ExtKind::Extended(StructDataKind::Declaration(Box::new(body)));
+    Ok(ExtTerm::new(kind, sp + ps.span))
 }

@@ -108,4 +108,16 @@ impl SystemRExtension<BottomTokenKind, BottomKind, BottomPattern> for BottomExte
     ) -> Result<ExtTerm<BottomPattern, BottomKind>, Error<BottomTokenKind>> {
         panic!("shouldn't be called");
     }
+
+    fn parser_ty_bump_if(&mut self, 
+        ps: &mut crate::syntax::parser::ParserState<BottomTokenKind, BottomKind, BottomPattern>,
+    ) -> bool {
+        false 
+    }
+
+    fn parser_ty(&mut self, 
+        ps: &mut crate::syntax::parser::ParserState<BottomTokenKind, BottomKind, BottomPattern>,
+    ) -> Result<crate::types::Type, Error<BottomTokenKind>> {
+        panic!("calling parser_ty on BottomExtension; shouldn't happen");
+    }
 }

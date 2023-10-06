@@ -55,8 +55,10 @@ fn when_it_is_processed_for_StructData(world: &mut common::SpecsWorld) {
     let input = world.code_snippet.clone();
     let mut ext = StructDataExtension;
     let pb = world.platform_bindings.clone();
-    let mut parser = parser::ext_new(&pb, &input, &mut ext);
-    let res = parse_for_extension(&input, &mut parser, &mut ext);
+
+    let mut ps = parser::ext_new(&pb, &input, &mut ext);
+
+    let res = parse_for_extension(&input, &mut ps, &mut ext);
     let (term, kind) = match res {
         Ok(t) => {
             let k = OmniKind::StructData(t.clone().kind);
@@ -64,12 +66,13 @@ fn when_it_is_processed_for_StructData(world: &mut common::SpecsWorld) {
             (t, k)
         }
         Err(e) => {
+            ps.die();
             world.last_ext_parse_msg = format!("error diag: {:?}", e);
             (OmniTerm::Empty, OmniKind::Empty)
         }
     };
+
     world.last_ext_parse_success = if kind == OmniKind::Empty { false } else { true };
     world.last_ext_parse_kind = kind;
     world.last_ext_parse_term = term;
-    //when_eval_is_ran(world);
 }
