@@ -133,7 +133,8 @@ impl<TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd> ExtPattern<
     pub fn matches<
         TExtTokenKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
         TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-        TPtE: SystemRExtension<TExtTokenKind, TExtKind, TExtPat>,
+        TExtState: fmt::Debug + Default + Clone,
+        TPtE: SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
     >(
         &self,
         term: &ExtTerm<TExtPat, TExtKind>,

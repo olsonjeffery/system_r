@@ -21,7 +21,7 @@ use crate::syntax::parser::ParserState;
 use crate::system_r_util::span::Span;
 use core::fmt;
 
-use crate::bottom::BottomTokenKind;
+use crate::bottom::{BottomTokenKind, BottomState};
 use crate::extensions::SystemRExtension;
 
 use crate::{
@@ -65,7 +65,7 @@ pub fn code_format(src: &str, diag: Diagnostic) -> String {
 }
 
 pub fn type_check_term(
-    ctx: &mut types::ExtContext<BottomTokenKind, BottomKind, BottomPattern, BottomExtension>,
+    ctx: &mut types::ExtContext<BottomTokenKind, BottomKind, BottomPattern>,
     term: &ExtTerm<BottomPattern, BottomKind>,
 ) -> Result<Type, Diagnostic> {
     // Step 1
@@ -74,7 +74,7 @@ pub fn type_check_term(
 }
 
 pub fn dealias_and_type_check_term(
-    ctx: &mut types::ExtContext<BottomTokenKind, BottomKind, BottomPattern, BottomExtension>,
+    ctx: &mut types::ExtContext<BottomTokenKind, BottomKind, BottomPattern>,
     term: &mut ExtTerm<BottomPattern, BottomKind>,
 ) -> Result<Type, Diagnostic> {
     // Step 0
@@ -88,10 +88,11 @@ pub fn operate_parser_for<'s,
     TExtTokenKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
     TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
     TEXtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: Default + Copy+ Clone + SystemRExtension<TExtTokenKind, TExtKind, TEXtPat>,
+    TExtState: Clone + fmt::Debug + Default,
+    TExt: Default + Copy+ Clone + SystemRExtension<TExtTokenKind, TExtKind, TEXtPat, TExtState>,
 >(
     input: &str,
-    ps: &mut ParserState<'s, TExtTokenKind, TExtKind, TEXtPat>,
+    ps: &mut ParserState<'s, TExtTokenKind, TExtKind, TEXtPat, TExtState>,
     ext: &mut TExt,
 ) -> Result<ExtTerm<TEXtPat, TExtKind>, Diagnostic> {
     return match parser::parse(ps, ext) {
@@ -135,7 +136,7 @@ pub fn parse_single_block(
 }
 
 pub fn type_check_and_eval_single_block(
-    ctx: &mut types::ExtContext<BottomTokenKind, BottomKind, BottomPattern, BottomExtension>,
+    ctx: &mut types::ExtContext<BottomTokenKind, BottomKind, BottomPattern>,
     term: &mut ExtTerm<BottomPattern, BottomKind>,
     src: &str,
     fail_on_type_mismatch: bool,

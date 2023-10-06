@@ -101,8 +101,7 @@ impl<
         TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
         TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
         TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-        TPtE: Default + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>,
-    > ExtContext<TExtTokenKind, TExtKind, TExtPat, TPtE>
+    > ExtContext<TExtTokenKind, TExtKind, TExtPat>
 {
     pub(crate) fn type_check_platform_binding(&mut self, idx: &usize, span: &Span) -> Result<Type, Diagnostic> {
         match self.platform_bindings.get(*idx) {

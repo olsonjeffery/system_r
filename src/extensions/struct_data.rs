@@ -40,13 +40,13 @@ use super::{ParserOp, ParserOpCompletion, SystemRExtension};
 #[derive(Copy, Clone, Debug, Default)]
 pub struct StructDataExtension;
 
-pub type StructDataContext = ExtContext<StructDataTokenKind, StructDataKind, StructDataPattern, StructDataExtension>;
+pub type StructDataContext = ExtContext<StructDataTokenKind, StructDataKind, StructDataPattern>;
 
 pub fn new<'s>(
     platform_bindings: &'s PlatformBindings,
     input: &'s str,
     ty_let: Rc<RefCell<StructDataExtension>>,
-) -> ParserState<'s, StructDataTokenKind, StructDataKind, StructDataPattern> {
+) -> ParserState<'s, StructDataTokenKind, StructDataKind, StructDataPattern, StructDataState> {
     parser::ext_new(platform_bindings, input, &mut StructDataExtension)
 }
 
@@ -85,9 +85,12 @@ pub enum StructDataPattern {
     Below(BottomPattern),
 }
 
+#[derive(Clone, Default, Debug)]
+pub struct StructDataState;
+
 pub const KEYWORD_TYPE: &str = "type";
 
-impl SystemRExtension<StructDataTokenKind, StructDataKind, StructDataPattern> for StructDataExtension {
+impl SystemRExtension<StructDataTokenKind, StructDataKind, StructDataPattern, StructDataState> for StructDataExtension {
     fn lex_is_ext_single(&self, x: char) -> bool {
         x == '$'
     }
@@ -137,7 +140,7 @@ impl SystemRExtension<StructDataTokenKind, StructDataKind, StructDataPattern> fo
 
     fn parser_ext_parse<'s>(
         &mut self,
-        ps: &mut ParserState<'s, StructDataTokenKind, StructDataKind, StructDataPattern>,
+        ps: &mut ParserState<'s, StructDataTokenKind, StructDataKind, StructDataPattern, StructDataState>,
     ) -> Result<ExtTerm<StructDataPattern, StructDataKind>, Error<StructDataTokenKind>> {
         let sp = ps.span;
         parser::expect(ps, self, ExtTokenKind::Extended(StructDataTokenKind::StructData))?;
@@ -184,7 +187,7 @@ impl SystemRExtension<StructDataTokenKind, StructDataKind, StructDataPattern> fo
 
     fn parser_ext_atom<'s>(
         &mut self,
-        ps: &mut ParserState<'s, StructDataTokenKind, StructDataKind, StructDataPattern>,
+        ps: &mut ParserState<'s, StructDataTokenKind, StructDataKind, StructDataPattern, StructDataState>,
     ) -> Result<ExtTerm<StructDataPattern, StructDataKind>, Error<StructDataTokenKind>> {
         let name_tok = ps.token.clone();
         let name_val = match name_tok.kind.clone() {
@@ -199,7 +202,7 @@ impl SystemRExtension<StructDataTokenKind, StructDataKind, StructDataPattern> fo
     }
 
     fn parser_ty_bump_if(&mut self, 
-        ps: &mut ParserState<StructDataTokenKind, StructDataKind, StructDataPattern>,
+        ps: &mut ParserState<StructDataTokenKind, StructDataKind, StructDataPattern, StructDataState>,
     ) -> bool {
         match &ps.token.kind {
             ExtTokenKind::Extended(StructDataTokenKind::TypeBindingVar(_)) => {
@@ -210,7 +213,7 @@ impl SystemRExtension<StructDataTokenKind, StructDataKind, StructDataPattern> fo
     }
 
     fn parser_ty(&mut self, 
-        ps: &mut ParserState<StructDataTokenKind, StructDataKind, StructDataPattern>,
+        ps: &mut ParserState<StructDataTokenKind, StructDataKind, StructDataPattern, StructDataState>,
     ) -> Result<Type, Error<StructDataTokenKind>> {
         let binding = ps.token.kind.clone();
         let ExtTokenKind::Extended(StructDataTokenKind::TypeBindingVar(type_decl_key)) = binding else {
@@ -225,7 +228,7 @@ impl SystemRExtension<StructDataTokenKind, StructDataKind, StructDataPattern> fo
 }
 
 pub fn extract_type_from_tyapp(
-        ps: &mut ParserState<StructDataTokenKind, StructDataKind, StructDataPattern>,
+        ps: &mut ParserState<StructDataTokenKind, StructDataKind, StructDataPattern, StructDataState>,
         ext: &mut StructDataExtension,
 ) -> Result<Type, Error<StructDataTokenKind>> {
     if !parser::bump_if(ps, ext, &ExtTokenKind::LSquare) {
@@ -239,7 +242,7 @@ pub fn extract_type_from_tyapp(
 }
 
 pub fn struct_data_bind<'s>(
-    ps: &mut ParserState<'s, StructDataTokenKind, StructDataKind, StructDataPattern>,
+    ps: &mut ParserState<'s, StructDataTokenKind, StructDataKind, StructDataPattern, StructDataState>,
     ext: &mut StructDataExtension,
 ) -> Result<ExtTerm<StructDataPattern, StructDataKind>, Error<StructDataTokenKind>> {
     // struct decl contents

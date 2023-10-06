@@ -101,14 +101,13 @@ pub enum TypeErrorKind {
     UnboundVariable(usize),
 }
 
-pub type Context = ExtContext<BottomTokenKind, BottomKind, BottomPattern, BottomExtension>;
+pub type Context = ExtContext<BottomTokenKind, BottomKind, BottomPattern>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ExtContext<
     TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
     TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
     TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-    TPtE: Default + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>,
 > {
     stack: VecDeque<Type>,
     map: HashMap<String, Type>,
@@ -116,15 +115,13 @@ pub struct ExtContext<
     _token: TExtTokenKind,
     _kind: TExtKind,
     _pat: TExtPat,
-    pub pat_ext: TPtE,
 }
 
 impl<
         TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
         TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
         TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-        TPtE: Default + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>,
-    > Default for ExtContext<TExtTokenKind, TExtKind, TExtPat, TPtE>
+    > Default for ExtContext<TExtTokenKind, TExtKind, TExtPat>
 {
     fn default() -> Self {
         Self {
@@ -134,7 +131,6 @@ impl<
             _token: Default::default(),
             _kind: Default::default(),
             _pat: Default::default(),
-            pat_ext: Default::default(),
         }
     }
 }
@@ -143,8 +139,7 @@ impl<
         TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
         TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
         TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-        TPtE: Clone + Default + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>,
-    > ExtContext<TExtTokenKind, TExtKind, TExtPat, TPtE>
+    > ExtContext<TExtTokenKind, TExtKind, TExtPat>
 {
     fn push(&mut self, ty: Type) {
         self.stack.push_front(ty);
@@ -193,10 +188,12 @@ impl<
         TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
         TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
         TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-        TPtE: Clone + Default + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>,
-    > ExtContext<TExtTokenKind, TExtKind, TExtPat, TPtE>
+    > ExtContext<TExtTokenKind, TExtKind, TExtPat>
 {
-    pub fn type_check(&mut self, term: &ExtTerm<TExtPat, TExtKind>) -> Result<Type, Diagnostic> {
+    pub fn type_check<
+    TExtState: Clone + Default + fmt::Debug,
+    TExt: Clone + fmt::Debug + Default + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    >(&mut self, term: &ExtTerm<TExtPat, TExtKind>, ext: &mut TExt) -> Result<Type, Diagnostic> {
         // dbg!(&self.stack);
 
         match term.kind() {
@@ -213,14 +210,14 @@ impl<
 
             ExtKind::Abs(ty, t2) => {
                 self.push(*ty.clone());
-                let ty2 = self.type_check(t2)?;
+                let ty2 = self.type_check(t2, ext)?;
                 // Shift::new(-1).visit(&mut ty2);
                 self.pop();
                 Ok(Type::Arrow(ty.clone(), Box::new(ty2)))
             }
             ExtKind::App(t1, t2) => {
-                let ty1 = self.type_check(t1)?;
-                let ty2 = self.type_check(t2)?;
+                let ty1 = self.type_check(t1, ext)?;
+                let ty2 = self.type_check(t2, ext)?;
                 match ty1.clone() {
                     Type::Arrow(ty11, ty12) => {
                         // does the invocation's type (ty2)
@@ -251,7 +248,7 @@ impl<
                 }
             }
             ExtKind::Fix(inner) => {
-                let ty = self.type_check(inner)?;
+                let ty = self.type_check(inner, ext)?;
                 match ty {
                     Type::Arrow(ty1, ty2) => {
                         if ty1 == ty2 {
@@ -274,7 +271,7 @@ impl<
                 Type::Variant(fields) => {
                     for f in fields {
                         if label == &f.label {
-                            let ty_ = self.type_check(tm)?;
+                            let ty_ = self.type_check(tm, ext)?;
                             if ty_ == f.ty {
                                 return Ok(*ty.clone());
                             } else {
@@ -304,7 +301,7 @@ impl<
                     format!("Cannot injection {} into non-variant type {:?}", label, ty),
                 )),
             },
-            ExtKind::Projection(term, idx) => match self.type_check(term)? {
+            ExtKind::Projection(term, idx) => match self.type_check(term, ext)? {
                 Type::Product(types) => match types.get(*idx) {
                     Some(ty) => Ok(ty.clone()),
                     None => Err(Diagnostic::error(
@@ -318,11 +315,11 @@ impl<
                 )),
             },
             ExtKind::Product(terms) => Ok(Type::Product(
-                terms.iter().map(|t| self.type_check(t)).collect::<Result<_, _>>()?,
+                terms.iter().map(|t| self.type_check(t, ext)).collect::<Result<_, _>>()?,
             )),
             ExtKind::Let(pat, t1, t2) => {
-                let ty = self.type_check(t1)?;
-                if !self.pattern_type_eq(pat, &ty) {
+                let ty = self.type_check(t1, ext)?;
+                if !self.pattern_type_eq(pat, &ty, ext) {
                     return Err(Diagnostic::error(
                         t1.span,
                         "pattern does not match type of binder".to_string(),
@@ -336,7 +333,7 @@ impl<
                     self.push(b.clone());
                 }
 
-                let y = self.type_check(t2);
+                let y = self.type_check(t2, ext);
 
                 while self.stack.len() > height {
                     self.pop();
@@ -492,8 +489,7 @@ impl<
         TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
         TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
         TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-        TPtE: Clone + Default + SystemRExtension<TExtTokenKind, TExtKind, TExtPat>,
-    > MutTermVisitor<TExtPat, TExtKind> for ExtContext<TExtTokenKind, TExtKind, TExtPat, TPtE>
+    > MutTermVisitor<TExtPat, TExtKind> for ExtContext<TExtTokenKind, TExtKind, TExtPat>
 {
     fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type, term: &mut ExtTerm<TExtPat, TExtKind>) {
         self.aliaser().visit(ty);

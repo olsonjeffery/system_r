@@ -29,6 +29,9 @@ use crate::{
     terms::{ExtKind, ExtTerm},
 };
 
+#[derive(Default, Debug, Clone)]
+pub struct BottomState;
+
 #[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
 pub enum BottomTokenKind {
     #[default]
@@ -50,7 +53,7 @@ pub enum BottomPattern {
 #[derive(Copy, Clone, Default, Debug)]
 pub struct BottomExtension;
 
-impl SystemRExtension<BottomTokenKind, BottomKind, BottomPattern> for BottomExtension {
+impl SystemRExtension<BottomTokenKind, BottomKind, BottomPattern, BottomState> for BottomExtension {
     fn lex_is_ext_single(&self, x: char) -> bool {
         false
     }
@@ -97,26 +100,26 @@ impl SystemRExtension<BottomTokenKind, BottomKind, BottomPattern> for BottomExte
 
     fn parser_ext_parse<'s>(
         &mut self,
-        ps: &mut crate::syntax::parser::ParserState<BottomTokenKind, BottomKind, BottomPattern>,
+        ps: &mut crate::syntax::parser::ParserState<BottomTokenKind, BottomKind, BottomPattern, BottomState>,
     ) -> Result<ExtTerm<BottomPattern, BottomKind>, Error<BottomTokenKind>> {
         panic!("shouldn't be called");
     }
 
     fn parser_ext_atom<'s>(
         &mut self,
-        ps: &mut crate::syntax::parser::ParserState<BottomTokenKind, BottomKind, BottomPattern>,
+        ps: &mut crate::syntax::parser::ParserState<BottomTokenKind, BottomKind, BottomPattern, BottomState>,
     ) -> Result<ExtTerm<BottomPattern, BottomKind>, Error<BottomTokenKind>> {
         panic!("shouldn't be called");
     }
 
     fn parser_ty_bump_if(&mut self, 
-        ps: &mut crate::syntax::parser::ParserState<BottomTokenKind, BottomKind, BottomPattern>,
+        ps: &mut crate::syntax::parser::ParserState<BottomTokenKind, BottomKind, BottomPattern, BottomState>,
     ) -> bool {
         false 
     }
 
     fn parser_ty(&mut self, 
-        ps: &mut crate::syntax::parser::ParserState<BottomTokenKind, BottomKind, BottomPattern>,
+        ps: &mut crate::syntax::parser::ParserState<BottomTokenKind, BottomKind, BottomPattern, BottomState>,
     ) -> Result<crate::types::Type, Error<BottomTokenKind>> {
         panic!("calling parser_ty on BottomExtension; shouldn't happen");
     }

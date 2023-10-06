@@ -49,6 +49,7 @@ pub trait SystemRExtension<
     TExtTokenKind: fmt::Debug + PartialEq + PartialOrd + Default + Clone,
     TExtKind: fmt::Debug + PartialEq + PartialOrd + Default + Clone,
     TExtPat: fmt::Debug + PartialEq + PartialOrd + Default + Clone,
+    TExtState: fmt::Debug + Default + Clone,
 >
 {
     fn lex_is_ext_single(&self, x: char) -> bool;
@@ -59,12 +60,12 @@ pub trait SystemRExtension<
     fn parser_has_ext_parse(&self, tk: &TExtTokenKind) -> bool;
     fn parser_ext_parse<'s>(
         &mut self,
-        ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat>,
+        ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
     ) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>>;
     fn parser_has_ext_atom(&self, tk: &TExtTokenKind) -> bool;
     fn parser_ext_atom<'s>(
         &mut self,
-        ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat>,
+        ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
     ) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>>;
     fn pat_ext_pattern_type_eq(&self, pat: &TExtPat, ty: &Type) -> bool;
     fn pat_add_ext_pattern<'a>(
@@ -74,10 +75,10 @@ pub trait SystemRExtension<
     ) -> bool;
     fn pat_ext_matches(&self, pat: &TExtPat, term: &ExtTerm<TExtPat, TExtKind>) -> bool;
     fn parser_ty(&mut self, 
-        ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat>,
+        ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
     ) -> Result<Type, Error<TExtTokenKind>>;
     fn parser_ty_bump_if(&mut self, 
-        ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat>,
+        ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
     ) -> bool;
 }
 

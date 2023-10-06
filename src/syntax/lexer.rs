@@ -182,7 +182,7 @@ impl<
         ExtToken::new(kind, span)
     }
 
-    fn extended_single<TExt: Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern>>(
+    fn extended_single<TExtState: Clone + fmt::Debug + Default, TExt: Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern, TExtState>>(
         &mut self,
         ext: &mut TExt,
     ) -> ExtToken<TExtTokenKind> {
@@ -193,7 +193,7 @@ impl<
     //TLE: Default + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern>,
 
     /// Lex a reserved keyword or an identifier
-    fn keyword<TExt: Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern>>(
+    fn keyword<TExtState: Clone + fmt::Debug + Default, TExt: Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern, TExtState>>(
         &mut self,
         ext: &mut TExt,
     ) -> ExtToken<TExtTokenKind> {
@@ -252,7 +252,7 @@ impl<
     }
 
     /// Return the next lexeme in the input as a [`Token`]
-    pub fn lex<TExt: Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern>>(
+    pub fn lex<TExtState: Clone + fmt::Debug + Default, TExt: Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern, TExtState>>(
         &mut self,
         ext: &mut TExt,
     ) -> ExtToken<TExtTokenKind> {
@@ -300,11 +300,11 @@ impl<
         TExtPattern: PartialEq + PartialOrd + Default + Clone + fmt::Debug,
     > ExtLexer<'s, TExtTokenKind, TExtKind, TExtPattern>
 {
-    fn next<TExt: Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern>>(
+    fn next<TExtState: Clone + fmt::Debug + Default, TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern, TExtState>>(
         &mut self,
         ext: &mut TExt,
     ) -> Option<ExtToken<TExtTokenKind>> {
-        match self.lex::<TExt>(ext) {
+        match self.lex::<TExtState, TExt>(ext) {
             ExtToken {
                 kind: ExtTokenKind::Eof,
                 ..
