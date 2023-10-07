@@ -226,25 +226,31 @@ impl SystemRExtension<StructDataTokenKind, StructDataKind, StructDataPattern, St
         };
         parser::bump(ps, self);
 
-        let ty = extract_type_from_tyapp(ps, self)?;
-        // FIXME use the type_decl_key above to pull out the stored type_shape,
-        // apply tyapps from above, then substitute in-place
+        // FIXME need to peek ahead and see if there's actually a tyapp after the use of our
+        // TypeBindingVar
+        let ty = extract_fulfilled_type_alias_from_tyapp(ps, self, &type_decl_key)?;
 
         panic!("parser_ty unimpl, type_decl_key: {:?} type: {:?}", type_decl_key, ty);
+
+        // FIXME ultimately we are returning a fully substituted type with no "type holes"
     }
 }
 
-pub fn extract_type_from_tyapp(
+pub fn extract_fulfilled_type_alias_from_tyapp(
         ps: &mut ParserState<StructDataTokenKind, StructDataKind, StructDataPattern, StructDataState>,
         ext: &mut StructDataExtension,
+        key: &str,
 ) -> Result<Type, Error<StructDataTokenKind>> {
+    // FIXME: could be 1 or more
     if !parser::bump_if(ps, ext, &ExtTokenKind::LSquare) {
         return parser::error(ps, ErrorKind::ExpectedToken(ExtTokenKind::LSquare));
     }
     parser::expect(ps, ext, ExtTokenKind::Of)?;
     let ty = parser::ty(ps, ext)?;
     parser::expect(ps, ext, ExtTokenKind::RSquare)?;
-    // FIXME sub out with what's in parser ext state
+    // FIXME sub out with what's in parser ext state.
+    // Use the key param above to pull out the stored type_shape,
+    // apply tyapps from above, then substitute in-place
     Ok(ty)
 }
 

@@ -1079,7 +1079,6 @@ pub fn ext_atom<
             Ok(t) => t,
         }
     };
-    // FIXME: consume returned parser (p) and integrate into state;
     return Ok(r);
 }
 
@@ -1101,7 +1100,6 @@ pub fn ext_parse<
             Ok(t) => t,
         }
     };
-    // FIXME: consume returned parser (p) and integrate into state;
     return Ok(r);
 }
 
