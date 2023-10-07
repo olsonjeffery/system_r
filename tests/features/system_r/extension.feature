@@ -49,12 +49,9 @@ res ;
         #Then the last eval should be successful
         #Then the resulting eval Kind should equal: "(7,7,7)"
 
-    #
-    #   - Just like let, but capturing a type decl (scalar, product, variant, who care!)
-    #   - As a Uppercase var (we will say NOT a TyAbs, but shouldn't collide w/ local TyAbs, etc)
-    #     - maybe leading $ ?
-    #     - make all TyAbs leading ? lol?
-    #     - needs to include application, eg StructData $List = X/ { Nil | Cons ($List[of X]) }
+    # Scenario: type decl with no tyabs
+
+    # Scenario: type decl with multiple tyabs
 
     # Scenario: StructData pattern matching/destructing? more application?
      

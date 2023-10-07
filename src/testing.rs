@@ -69,7 +69,8 @@ pub fn type_check_term(
     term: &ExtTerm<BottomPattern, BottomKind>,
 ) -> Result<Type, Diagnostic> {
     // Step 1
-    let ty = ctx.type_check(term)?;
+    let mut ext = BottomExtension;
+    let ty = ctx.type_check(term, &mut ext)?;
     Ok(ty)
 }
 

@@ -28,10 +28,11 @@ pub fn parse_for_extension<
     TExtTokenKind: fmt::Debug + Default + Clone + PartialEq + PartialOrd,
     TExtKind: fmt::Debug + Default + Clone + PartialEq + PartialOrd,
     TEXtPat: fmt::Debug + Default + Clone + PartialEq + PartialOrd,
-    TLE: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TEXtPat>,
+    TExtState: Clone + Default + fmt::Debug,
+    TLE: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TEXtPat, TExtState>,
 >(
     input: &str,
-    ps: &mut ParserState<'s, TExtTokenKind, TExtKind, TEXtPat>,
+    ps: &mut ParserState<'s, TExtTokenKind, TExtKind, TEXtPat, TExtState>,
     ext: &mut TLE,
 ) -> Result<ExtTerm<TEXtPat, TExtKind>, Diagnostic> {
     testing::operate_parser_for(input, ps, ext)

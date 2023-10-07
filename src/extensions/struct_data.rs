@@ -17,7 +17,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, rc::Rc, collections::HashMap};
 
 use crate::{
     bottom::{BottomKind, BottomPattern, BottomTokenKind, BottomExtension},
@@ -86,7 +86,9 @@ pub enum StructDataPattern {
 }
 
 #[derive(Clone, Default, Debug)]
-pub struct StructDataState;
+pub struct StructDataState {
+    type_map: HashMap<String, Type>,
+}
 
 pub const KEYWORD_TYPE: &str = "type";
 
@@ -159,22 +161,24 @@ impl SystemRExtension<StructDataTokenKind, StructDataKind, StructDataPattern, St
 
         parser::expect(ps, self, ExtTokenKind::Equals)?;
 
-        //let new_struct_data = parser.once(|p| p.ty(), "type annotation required in
-        // struct data decl")?;
-        let struct_shape = struct_data_bind(ps, self)?;
+        // this should be a "holed-out" type specification (it should have
+        // entries for where generic types can be substituted-in)
+        let type_shape = get_type_from_decl(ps, self)?;
+        // type_shape should be stored onto the ps.ext_state.type_map
 
         let len = ps.tmvar.len();
-        //parser.tmvar.push(var);
         parser::expect(ps, self, ExtTokenKind::In)?;
-        //panic!("about to parser type scope body, have name: {:?} have type: {:?}", struct_ident, struct_shape);
         let t2 = parser::once(ps, |p| parser::parse(p, self), "type scope body required")?;
         while ps.tmvar.len() > len {
             ps.tmvar.pop();
         }
+
+        // FIXME: Maybe this should just be returning t2, since its contents should have
+        // erased all type/extended token/kind stuff by now
         Ok(ExtTerm::new(
             ExtKind::Extended(StructDataKind::StructDataExpr(
                 struct_ident,
-                Box::new(struct_shape),
+                Box::new(type_shape),
                 Box::new(t2),
             )),
             sp + ps.span,
@@ -216,12 +220,15 @@ impl SystemRExtension<StructDataTokenKind, StructDataKind, StructDataPattern, St
         ps: &mut ParserState<StructDataTokenKind, StructDataKind, StructDataPattern, StructDataState>,
     ) -> Result<Type, Error<StructDataTokenKind>> {
         let binding = ps.token.kind.clone();
+
         let ExtTokenKind::Extended(StructDataTokenKind::TypeBindingVar(type_decl_key)) = binding else {
             return Err(Error {span: ps.span, tok: ps.token.clone(), kind: ErrorKind::ExtendedError(format!("Expected a TypeBindingVar, got {:?}", binding))})
         };
         parser::bump(ps, self);
 
         let ty = extract_type_from_tyapp(ps, self)?;
+        // FIXME use the type_decl_key above to pull out the stored type_shape,
+        // apply tyapps from above, then substitute in-place
 
         panic!("parser_ty unimpl, type_decl_key: {:?} type: {:?}", type_decl_key, ty);
     }
@@ -241,18 +248,27 @@ pub fn extract_type_from_tyapp(
     Ok(ty)
 }
 
-pub fn struct_data_bind<'s>(
+pub fn get_type_from_decl<'s>(
     ps: &mut ParserState<'s, StructDataTokenKind, StructDataKind, StructDataPattern, StructDataState>,
     ext: &mut StructDataExtension,
 ) -> Result<ExtTerm<StructDataPattern, StructDataKind>, Error<StructDataTokenKind>> {
-    // struct decl contents
+    // tyabs -- FIXME need to peek and peel one or more off
     parser::expect(ps, ext, ExtTokenKind::Lambda)?;
     let tyvar = parser::uppercase_id(ps, ext)?;
-
     let sp = ps.span;
-    let ty = Box::new(Type::Var(ps.tyvar.push(tyvar)));
+    let tyabs = Box::new(Type::Var(ps.tyvar.push(tyvar)));
     
-    let body = parser::once(ps, |p| parser::ty_atom(p, &mut StructDataExtension), "abstraction body required")?;
-    let kind = ExtKind::Extended(StructDataKind::Declaration(Box::new(body)));
+    // type def
+    let type_shape = parser::once(ps, |p| parser::ty_atom(p, &mut StructDataExtension), "abstraction body required")?;
+    // FIXME scrub all occurance of tyabs's from above type_shape, replaced
+    // with indexed "type holes", need to extend Type
+    let kind = ExtKind::Extended(StructDataKind::Declaration(Box::new(type_shape.clone())));
+
+    // pop off the tyabs var, since they only apply for the purpose of defining
+    // "type holes" in the type def
+    // FIXME do number of pops equiv to pushes above, based on number of tyvar
+    ps.tyvar.pop();
+
+
     Ok(ExtTerm::new(kind, sp + ps.span))
 }

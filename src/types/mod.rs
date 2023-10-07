@@ -347,7 +347,7 @@ impl<
                         *v += 1;
                     }
                 });
-                let ty2 = self.type_check(term)?;
+                let ty2 = self.type_check(term, ext)?;
                 self.stack.iter_mut().for_each(|ty| {
                     if let Type::Var(v) = ty {
                         *v -= 1;
@@ -357,7 +357,7 @@ impl<
             }
             ExtKind::TyApp(term, ty) => {
                 let mut ty = ty.clone();
-                let ty1 = self.type_check(term)?;
+                let ty1 = self.type_check(term, ext)?;
                 match ty1 {
                     Type::Universal(mut ty12) => {
                         Shift::new(1).visit(&mut ty);
@@ -373,11 +373,11 @@ impl<
             }
             // See src/types/patterns.rs for exhaustiveness and typechecking
             // of case expressions
-            ExtKind::Case(expr, arms) => self.type_check_case(expr, arms),
+            ExtKind::Case(expr, arms) => self.type_check_case(expr, arms, ext),
 
             ExtKind::Unfold(rec, tm) => match rec.as_ref() {
                 Type::Rec(inner) => {
-                    let ty_ = self.type_check(tm)?;
+                    let ty_ = self.type_check(tm, ext)?;
                     if ty_ == *rec.clone() {
                         let s = subst(*rec.clone(), *inner.clone());
                         Ok(s)
@@ -396,7 +396,7 @@ impl<
 
             ExtKind::Fold(rec, tm) => match rec.as_ref() {
                 Type::Rec(inner) => {
-                    let ty_ = self.type_check(tm)?;
+                    let ty_ = self.type_check(tm, ext)?;
                     let s = subst(*rec.clone(), *inner.clone());
                     if ty_ == s {
                         Ok(*rec.clone())
@@ -415,7 +415,7 @@ impl<
             ExtKind::Pack(witness, evidence, signature) => {
                 if let Type::Existential(exists) = signature.as_ref() {
                     let sig_prime = subst(*witness.clone(), *exists.clone());
-                    let evidence_ty = self.type_check(evidence)?;
+                    let evidence_ty = self.type_check(evidence, ext)?;
                     if evidence_ty == sig_prime {
                         Ok(*signature.clone())
                     } else {
@@ -432,10 +432,10 @@ impl<
                 }
             }
             ExtKind::Unpack(package, body) => {
-                let p_ty = self.type_check(package)?;
+                let p_ty = self.type_check(package, ext)?;
                 if let Type::Existential(xst) = p_ty {
                     self.push(*xst);
-                    let body_ty = self.type_check(body)?;
+                    let body_ty = self.type_check(body, ext)?;
                     self.pop();
                     Ok(body_ty)
                 } else {

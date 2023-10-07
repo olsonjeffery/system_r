@@ -280,7 +280,7 @@ impl<
         arms: &[Arm<TExtPat, TExtKind>],
         ext: &mut TExt,
     ) -> Result<Type, Diagnostic> {
-        let ty = self.type_check(expr)?;
+        let ty = self.type_check(expr, ext)?;
         let mut matrix = patterns::Matrix::<TExtPat>::new(ty);
 
         let mut set = HashSet::new();
@@ -293,7 +293,7 @@ impl<
                     self.push(b.clone());
                 }
 
-                let arm_ty = self.type_check(&arm.term)?;
+                let arm_ty = self.type_check(&arm.term, ext)?;
 
                 while self.stack.len() > height {
                     self.pop();
