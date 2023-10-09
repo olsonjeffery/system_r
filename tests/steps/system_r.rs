@@ -11,12 +11,12 @@ use system_r::{
 
 use crate::common::{self, extensions::OmniContext};
 
-static CTX_NAME: &'static str = "system_r_bottom";
+pub static CTX_NAME: &'static str = "system_r_bottom";
 
 #[given(regex = r#"^a new ctx"#)]
 #[given(regex = r#"^a new sr ctx"#)]
 #[given(regex = r#"^a new system_r context"#)]
-fn given_a_new_context(world: &mut common::SpecsWorld) {
+pub fn given_a_new_context(world: &mut common::SpecsWorld) {
     let new_ctx = Context::default();
     world
         .contexts
@@ -81,7 +81,7 @@ fn when_eval_is_ran(world: &mut common::SpecsWorld) {
     if world.code_snippet == "" {
         assert!(false, "passed empty code snippet to parser");
     }
-    let OmniContext::Bottom(ctx) = world.contexts.get_mut(CTX_NAME).unwrap() else {
+    let Some(OmniContext::Bottom(ctx)) = world.contexts.get_mut(CTX_NAME) else {
         panic!("expected to get a bottom context, didn't!");
     };
     let mut term = world.last_parse_term.clone();

@@ -80,6 +80,9 @@ impl MutTypeVisitor for Shift {
     }
 }
 
+/// Represents substituting the provided `Type` into
+/// TmVar(0) position in the `&mut Type` provided to
+/// `visit()`
 pub struct Subst {
     pub cutoff: usize,
     pub ty: Type,

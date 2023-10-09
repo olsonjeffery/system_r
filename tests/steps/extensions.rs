@@ -10,9 +10,10 @@ use system_r::{
     extensions::{
         struct_data::{StructDataContext, StructDataExtension},
         SystemRExtension,
+        SystemRConverter
     },
     terms::ExtTerm,
-    testing, syntax::parser::{ParserState, self},
+    testing, syntax::parser::{ParserState, self}, bottom::BottomExtension,
 };
 
 use crate::common::{
@@ -20,6 +21,8 @@ use crate::common::{
     extensions::{OmniContext, OmniKind, OmniTerm},
     SpecsWorld,
 };
+
+use super::system_r::given_a_new_context;
 
 static StructData_CTX_NAME: &'static str = "StructData";
 
@@ -76,4 +79,22 @@ fn when_it_is_processed_for_StructData(world: &mut common::SpecsWorld) {
     world.last_ext_parse_success = if kind == OmniKind::Empty { false } else { true };
     world.last_ext_parse_kind = kind;
     world.last_ext_parse_term = term;
+}
+
+#[when("StructData-dialect is resolved into bottom-dialect system_r")]
+pub fn when_it_is_converted_to_bottom_dialect(world: &mut SpecsWorld) {
+    given_a_new_context(world);
+    let tm = match world.last_ext_parse_term.clone() {
+        OmniTerm::StructData(t) => t,
+        _ => panic!("barf!")
+    };
+
+    let bottom_tm = match StructDataExtension.resolve(tm) {
+        Ok(tm) => tm,
+        Err(_) => { world.last_parse_success = false; return; }
+    };
+
+    world.last_parse_term = bottom_tm.clone();
+    world.last_parse_kind = bottom_tm.kind;
+    world.last_parse_success = true;
 }

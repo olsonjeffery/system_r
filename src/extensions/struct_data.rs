@@ -17,7 +17,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
-use std::{cell::RefCell, rc::Rc, collections::HashMap};
+use std::{cell::RefCell, rc::Rc, collections::HashMap, ops::Range};
 
 use crate::{
     bottom::{BottomKind, BottomPattern, BottomTokenKind, BottomExtension},
@@ -30,12 +30,11 @@ use crate::{
         error::Error,
         ExtTokenKind,
     },
-    system_r_util::span::Span,
     terms::{ExtKind, ExtTerm},
-    types::{ExtContext, Type},
+    types::{ExtContext, Type, visit::Subst}, visit::MutTypeVisitor,
 };
 
-use super::{ParserOp, ParserOpCompletion, SystemRExtension};
+use super::{SystemRExtension, SystemRConverter};
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct StructDataExtension;
@@ -87,7 +86,7 @@ pub enum StructDataPattern {
 
 #[derive(Clone, Default, Debug)]
 pub struct StructDataState {
-    type_map: HashMap<String, Type>,
+    type_map: HashMap<String, (usize, Type)>,
 }
 
 pub const KEYWORD_TYPE: &str = "type";
@@ -163,26 +162,20 @@ impl SystemRExtension<StructDataTokenKind, StructDataKind, StructDataPattern, St
 
         // this should be a "holed-out" type specification (it should have
         // entries for where generic types can be substituted-in)
-        let type_shape = get_type_from_decl(ps, self)?;
-        // type_shape should be stored onto the ps.ext_state.type_map
+        let type_shape = get_holed_type_from_decl(ps, self)?;
+        set_holed_type_for(ps, &struct_ident, type_shape)?;
+
 
         let len = ps.tmvar.len();
         parser::expect(ps, self, ExtTokenKind::In)?;
+
+        // within here, type decl erasure should ooccur and what comes out should be Bottom-compatible
         let t2 = parser::once(ps, |p| parser::parse(p, self), "type scope body required")?;
         while ps.tmvar.len() > len {
             ps.tmvar.pop();
         }
 
-        // FIXME: Maybe this should just be returning t2, since its contents should have
-        // erased all type/extended token/kind stuff by now
-        Ok(ExtTerm::new(
-            ExtKind::Extended(StructDataKind::StructDataExpr(
-                struct_ident,
-                Box::new(type_shape),
-                Box::new(t2),
-            )),
-            sp + ps.span,
-        ))
+        Ok(t2)
     }
 
     fn parser_has_ext_atom(&self, tk: &StructDataTokenKind) -> bool {
@@ -226,55 +219,117 @@ impl SystemRExtension<StructDataTokenKind, StructDataKind, StructDataPattern, St
         };
         parser::bump(ps, self);
 
-        // FIXME need to peek ahead and see if there's actually a tyapp after the use of our
-        // TypeBindingVar
-        let ty = extract_fulfilled_type_alias_from_tyapp(ps, self, &type_decl_key)?;
+        let applied_types = if ps.token.kind == ExtTokenKind::LSquare {
+            pulls_types_from_tyapp(ps, self)?
+        } else {
+            Vec::new()
+        };
 
-        panic!("parser_ty unimpl, type_decl_key: {:?} type: {:?}", type_decl_key, ty);
-
-        // FIXME ultimately we are returning a fully substituted type with no "type holes"
+        let reified_type = reify_type(ps, self, &type_decl_key, &applied_types)?;
+        Ok(reified_type)
     }
 }
 
-pub fn extract_fulfilled_type_alias_from_tyapp(
+pub fn get_holed_type_from(
+    ps: &mut ParserState<StructDataTokenKind, StructDataKind, StructDataPattern, StructDataState>,
+    key: &str,
+) -> Result<(usize, Type), Error<StructDataTokenKind>> {
+    match ps.ext_state.type_map.get(key) {
+        Some(t) => Ok(t.clone()),
+        None => Err(Error { span: ps.span, tok: ps.token.clone(), kind: ErrorKind::ExtendedError(format!("Tried to get holed type named '{:?}', found None", key))})
+    }
+}
+
+pub fn set_holed_type_for(
+    ps: &mut ParserState<StructDataTokenKind, StructDataKind, StructDataPattern, StructDataState>,
+    key: &str,
+    ty: (usize, Type),
+) -> Result<(), Error<StructDataTokenKind>> {
+    match ps.ext_state.type_map.contains_key(key) {
+        false => {
+            ps.ext_state.type_map.insert(key.to_owned(), ty);
+            Ok(())
+        },
+        true => Err(Error { span: ps.span, tok: ps.token.clone(), kind: ErrorKind::ExtendedError(format!("key {:?} is already present in types hash", key)) })
+    }
+}
+
+pub fn reify_type<'s>(
+    ps: &mut ParserState<StructDataTokenKind, StructDataKind, StructDataPattern, StructDataState>,
+    ext: &mut StructDataExtension,
+    type_decl_key: &str,
+    applied_types: &Vec<Type>,
+) -> Result<Type, Error<StructDataTokenKind>> {
+    let (tyabs_count, mut holed_type ) = get_holed_type_from(ps, type_decl_key)?;
+
+    if applied_types.len() != tyabs_count {
+        return Err(Error{span: ps.span, tok: ps.token.clone(), kind: ErrorKind::ExtendedError(format!("Expected tyabs count in holed type of be {:?}, but was {:?}", applied_types.len(), tyabs_count))})
+    }
+
+    for ty in applied_types {
+        // FIXME error if there's no substitution
+        Subst::new(ty.clone()).visit(&mut holed_type)
+    }
+
+    // FIXME need to confirm it is TmVar free at this point, falls out of
+    // check above
+
+    Ok(holed_type)
+}
+
+pub fn pulls_types_from_tyapp(
         ps: &mut ParserState<StructDataTokenKind, StructDataKind, StructDataPattern, StructDataState>,
         ext: &mut StructDataExtension,
-        key: &str,
-) -> Result<Type, Error<StructDataTokenKind>> {
-    // FIXME: could be 1 or more
-    if !parser::bump_if(ps, ext, &ExtTokenKind::LSquare) {
-        return parser::error(ps, ErrorKind::ExpectedToken(ExtTokenKind::LSquare));
-    }
+) -> Result<Vec<Type>, Error<StructDataTokenKind>> {
+    parser::expect(ps, ext, ExtTokenKind::LSquare)?;
     parser::expect(ps, ext, ExtTokenKind::Of)?;
-    let ty = parser::ty(ps, ext)?;
+
+    // FIXME: could be 1 or more
+    let mut ret_val = Vec::new();
+    loop {
+        let ty = parser::ty(ps, ext)?;
+        ret_val.push(ty);
+
+        if ps.token.kind == ExtTokenKind::RSquare { break; }
+        if ps.token.kind == ExtTokenKind::Comma { continue; }
+        return Err(Error {span: ps.span, tok: ps.token.clone(), kind: ErrorKind::ExtendedError("Expected either end of tyapp or comma".to_owned())})
+    }
+
     parser::expect(ps, ext, ExtTokenKind::RSquare)?;
-    // FIXME sub out with what's in parser ext state.
-    // Use the key param above to pull out the stored type_shape,
-    // apply tyapps from above, then substitute in-place
-    Ok(ty)
+    Ok(ret_val)
 }
 
-pub fn get_type_from_decl<'s>(
+pub fn extract_tyabs_for_type_shape<'s>(
     ps: &mut ParserState<'s, StructDataTokenKind, StructDataKind, StructDataPattern, StructDataState>,
     ext: &mut StructDataExtension,
-) -> Result<ExtTerm<StructDataPattern, StructDataKind>, Error<StructDataTokenKind>> {
-    // tyabs -- FIXME need to peek and peel one or more off
+) -> Result<usize, Error<StructDataTokenKind>> {
     parser::expect(ps, ext, ExtTokenKind::Lambda)?;
     let tyvar = parser::uppercase_id(ps, ext)?;
-    let sp = ps.span;
     let tyabs = Box::new(Type::Var(ps.tyvar.push(tyvar)));
+    Ok(1) // FIXME do dynamic tyabs extraction and return the count
+}
+
+pub fn get_holed_type_from_decl<'s>(
+    ps: &mut ParserState<'s, StructDataTokenKind, StructDataKind, StructDataPattern, StructDataState>,
+    ext: &mut StructDataExtension,
+) -> Result<(usize, Type), Error<StructDataTokenKind>> {
+    let sp = ps.span;
+    let push_count = extract_tyabs_for_type_shape(ps, ext)?;
     
     // type def
     let type_shape = parser::once(ps, |p| parser::ty_atom(p, &mut StructDataExtension), "abstraction body required")?;
-    // FIXME scrub all occurance of tyabs's from above type_shape, replaced
-    // with indexed "type holes", need to extend Type
-    let kind = ExtKind::Extended(StructDataKind::Declaration(Box::new(type_shape.clone())));
 
     // pop off the tyabs var, since they only apply for the purpose of defining
     // "type holes" in the type def
-    // FIXME do number of pops equiv to pushes above, based on number of tyvar
-    ps.tyvar.pop();
+    for _ in 0..push_count {
+        ps.tyvar.pop();
+    }
 
+    Ok((push_count, type_shape))
+}
 
-    Ok(ExtTerm::new(kind, sp + ps.span))
+impl SystemRConverter<StructDataPattern, StructDataKind, BottomPattern, BottomKind> for StructDataExtension {
+    fn resolve(&self, tm: ExtTerm<StructDataPattern, StructDataKind>) -> Result<ExtTerm<BottomPattern, BottomKind>, Diagnostic> {
+        Err(Diagnostic::error(tm.span, format!("BottomExtension::resolve() unimpl")))
+    }
 }

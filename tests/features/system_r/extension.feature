@@ -1,19 +1,5 @@
 @system_r
 Feature: Extension of system_r
-    # Notes: All-in, a "new extension" will require something like:
-    #
-    #   + ExtTokenKind<TExtTokenKind> (mandatory) - additions to TokenKind in syntax::lexer
-    #   + ExtKind<TExtKind> (mandatory) - additions in syntax::parser
-    #   + ExtType<TExtType> (mandatory) - additions for types::Context type_check suite
-    #   + ExtPattern<TExtPat> (mandatory) - additions to type_check_case in patterns.rs
-    #   + ExtResolver<TExtKind, TExtType> (mandatory) - to type any single extension
-    #     into vanilla system_r instructions
-    #   + CrossExtResolver<TExtKind1, TExtKind2, TExtTy1, TExtTy1>
-    #     (optional) - allows multiple impls for a set of extensions, enables converting one
-    #     extended lambda calculus to another extended calculus
-    #
-    # Notes: Eval ONLY operates against TExtKind<BottomKind
-
     @wip
     Scenario: StructData happy path
         # Add structural type/data-shape capture with the StructData
@@ -43,11 +29,12 @@ let Some(res) = tripler [Nat] (Some 7 of $Option[of Nat]) (\x: Nat. (x, x, x)) i
 res ;
         """
         When it is processed for the StructData extension
+        And StructData-dialect is resolved into bottom-dialect system_r
+        And eval is ran
         Then the last ext should parse successfully
-        #When it is converted to bottom-dialect system_r
-        #When eval is ran
-        #Then the last eval should be successful
-        #Then the resulting eval Kind should equal: "(7,7,7)"
+        Then the last parse should be successful
+        Then the last eval should be successful
+        Then the resulting eval Kind should equal: "(7,7,7)"
 
     # Scenario: type decl with no tyabs
 

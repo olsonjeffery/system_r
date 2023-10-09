@@ -19,7 +19,7 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 use crate::{
     diagnostics::Diagnostic,
-    extensions::{ParserOp, SystemRExtension},
+    extensions::SystemRExtension,
     patterns::ExtPattern,
     syntax::{
         lexer::ExtLexer, /* lexer2::extlexer2 */

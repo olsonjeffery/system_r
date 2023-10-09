@@ -44,14 +44,11 @@ use super::lexer::ExtLexer;
 use super::{ExtToken, ExtTokenKind};
 use super::error::Error;
 use crate::bottom::{BottomExtension, BottomKind, BottomPattern, BottomTokenKind, BottomState};
-use crate::extensions::{ParserOpCompletion, SystemRExtension};
+use crate::extensions::SystemRExtension;
 
 use crate::system_r_util::diagnostic::Diagnostic;
 use crate::system_r_util::span::*;
 use core::fmt;
-use std::cell::{Ref, RefCell};
-use std::collections::VecDeque;
-use std::rc::Rc;
 
 use crate::patterns::{ExtPattern, PatVarStack};
 use crate::platform_bindings::PlatformBindings;

@@ -33,18 +33,6 @@ use crate::{
 
 pub mod struct_data;
 
-#[derive(Default)]
-pub enum ParserOp<
-    TExtTokenKind: fmt::Debug + PartialEq + PartialOrd + Default + Clone,
-    TExtKind: fmt::Debug + PartialEq + PartialOrd + Default + Clone,
-    TExtPat: fmt::Debug + PartialEq + PartialOrd + Default + Clone,
-> {
-    #[default]
-    Unit,
-    Panic,
-    Foo(TExtTokenKind, TExtKind, TExtPat),
-}
-
 pub trait SystemRExtension<
     TExtTokenKind: fmt::Debug + PartialEq + PartialOrd + Default + Clone,
     TExtKind: fmt::Debug + PartialEq + PartialOrd + Default + Clone,
@@ -82,8 +70,11 @@ pub trait SystemRExtension<
     ) -> bool;
 }
 
-pub struct ParserOpCompletion<
-    TExtTokenKind: fmt::Debug + PartialEq + PartialOrd + Default + Clone,
-    TExtKind: fmt::Debug + PartialEq + PartialOrd + Default + Clone,
-    TExtPat: fmt::Debug + PartialEq + PartialOrd + Default + Clone,
->(pub String, pub ExtToken<TExtTokenKind>, pub ExtTerm<TExtPat, TExtKind>);
+pub trait SystemRConverter<
+    InExtPat: fmt::Debug + PartialEq + PartialOrd + Default + Clone,
+    InExtKind: fmt::Debug + PartialEq + PartialOrd + Default + Clone,
+    OutExtPat: fmt::Debug + PartialEq + PartialOrd + Default + Clone,
+    OutExtKind: fmt::Debug + PartialEq + PartialOrd + Default + Clone,
+> {
+   fn resolve(&self, tm: ExtTerm<InExtPat, InExtKind>) -> Result<ExtTerm<OutExtPat, OutExtKind>, Diagnostic>; 
+}
