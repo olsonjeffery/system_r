@@ -75,10 +75,11 @@ pub trait SystemRExtension<
     ) -> bool;
 }
 
-pub trait SystemRConverter<
+pub trait SystemRTranslator<
     InExtPat: fmt::Debug + PartialEq + PartialOrd + Default + Clone,
     InExtKind: fmt::Debug + PartialEq + PartialOrd + Default + Clone,
     InExtType: fmt::Debug + PartialEq + PartialOrd + Default + Clone + Eq + hash::Hash,
+    InExtState: fmt::Debug +  Default + Clone,
     OutExtPat: fmt::Debug + PartialEq + PartialOrd + Default + Clone,
     OutExtKind: fmt::Debug + PartialEq + PartialOrd + Default + Clone,
     OutExtType: fmt::Debug + PartialEq + PartialOrd + Default + Clone + Eq + hash::Hash,
@@ -86,6 +87,12 @@ pub trait SystemRConverter<
 {
     fn resolve(
         &self,
+        st: &mut InExtState,
         tm: ExtTerm<InExtPat, InExtKind, InExtType>,
     ) -> Result<ExtTerm<OutExtPat, OutExtKind, OutExtType>, Diagnostic>;
 }
+
+// FIXME a set of translator visitor structs, with ::new(), to facilitate
+// going from In* to Out*
+//
+// does it become a big, stacked visitor for Kind->{Pattern|Type} ?

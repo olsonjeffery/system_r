@@ -104,6 +104,10 @@ impl<
         let d = self.diagnostic;
         d.emit()
     }
+
+    pub fn to_ext_state(self) -> TExtState {
+        self.ext_state
+    }
 }
 
 pub fn new<'s, TExtType: Clone + Default + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash>(

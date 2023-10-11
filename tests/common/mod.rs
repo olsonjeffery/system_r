@@ -8,7 +8,7 @@ use system_r::{
     types::Type, bottom::{BottomType, BottomKind, BottomPattern},
 };
 
-use self::extensions::{OmniContext, OmniKind, OmniParser, OmniTerm, OmniType};
+use self::extensions::{OmniContext, OmniKind, OmniTerm, OmniType, OmniState};
 
 pub mod extensions;
 pub mod platform_bindings;
@@ -19,7 +19,6 @@ type Term = ExtTerm<BottomPattern, BottomKind, BottomType>;
 pub struct SpecsWorld {
     pub code_snippet: String,
     pub contexts: HashMap<String, OmniContext>,
-    pub parsers: HashMap<String, OmniParser<'static>>,
     pub platform_bindings: PlatformBindings,
     pub last_parse_success: bool,
     pub last_parse_kind: Kind,
@@ -34,5 +33,6 @@ pub struct SpecsWorld {
     pub last_ext_parse_kind: OmniKind,
     pub last_ext_parse_term: OmniTerm,
     pub last_ext_parse_msg: String,
+    pub last_ext_state: OmniState,
     pub last_ext_ty: OmniType,
 }

@@ -21,11 +21,11 @@ pub enum OmniContext {
 
 #[allow(dead_code)]
 #[derive(Clone, Default, Debug)]
-pub enum OmniParser<'s> {
+pub enum OmniState {
     #[default]
     Empty,
-    Bottom(ParserState<'s, BottomTokenKind, BottomKind, BottomPattern, BottomType, BottomState>),
-    StructData(ParserState<'s, StructDataTokenKind, StructDataKind, StructDataPattern, StructDataType, StructDataState>),
+    Bottom(BottomState),
+    StructData(StructDataState),
 }
 
 impl OmniContext {

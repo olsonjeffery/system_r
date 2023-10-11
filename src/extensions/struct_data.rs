@@ -35,7 +35,7 @@ use crate::{
     visit::MutTypeVisitor,
 };
 
-use super::{SystemRConverter, SystemRExtension};
+use super::{SystemRTranslator, SystemRExtension};
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct StructDataExtension;
@@ -410,11 +410,12 @@ pub fn get_holed_type_from_decl<'s>(
     Ok((push_count, type_shape))
 }
 
-impl SystemRConverter<StructDataPattern, StructDataKind, StructDataType, BottomPattern, BottomKind, BottomType>
+impl SystemRTranslator<StructDataPattern, StructDataKind, StructDataType, StructDataState, BottomPattern, BottomKind, BottomType>
     for StructDataExtension
 {
     fn resolve(
         &self,
+        st: &mut StructDataState,
         tm: ExtTerm<StructDataPattern, StructDataKind, StructDataType>,
     ) -> Result<ExtTerm<BottomPattern, BottomKind, BottomType>, Diagnostic> {
         Err(Diagnostic::error(tm.span, format!("BottomExtension::resolve() unimpl")))

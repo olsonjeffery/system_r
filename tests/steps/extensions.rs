@@ -10,7 +10,7 @@ use system_r::{
     diagnostics::Diagnostic,
     extensions::{
         struct_data::{StructDataContext, StructDataExtension},
-        SystemRConverter, SystemRExtension,
+        SystemRTranslator, SystemRExtension,
     },
     syntax::parser::{self, ParserState},
     terms::ExtTerm,
@@ -19,7 +19,7 @@ use system_r::{
 
 use crate::common::{
     self,
-    extensions::{OmniContext, OmniKind, OmniTerm},
+    extensions::{OmniContext, OmniKind, OmniTerm, OmniState},
     SpecsWorld,
 };
 
@@ -65,22 +65,21 @@ fn when_it_is_processed_for_StructData(world: &mut common::SpecsWorld) {
     let mut ps = parser::ext_new(&pb, &input, &mut ext);
 
     let res = parse_for_extension(&input, &mut ps, &mut ext);
-    let (term, kind) = match res {
+    match res {
         Ok(t) => {
             let k = OmniKind::StructData(t.clone().kind);
             let t = OmniTerm::StructData(t);
-            (t, k)
+            world.last_ext_parse_success = if k == OmniKind::Empty { false } else { true };
+            world.last_ext_parse_kind = k;
+            world.last_ext_parse_term = t;
+            world.last_ext_state = OmniState::StructData(ps.to_ext_state());
         }
         Err(e) => {
             ps.die();
             world.last_ext_parse_msg = format!("error diag: {:?}", e);
-            (OmniTerm::Empty, OmniKind::Empty)
         }
     };
 
-    world.last_ext_parse_success = if kind == OmniKind::Empty { false } else { true };
-    world.last_ext_parse_kind = kind;
-    world.last_ext_parse_term = term;
 }
 
 #[when("StructData-dialect is resolved into bottom-dialect system_r")]
@@ -88,10 +87,15 @@ pub fn when_it_is_converted_to_bottom_dialect(world: &mut SpecsWorld) {
     given_a_new_context(world);
     let tm = match world.last_ext_parse_term.clone() {
         OmniTerm::StructData(t) => t,
-        _ => panic!("barf!"),
+        _ => panic!("expected struct data!"),
     };
 
-    let bottom_tm = match StructDataExtension.resolve(tm) {
+    let mut ps = match &world.last_ext_state {
+        OmniState::StructData(ps) => ps.clone(),
+        _ => panic!("expected OmniState::StructData")
+    };
+
+    let bottom_tm = match StructDataExtension.resolve(&mut ps, tm) {
         Ok(tm) => tm,
         Err(d) => {
             world.last_parse_success = false;
