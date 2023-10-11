@@ -47,10 +47,10 @@ use crate::{
 };
 use core::fmt;
 use std::cell::RefCell;
-use std::char;
 use std::iter::Peekable;
 use std::rc::Rc;
 use std::str::Chars;
+use std::{char, hash};
 
 pub type Lexer<'s> = ExtLexer<'s, BottomTokenKind, BottomExtension, BottomPattern>;
 
@@ -182,7 +182,11 @@ impl<
         ExtToken::new(kind, span)
     }
 
-    fn extended_single<TExtState: Clone + fmt::Debug + Default, TExt: Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern, TExtState>>(
+    fn extended_single<
+        TExtType: Clone + Default + fmt::Debug + hash::Hash + PartialEq + PartialOrd + Eq,
+        TExtState: Clone + fmt::Debug + Default,
+        TExt: Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern, TExtType, TExtState>,
+    >(
         &mut self,
         ext: &mut TExt,
     ) -> ExtToken<TExtTokenKind> {
@@ -193,7 +197,11 @@ impl<
     //TLE: Default + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern>,
 
     /// Lex a reserved keyword or an identifier
-    fn keyword<TExtState: Clone + fmt::Debug + Default, TExt: Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern, TExtState>>(
+    fn keyword<
+        TExtType: Clone + Default + fmt::Debug + hash::Hash + PartialEq + PartialOrd + Eq,
+        TExtState: Clone + fmt::Debug + Default,
+        TExt: Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern, TExtType, TExtState>,
+    >(
         &mut self,
         ext: &mut TExt,
     ) -> ExtToken<TExtTokenKind> {
@@ -252,7 +260,11 @@ impl<
     }
 
     /// Return the next lexeme in the input as a [`Token`]
-    pub fn lex<TExtState: Clone + fmt::Debug + Default, TExt: Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern, TExtState>>(
+    pub fn lex<
+        TExtType: Clone + Default + fmt::Debug + hash::Hash + PartialEq + PartialOrd + Eq,
+        TExtState: Clone + fmt::Debug + Default,
+        TExt: Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern, TExtType, TExtState>,
+    >(
         &mut self,
         ext: &mut TExt,
     ) -> ExtToken<TExtTokenKind> {
@@ -300,11 +312,19 @@ impl<
         TExtPattern: PartialEq + PartialOrd + Default + Clone + fmt::Debug,
     > ExtLexer<'s, TExtTokenKind, TExtKind, TExtPattern>
 {
-    fn next<TExtState: Clone + fmt::Debug + Default, TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern, TExtState>>(
+    fn next<
+        TExtType: Clone + Default + fmt::Debug + hash::Hash + PartialEq + PartialOrd + Eq,
+        TExtState: Clone + fmt::Debug + Default,
+        TExt: fmt::Debug
+            + Default
+            + Copy
+            + Clone
+            + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern, TExtType, TExtState>,
+    >(
         &mut self,
         ext: &mut TExt,
     ) -> Option<ExtToken<TExtTokenKind>> {
-        match self.lex::<TExtState, TExt>(ext) {
+        match self.lex::<TExtType, TExtState, TExt>(ext) {
             ExtToken {
                 kind: ExtTokenKind::Eof,
                 ..

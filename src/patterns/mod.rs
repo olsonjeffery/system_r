@@ -41,6 +41,7 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
 use core::fmt;
+use std::hash;
 
 use crate::bottom::BottomPattern;
 use crate::extensions::SystemRExtension;
@@ -133,11 +134,12 @@ impl<TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd> ExtPattern<
     pub fn matches<
         TExtTokenKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
         TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+        TExtType: Clone + Default + fmt::Debug + hash::Hash + PartialEq + PartialOrd + Eq,
         TExtState: fmt::Debug + Default + Clone,
-        TPtE: SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+        TPtE: SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     >(
         &self,
-        term: &ExtTerm<TExtPat, TExtKind>,
+        term: &ExtTerm<TExtPat, TExtKind, TExtType>,
         ext: &TPtE,
     ) -> bool {
         match self {
@@ -175,9 +177,10 @@ pub struct PatTyStack<
     'ty,
     TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
     TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExtType: Clone + Default + fmt::Debug + hash::Hash + PartialEq + PartialOrd + Eq,
 > {
-    pub ty: &'ty Type,
-    pub inner: Vec<&'ty Type>,
+    pub ty: &'ty Type<TExtType>,
+    pub inner: Vec<&'ty Type<TExtType>>,
     _pat: TExtPat,
     _kind: TExtKind,
 }
@@ -186,9 +189,10 @@ impl<
         'ty,
         TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
         TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    > PatTyStack<'ty, TExtPat, TExtKind>
+        TExtType: Clone + Default + fmt::Debug + hash::Hash + PartialEq + PartialOrd + Eq,
+    > PatTyStack<'ty, TExtPat, TExtKind, TExtType>
 {
-    pub fn collect(ty: &'ty Type, pat: &ExtPattern<TExtPat>) -> Vec<&'ty Type> {
+    pub fn collect(ty: &'ty Type<TExtType>, pat: &ExtPattern<TExtPat>) -> Vec<&'ty Type<TExtType>> {
         let mut p = PatTyStack {
             ty,
             inner: Vec::with_capacity(16),
@@ -203,7 +207,8 @@ impl<
 impl<
         TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
         TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    > PatternVisitor<TExtPat, TExtKind> for PatTyStack<'_, TExtPat, TExtKind>
+        TExtType: Clone + Default + fmt::Debug + hash::Hash + PartialEq + PartialOrd + Eq,
+    > PatternVisitor<TExtPat, TExtKind> for PatTyStack<'_, TExtPat, TExtKind, TExtType>
 {
     fn visit_product(&mut self, pats: &Vec<ExtPattern<TExtPat>>) {
         if let Type::Product(tys) = self.ty {

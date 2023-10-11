@@ -19,26 +19,25 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 use core::fmt;
 use std::collections::HashMap;
+use std::hash;
 
+use crate::bottom::{BottomKind, BottomPattern, BottomTokenKind, BottomType};
 use crate::extensions::SystemRExtension;
 use crate::system_r_util::span::Span;
 
+use crate::terms::ExtTerm;
+use crate::types::Variant;
 use crate::{
     diagnostics::Diagnostic,
-    terms::{Kind, Term},
     types::{ExtContext, Type},
 };
 
-pub type WrappedFn = fn(input: Term, span: &Span) -> Result<Term, Diagnostic>;
+pub type WrappedFn = fn(
+    input: ExtTerm<BottomPattern, BottomKind, BottomType>,
+    span: &Span,
+) -> Result<ExtTerm<BottomPattern, BottomKind, BottomType>, Diagnostic>;
 
-#[derive(Debug, Default, Clone)]
-pub struct PlatformBindingDecl {
-    pub ty_abs: Vec<Kind>,
-    pub args: Vec<Type>,
-    pub ret_type: Type,
-}
-
-pub struct WrappedContent(pub WrappedFn, pub Type, pub Type);
+pub struct WrappedContent(pub WrappedFn, pub Type<BottomType>, pub Type<BottomType>);
 
 impl Clone for WrappedContent {
     fn clone(&self) -> Self {
@@ -97,15 +96,70 @@ impl<'a> PlatformBindings {
     }
 }
 
+fn resolve_pb_type<TExtType: Clone + Default + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash>(
+    ty_in: Type<BottomType>,
+) -> Result<Type<TExtType>, Diagnostic> {
+    match ty_in {
+        Type::Extended(v) => Err(Diagnostic::error(
+            Default::default(),
+            "Platform binding with extended args type; not allowed",
+        )),
+        Type::Alias(v) => Ok(Type::Alias(v)),
+        Type::Arrow(a, b) => Ok(Type::Arrow(
+            Box::new(resolve_pb_type(*a)?),
+            Box::new(resolve_pb_type(*b)?),
+        )),
+        Type::Bool => Ok(Type::Bool),
+        Type::Existential(a) => Ok(Type::Existential(Box::new(resolve_pb_type(*a)?))),
+        Type::Nat => Ok(Type::Nat),
+        Type::PlatformBinding(_, _) => Err(Diagnostic::error(
+            Default::default(),
+            "Platforming with platform-binding-type vars; shouldn't happen",
+        )),
+        Type::Product(v) => {
+            let mut result = Vec::new();
+            for i in v {
+                result.push(resolve_pb_type(i)?);
+            }
+            return Ok(Type::Product(result));
+        }
+        Type::Rec(r) => Ok(Type::Rec(Box::new(resolve_pb_type(*r)?))),
+        Type::Tag(t) => Ok(Type::Tag(t)),
+        Type::Unit => Ok(Type::Unit),
+        Type::Var(s) => Ok(Type::Var(s)),
+        Type::Variant(v) => {
+            let mut result = Vec::new();
+            for i in v {
+                let variant: Variant<TExtType> = Variant {
+                    label: i.label,
+                    ty: resolve_pb_type(i.ty)?,
+                };
+                result.push(variant);
+            }
+            return Ok(Type::Variant(result));
+        }
+        Type::Universal(r) => Ok(Type::Universal(Box::new(resolve_pb_type(*r)?))),
+    }
+}
+
 impl<
         TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
         TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
         TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-    > ExtContext<TExtTokenKind, TExtKind, TExtPat>
+        TExtType: Clone + Default + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
+    > ExtContext<TExtTokenKind, TExtKind, TExtPat, TExtType>
 {
-    pub(crate) fn type_check_platform_binding(&mut self, idx: &usize, span: &Span) -> Result<Type, Diagnostic> {
+    pub(crate) fn type_check_platform_binding(
+        &mut self,
+        idx: &usize,
+        span: &Span,
+    ) -> Result<Type<TExtType>, Diagnostic> {
         match self.platform_bindings.get(*idx) {
-            Some(wc) => Ok(Type::PlatformBinding(Box::new(wc.1.clone()), Box::new(wc.2.clone()))),
+            Some(wc) => {
+                let args_resolved = resolve_pb_type(wc.1.clone())?;
+                let ret_resolved = resolve_pb_type(wc.2.clone())?;
+                return Ok(Type::PlatformBinding(Box::new(args_resolved), Box::new(ret_resolved)));
+            }
             None => Err(Diagnostic::error(
                 *span,
                 format!("No matching platform_binding registration for idx {}", idx),

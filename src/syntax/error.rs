@@ -43,9 +43,7 @@ use core::fmt;
 
 use crate::system_r_util::span::Span;
 
-use super::{ExtToken, parser::ErrorKind};
-
-
+use super::{parser::ErrorKind, ExtToken};
 
 #[derive(Clone)]
 pub struct Error<TExtTokenKind: PartialEq + Default + Sized + Clone> {

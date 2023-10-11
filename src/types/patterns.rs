@@ -87,15 +87,24 @@ fn overlap<
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
-pub struct Matrix<'pat, TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default> {
-    pub expr_ty: Type,
+pub struct Matrix<
+    'pat,
+    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash,
+> {
+    pub expr_ty: Type<TExtType>,
     len: usize,
     matrix: Vec<Vec<&'pat ExtPattern<TExtPat>>>,
 }
 
-impl<'pat, TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default> Matrix<'pat, TExtPat> {
+impl<
+        'pat,
+        TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+        TExtType: Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash,
+    > Matrix<'pat, TExtPat, TExtType>
+{
     /// Create a new [`Matrix`] for a given type
-    pub fn new(expr_ty: Type) -> Matrix<'pat, TExtPat> {
+    pub fn new(expr_ty: Type<TExtType>) -> Matrix<'pat, TExtPat, TExtType> {
         let len = match &expr_ty {
             Type::Product(p) => p.len(),
             _ => 1,
@@ -216,7 +225,7 @@ impl<'pat, TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default> Matri
         TExtTokenKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
         TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
         TExtState: fmt::Debug + Default + Clone,
-        TExt: Clone + fmt::Debug + Default + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+        TExt: Clone + fmt::Debug + Default + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     >(
         &mut self,
         pat: &'pat ExtPattern<TExtPat>,
@@ -245,7 +254,8 @@ impl<
         TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
         TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
         TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-    > ExtContext<TExtTokenKind, TExtKind, TExtPat>
+        TExtType: Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash,
+    > ExtContext<TExtTokenKind, TExtKind, TExtPat, TExtType>
 {
     /// Type check a case expression, returning the Type of the arms, assuming
     /// that the case expression is exhaustive and well-typed
@@ -272,23 +282,23 @@ impl<
     /// arm should have one type, and that type should be the same for all of
     /// the arms.
     pub(crate) fn type_check_case<
-    TExtState: Clone + fmt::Debug + Default,
-    TExt: Clone + fmt::Debug + Default + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+        TExtState: Clone + fmt::Debug + Default,
+        TExt: Clone + fmt::Debug + Default + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     >(
         &mut self,
-        expr: &ExtTerm<TExtPat, TExtKind>,
-        arms: &[Arm<TExtPat, TExtKind>],
+        expr: &ExtTerm<TExtPat, TExtKind, TExtType>,
+        arms: &[Arm<TExtPat, TExtKind, TExtType>],
         ext: &mut TExt,
-    ) -> Result<Type, Diagnostic> {
+    ) -> Result<Type<TExtType>, Diagnostic> {
         let ty = self.type_check(expr, ext)?;
-        let mut matrix = patterns::Matrix::<TExtPat>::new(ty);
+        let mut matrix = patterns::Matrix::<TExtPat, TExtType>::new(ty);
 
         let mut set = HashSet::new();
         for arm in arms {
             if self.pattern_type_eq(&arm.pat, &matrix.expr_ty, ext) {
                 let height = self.stack.len();
 
-                let binds = PatTyStack::<TExtPat, TExtKind>::collect(&matrix.expr_ty, &arm.pat);
+                let binds = PatTyStack::<TExtPat, TExtKind, TExtType>::collect(&matrix.expr_ty, &arm.pat);
                 for b in binds.into_iter().rev() {
                     self.push(b.clone());
                 }
@@ -343,9 +353,14 @@ impl<
     /// This function is primarily used as a first pass to ensure that a pattern
     /// is valid for a given case expression
     pub(crate) fn pattern_type_eq<
-    TExtState: Default + fmt::Debug + Clone,
-    TExt: Clone + Default + fmt::Debug + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
-    >(&self, pat: &ExtPattern<TExtPat>, ty: &Type, ext: &mut TExt) -> bool {
+        TExtState: Default + fmt::Debug + Clone,
+        TExt: Clone + Default + fmt::Debug + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    >(
+        &self,
+        pat: &ExtPattern<TExtPat>,
+        ty: &Type<TExtType>,
+        ext: &mut TExt,
+    ) -> bool {
         match pat {
             ExtPattern::Any => true,
             ExtPattern::Variable(_) => true,

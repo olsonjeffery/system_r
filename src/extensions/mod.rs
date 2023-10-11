@@ -18,14 +18,16 @@ along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 use core::fmt;
+use std::hash;
 
 use crate::{
     diagnostics::Diagnostic,
     patterns::ExtPattern,
     syntax::{
-        lexer::{ExtLexer, Lexer},
         error::Error,
-        ExtToken, parser::ParserState,
+        lexer::{ExtLexer, Lexer},
+        parser::ParserState,
+        ExtToken,
     },
     terms::ExtTerm,
     types::Type,
@@ -37,6 +39,7 @@ pub trait SystemRExtension<
     TExtTokenKind: fmt::Debug + PartialEq + PartialOrd + Default + Clone,
     TExtKind: fmt::Debug + PartialEq + PartialOrd + Default + Clone,
     TExtPat: fmt::Debug + PartialEq + PartialOrd + Default + Clone,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
 >
 {
@@ -48,33 +51,41 @@ pub trait SystemRExtension<
     fn parser_has_ext_parse(&self, tk: &TExtTokenKind) -> bool;
     fn parser_ext_parse<'s>(
         &mut self,
-        ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
-    ) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>>;
+        ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>>;
     fn parser_has_ext_atom(&self, tk: &TExtTokenKind) -> bool;
     fn parser_ext_atom<'s>(
         &mut self,
-        ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
-    ) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>>;
-    fn pat_ext_pattern_type_eq(&self, pat: &TExtPat, ty: &Type) -> bool;
+        ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>>;
+    fn pat_ext_pattern_type_eq(&self, pat: &TExtPat, ty: &Type<TExtType>) -> bool;
     fn pat_add_ext_pattern<'a>(
         &'a self,
-        parent: &crate::types::patterns::Matrix<'a, TExtPat>,
+        parent: &crate::types::patterns::Matrix<'a, TExtPat, TExtType>,
         ext_pattern: &ExtPattern<TExtPat>,
     ) -> bool;
-    fn pat_ext_matches(&self, pat: &TExtPat, term: &ExtTerm<TExtPat, TExtKind>) -> bool;
-    fn parser_ty(&mut self, 
-        ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
-    ) -> Result<Type, Error<TExtTokenKind>>;
-    fn parser_ty_bump_if(&mut self, 
-        ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    fn pat_ext_matches(&self, pat: &TExtPat, term: &ExtTerm<TExtPat, TExtKind, TExtType>) -> bool;
+    fn parser_ty(
+        &mut self,
+        ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ) -> Result<Type<TExtType>, Error<TExtTokenKind>>;
+    fn parser_ty_bump_if(
+        &mut self,
+        ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     ) -> bool;
 }
 
 pub trait SystemRConverter<
     InExtPat: fmt::Debug + PartialEq + PartialOrd + Default + Clone,
     InExtKind: fmt::Debug + PartialEq + PartialOrd + Default + Clone,
+    InExtType: fmt::Debug + PartialEq + PartialOrd + Default + Clone + Eq + hash::Hash,
     OutExtPat: fmt::Debug + PartialEq + PartialOrd + Default + Clone,
     OutExtKind: fmt::Debug + PartialEq + PartialOrd + Default + Clone,
-> {
-   fn resolve(&self, tm: ExtTerm<InExtPat, InExtKind>) -> Result<ExtTerm<OutExtPat, OutExtKind>, Diagnostic>; 
+    OutExtType: fmt::Debug + PartialEq + PartialOrd + Default + Clone + Eq + hash::Hash,
+>
+{
+    fn resolve(
+        &self,
+        tm: ExtTerm<InExtPat, InExtKind, InExtType>,
+    ) -> Result<ExtTerm<OutExtPat, OutExtKind, OutExtType>, Diagnostic>;
 }

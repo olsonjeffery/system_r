@@ -21,10 +21,7 @@ use crate::{
     diagnostics::Diagnostic,
     extensions::SystemRExtension,
     patterns::ExtPattern,
-    syntax::{
-        lexer::ExtLexer, /* lexer2::extlexer2 */
-        error::Error,
-    },
+    syntax::{error::Error, lexer::ExtLexer /* lexer2::extlexer2 */},
     system_r_util::span::Span,
     terms::{ExtKind, ExtTerm},
 };
@@ -49,11 +46,17 @@ pub enum BottomPattern {
     #[default]
     Placeholder,
 }
+//TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq
+#[derive(Clone, Debug, Default, PartialEq, PartialOrd, Eq, Hash)]
+pub enum BottomType {
+    #[default]
+    Placeholder,
+}
 
 #[derive(Copy, Clone, Default, Debug)]
 pub struct BottomExtension;
 
-impl SystemRExtension<BottomTokenKind, BottomKind, BottomPattern, BottomState> for BottomExtension {
+impl SystemRExtension<BottomTokenKind, BottomKind, BottomPattern, BottomType, BottomState> for BottomExtension {
     fn lex_is_ext_single(&self, x: char) -> bool {
         false
     }
@@ -74,19 +77,23 @@ impl SystemRExtension<BottomTokenKind, BottomKind, BottomPattern, BottomState> f
         BottomTokenKind::Placeholder
     }
 
-    fn pat_ext_pattern_type_eq(&self, pat: &BottomPattern, ty: &crate::types::Type) -> bool {
+    fn pat_ext_pattern_type_eq(&self, pat: &BottomPattern, ty: &crate::types::Type<BottomType>) -> bool {
         false
     }
 
     fn pat_add_ext_pattern<'a>(
         &'a self,
-        parent: &crate::types::patterns::Matrix<'a, BottomPattern>,
+        parent: &crate::types::patterns::Matrix<'a, BottomPattern, BottomType>,
         ext_pattern: &ExtPattern<BottomPattern>,
     ) -> bool {
         false
     }
 
-    fn pat_ext_matches(&self, pat: &BottomPattern, term: &crate::terms::ExtTerm<BottomPattern, BottomKind>) -> bool {
+    fn pat_ext_matches(
+        &self,
+        pat: &BottomPattern,
+        term: &crate::terms::ExtTerm<BottomPattern, BottomKind, BottomType>,
+    ) -> bool {
         false
     }
 
@@ -100,27 +107,53 @@ impl SystemRExtension<BottomTokenKind, BottomKind, BottomPattern, BottomState> f
 
     fn parser_ext_parse<'s>(
         &mut self,
-        ps: &mut crate::syntax::parser::ParserState<BottomTokenKind, BottomKind, BottomPattern, BottomState>,
-    ) -> Result<ExtTerm<BottomPattern, BottomKind>, Error<BottomTokenKind>> {
+        ps: &mut crate::syntax::parser::ParserState<
+            BottomTokenKind,
+            BottomKind,
+            BottomPattern,
+            BottomType,
+            BottomState,
+        >,
+    ) -> Result<ExtTerm<BottomPattern, BottomKind, BottomType>, Error<BottomTokenKind>> {
         panic!("shouldn't be called");
     }
 
     fn parser_ext_atom<'s>(
         &mut self,
-        ps: &mut crate::syntax::parser::ParserState<BottomTokenKind, BottomKind, BottomPattern, BottomState>,
-    ) -> Result<ExtTerm<BottomPattern, BottomKind>, Error<BottomTokenKind>> {
+        ps: &mut crate::syntax::parser::ParserState<
+            BottomTokenKind,
+            BottomKind,
+            BottomPattern,
+            BottomType,
+            BottomState,
+        >,
+    ) -> Result<ExtTerm<BottomPattern, BottomKind, BottomType>, Error<BottomTokenKind>> {
         panic!("shouldn't be called");
     }
 
-    fn parser_ty_bump_if(&mut self, 
-        ps: &mut crate::syntax::parser::ParserState<BottomTokenKind, BottomKind, BottomPattern, BottomState>,
+    fn parser_ty_bump_if(
+        &mut self,
+        ps: &mut crate::syntax::parser::ParserState<
+            BottomTokenKind,
+            BottomKind,
+            BottomPattern,
+            BottomType,
+            BottomState,
+        >,
     ) -> bool {
-        false 
+        false
     }
 
-    fn parser_ty(&mut self, 
-        ps: &mut crate::syntax::parser::ParserState<BottomTokenKind, BottomKind, BottomPattern, BottomState>,
-    ) -> Result<crate::types::Type, Error<BottomTokenKind>> {
+    fn parser_ty(
+        &mut self,
+        ps: &mut crate::syntax::parser::ParserState<
+            BottomTokenKind,
+            BottomKind,
+            BottomPattern,
+            BottomType,
+            BottomState,
+        >,
+    ) -> Result<crate::types::Type<BottomType>, Error<BottomTokenKind>> {
         panic!("calling parser_ty on BottomExtension; shouldn't happen");
     }
 }

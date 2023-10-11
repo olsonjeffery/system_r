@@ -41,7 +41,8 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 use super::Type;
 use crate::visit::MutTypeVisitor;
-use std::convert::TryFrom;
+use core::fmt;
+use std::{convert::TryFrom, hash};
 
 pub struct Shift {
     pub cutoff: usize,
@@ -54,26 +55,28 @@ impl Shift {
     }
 }
 
-impl MutTypeVisitor for Shift {
+impl<TExtType: Clone + Default + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash> MutTypeVisitor<TExtType>
+    for Shift
+{
     fn visit_var(&mut self, var: &mut usize) {
         if *var >= self.cutoff {
             *var = usize::try_from(*var as isize + self.shift).expect("Variable has been shifted below 0! Fatal bug");
         }
     }
 
-    fn visit_universal(&mut self, inner: &mut Type) {
+    fn visit_universal(&mut self, inner: &mut Type<TExtType>) {
         self.cutoff += 1;
         self.visit(inner);
         self.cutoff -= 1;
     }
 
-    fn visit_existential(&mut self, inner: &mut Type) {
+    fn visit_existential(&mut self, inner: &mut Type<TExtType>) {
         self.cutoff += 1;
         self.visit(inner);
         self.cutoff -= 1;
     }
 
-    fn visit_rec(&mut self, ty: &mut Type) {
+    fn visit_rec(&mut self, ty: &mut Type<TExtType>) {
         self.cutoff += 1;
         self.visit(ty);
         self.cutoff -= 1;
@@ -81,39 +84,41 @@ impl MutTypeVisitor for Shift {
 }
 
 /// Represents substituting the provided `Type` into
-/// TmVar(0) position in the `&mut Type` provided to
+/// TmVar(0) position in the `&mut Type<TExtType>` provided to
 /// `visit()`
-pub struct Subst {
+pub struct Subst<TExtType: Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash> {
     pub cutoff: usize,
-    pub ty: Type,
+    pub ty: Type<TExtType>,
 }
 
-impl Subst {
-    pub fn new(ty: Type) -> Subst {
+impl<TExtType: Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash> Subst<TExtType> {
+    pub fn new(ty: Type<TExtType>) -> Subst<TExtType> {
         Subst { cutoff: 0, ty }
     }
 }
 
-impl MutTypeVisitor for Subst {
-    fn visit_universal(&mut self, inner: &mut Type) {
+impl<TExtType: Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash> MutTypeVisitor<TExtType>
+    for Subst<TExtType>
+{
+    fn visit_universal(&mut self, inner: &mut Type<TExtType>) {
         self.cutoff += 1;
         self.visit(inner);
         self.cutoff -= 1;
     }
 
-    fn visit_existential(&mut self, inner: &mut Type) {
+    fn visit_existential(&mut self, inner: &mut Type<TExtType>) {
         self.cutoff += 1;
         self.visit(inner);
         self.cutoff -= 1;
     }
 
-    fn visit_rec(&mut self, ty: &mut Type) {
+    fn visit_rec(&mut self, ty: &mut Type<TExtType>) {
         self.cutoff += 1;
         self.visit(ty);
         self.cutoff -= 1;
     }
 
-    fn visit(&mut self, ty: &mut Type) {
+    fn visit(&mut self, ty: &mut Type<TExtType>) {
         match ty {
             Type::Unit | Type::Bool | Type::Nat | Type::Tag(_) => {}
             Type::PlatformBinding(i, r) => {}
@@ -129,6 +134,7 @@ impl MutTypeVisitor for Subst {
             Type::Universal(ty) => self.visit_universal(ty),
             Type::Existential(ty) => self.visit_existential(ty),
             Type::Rec(ty) => self.visit_rec(ty),
+            Type::Extended(v) => panic!("handle extended in MutTypeVisitor {:?}", v),
         }
     }
 }

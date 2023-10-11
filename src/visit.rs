@@ -41,47 +41,50 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 //! Visitor traits for [`Pattern`], [`Term`], and [`Type`] objects
 use core::fmt;
+use std::hash;
 
 use crate::patterns::ExtPattern;
 use crate::system_r_util::span::Span;
 use crate::terms::{Arm, ExtKind, ExtTerm, Literal, Primitive};
 use crate::types::{Type, Variant};
 
-pub trait MutTypeVisitor: Sized {
-    fn visit_pb(&mut self, i: &mut Type, r: &mut Type) {}
+pub trait MutTypeVisitor<TExtType: Clone + Default + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash>:
+    Sized
+{
+    fn visit_pb(&mut self, i: &mut Type<TExtType>, r: &mut Type<TExtType>) {}
     fn visit_var(&mut self, var: &mut usize) {}
     fn visit_alias(&mut self, alias: &mut String) {}
 
-    fn visit_arrow(&mut self, ty1: &mut Type, ty2: &mut Type) {
+    fn visit_arrow(&mut self, ty1: &mut Type<TExtType>, ty2: &mut Type<TExtType>) {
         self.visit(ty1);
         self.visit(ty2);
     }
 
-    fn visit_universal(&mut self, inner: &mut Type) {
+    fn visit_universal(&mut self, inner: &mut Type<TExtType>) {
         self.visit(inner);
     }
 
-    fn visit_existential(&mut self, inner: &mut Type) {
+    fn visit_existential(&mut self, inner: &mut Type<TExtType>) {
         self.visit(inner);
     }
 
-    fn visit_variant(&mut self, variant: &mut Vec<Variant>) {
+    fn visit_variant(&mut self, variant: &mut Vec<Variant<TExtType>>) {
         for v in variant {
             self.visit(&mut v.ty);
         }
     }
 
-    fn visit_product(&mut self, product: &mut Vec<Type>) {
+    fn visit_product(&mut self, product: &mut Vec<Type<TExtType>>) {
         for v in product {
             self.visit(v);
         }
     }
 
-    fn visit_rec(&mut self, ty: &mut Type) {
+    fn visit_rec(&mut self, ty: &mut Type<TExtType>) {
         self.visit(ty);
     }
 
-    fn visit(&mut self, ty: &mut Type) {
+    fn visit(&mut self, ty: &mut Type<TExtType>) {
         match ty {
             Type::Unit | Type::Bool | Type::Nat | Type::Tag(_) => {}
             Type::PlatformBinding(i, r) => self.visit_pb(i, r),
@@ -93,6 +96,7 @@ pub trait MutTypeVisitor: Sized {
             Type::Universal(ty) => self.visit_universal(ty),
             Type::Existential(ty) => self.visit_existential(ty),
             Type::Rec(ty) => self.visit_rec(ty),
+            Type::Extended(ty) => panic!("visit L99 extended ty not impl"),
         }
     }
 }
@@ -100,17 +104,23 @@ pub trait MutTypeVisitor: Sized {
 pub trait MutTermVisitor<
     TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
     TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+    TExtType: Clone + Default + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
 >: Sized
 {
     fn visit_lit(&mut self, sp: &mut Span, lit: &mut Literal) {}
     fn visit_var(&mut self, sp: &mut Span, var: &mut usize) {}
     fn visit_pb(&mut self, sp: &mut Span, idx: &mut usize) {}
 
-    fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type, term: &mut ExtTerm<TExtPat, TExtKind>) {
+    fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type<TExtType>, term: &mut ExtTerm<TExtPat, TExtKind, TExtType>) {
         self.visit(term);
     }
 
-    fn visit_app(&mut self, sp: &mut Span, t1: &mut ExtTerm<TExtPat, TExtKind>, t2: &mut ExtTerm<TExtPat, TExtKind>) {
+    fn visit_app(
+        &mut self,
+        sp: &mut Span,
+        t1: &mut ExtTerm<TExtPat, TExtKind, TExtType>,
+        t2: &mut ExtTerm<TExtPat, TExtKind, TExtType>,
+    ) {
         self.visit(t1);
         self.visit(t2);
     }
@@ -119,18 +129,18 @@ pub trait MutTermVisitor<
         &mut self,
         sp: &mut Span,
         pat: &mut ExtPattern<TExtPat>,
-        t1: &mut ExtTerm<TExtPat, TExtKind>,
-        t2: &mut ExtTerm<TExtPat, TExtKind>,
+        t1: &mut ExtTerm<TExtPat, TExtKind, TExtType>,
+        t2: &mut ExtTerm<TExtPat, TExtKind, TExtType>,
     ) {
         self.visit(t1);
         self.visit(t2);
     }
 
-    fn visit_tyabs(&mut self, sp: &mut Span, term: &mut ExtTerm<TExtPat, TExtKind>) {
+    fn visit_tyabs(&mut self, sp: &mut Span, term: &mut ExtTerm<TExtPat, TExtKind, TExtType>) {
         self.visit(term);
     }
 
-    fn visit_tyapp(&mut self, sp: &mut Span, term: &mut ExtTerm<TExtPat, TExtKind>, ty: &mut Type) {
+    fn visit_tyapp(&mut self, sp: &mut Span, term: &mut ExtTerm<TExtPat, TExtKind, TExtType>, ty: &mut Type<TExtType>) {
         self.visit(term);
     }
 
@@ -139,8 +149,8 @@ pub trait MutTermVisitor<
         &mut self,
         sp: &mut Span,
         label: &mut String,
-        term: &mut ExtTerm<TExtPat, TExtKind>,
-        ty: &mut Type,
+        term: &mut ExtTerm<TExtPat, TExtKind, TExtType>,
+        ty: &mut Type<TExtType>,
     ) {
         self.visit(term);
     }
@@ -148,8 +158,8 @@ pub trait MutTermVisitor<
     fn visit_case(
         &mut self,
         sp: &mut Span,
-        term: &mut ExtTerm<TExtPat, TExtKind>,
-        arms: &mut Vec<Arm<TExtPat, TExtKind>>,
+        term: &mut ExtTerm<TExtPat, TExtKind, TExtType>,
+        arms: &mut Vec<Arm<TExtPat, TExtKind, TExtType>>,
     ) {
         self.visit(term);
         for arm in arms {
@@ -157,29 +167,34 @@ pub trait MutTermVisitor<
         }
     }
 
-    fn visit_product(&mut self, sp: &mut Span, product: &mut Vec<ExtTerm<TExtPat, TExtKind>>) {
+    fn visit_product(&mut self, sp: &mut Span, product: &mut Vec<ExtTerm<TExtPat, TExtKind, TExtType>>) {
         for t in product {
             self.visit(t);
         }
     }
 
-    fn visit_projection(&mut self, sp: &mut Span, term: &mut ExtTerm<TExtPat, TExtKind>, index: &mut usize) {
+    fn visit_projection(&mut self, sp: &mut Span, term: &mut ExtTerm<TExtPat, TExtKind, TExtType>, index: &mut usize) {
         self.visit(term);
     }
 
-    fn visit_fold(&mut self, sp: &mut Span, ty: &mut Type, term: &mut ExtTerm<TExtPat, TExtKind>) {
+    fn visit_fold(&mut self, sp: &mut Span, ty: &mut Type<TExtType>, term: &mut ExtTerm<TExtPat, TExtKind, TExtType>) {
         self.visit(term);
     }
-    fn visit_unfold(&mut self, sp: &mut Span, ty: &mut Type, term: &mut ExtTerm<TExtPat, TExtKind>) {
+    fn visit_unfold(
+        &mut self,
+        sp: &mut Span,
+        ty: &mut Type<TExtType>,
+        term: &mut ExtTerm<TExtPat, TExtKind, TExtType>,
+    ) {
         self.visit(term);
     }
 
     fn visit_pack(
         &mut self,
         sp: &mut Span,
-        witness: &mut Type,
-        evidence: &mut ExtTerm<TExtPat, TExtKind>,
-        signature: &mut Type,
+        witness: &mut Type<TExtType>,
+        evidence: &mut ExtTerm<TExtPat, TExtKind, TExtType>,
+        signature: &mut Type<TExtType>,
     ) {
         self.visit(evidence);
     }
@@ -187,14 +202,14 @@ pub trait MutTermVisitor<
     fn visit_unpack(
         &mut self,
         sp: &mut Span,
-        package: &mut ExtTerm<TExtPat, TExtKind>,
-        term: &mut ExtTerm<TExtPat, TExtKind>,
+        package: &mut ExtTerm<TExtPat, TExtKind, TExtType>,
+        term: &mut ExtTerm<TExtPat, TExtKind, TExtType>,
     ) {
         self.visit(package);
         self.visit(term);
     }
 
-    fn visit(&mut self, term: &mut ExtTerm<TExtPat, TExtKind>) {
+    fn visit(&mut self, term: &mut ExtTerm<TExtPat, TExtKind, TExtType>) {
         self.walk(term);
     }
 
@@ -202,7 +217,7 @@ pub trait MutTermVisitor<
         panic!("visit_ext unimpl; shouldn't be left this way lol..")
     }
 
-    fn walk(&mut self, term: &mut ExtTerm<TExtPat, TExtKind>) {
+    fn walk(&mut self, term: &mut ExtTerm<TExtPat, TExtKind, TExtType>) {
         let sp = &mut term.span;
         match &mut term.kind {
             ExtKind::Extended(k) => self.visit_ext(sp, k),

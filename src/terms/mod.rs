@@ -40,22 +40,21 @@ along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 //! Representation lambda calculus terms
-use crate::bottom::{BottomKind, BottomPattern};
+use crate::bottom::{BottomKind, BottomPattern, BottomType};
 use crate::patterns::ExtPattern;
 use crate::system_r_util::span::Span;
 use crate::types::Type;
-use std::fmt;
+use std::{fmt, hash};
 pub mod visit;
-
-pub type Term = ExtTerm<BottomPattern, BottomKind>;
 
 #[derive(Clone, Default, PartialEq, PartialOrd)]
 pub struct ExtTerm<
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: fmt::Debug + PartialEq + PartialOrd + Default + Clone + Eq + hash::Hash,
 > {
     pub span: Span,
-    pub kind: ExtKind<TExtPat, TExtKind>,
+    pub kind: ExtKind<TExtPat, TExtKind, TExtType>,
 }
 
 /// Primitive functions supported by this implementation
@@ -66,13 +65,14 @@ pub enum Primitive {
     IsZero,
 }
 
-pub type Kind = ExtKind<BottomPattern, BottomKind>;
+pub type Kind = ExtKind<BottomPattern, BottomKind, BottomType>;
 
 /// Abstract syntax of the parametric polymorphic lambda calculus
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum ExtKind<
     TExtPat: Default + Clone + fmt::Debug + PartialEq + PartialOrd,
     TExtKind: Default + Clone + fmt::Debug + PartialEq + PartialOrd,
+    TExtType: fmt::Debug + PartialEq + PartialOrd + Default + Clone + Eq + hash::Hash,
 > {
     /// A literal value
     Lit(Literal),
@@ -82,48 +82,61 @@ pub enum ExtKind<
     PlatformBinding(usize),
     /// An intrinsic, referenced by alias
     /// Fixpoint operator/Y combinator
-    Fix(Box<ExtTerm<TExtPat, TExtKind>>),
+    Fix(Box<ExtTerm<TExtPat, TExtKind, TExtType>>),
 
     Primitive(Primitive),
 
     /// Injection into a sum type
     /// fields: type constructor tag, term, and sum type
-    Injection(String, Box<ExtTerm<TExtPat, TExtKind>>, Box<Type>),
+    Injection(String, Box<ExtTerm<TExtPat, TExtKind, TExtType>>, Box<Type<TExtType>>),
 
     /// Product type (tuple)
-    Product(Vec<ExtTerm<TExtPat, TExtKind>>),
+    Product(Vec<ExtTerm<TExtPat, TExtKind, TExtType>>),
     /// Projection into a term
-    Projection(Box<ExtTerm<TExtPat, TExtKind>>, usize),
+    Projection(Box<ExtTerm<TExtPat, TExtKind, TExtType>>, usize),
 
     /// A case expr, with case arms
-    Case(Box<ExtTerm<TExtPat, TExtKind>>, Vec<Arm<TExtPat, TExtKind>>),
+    Case(
+        Box<ExtTerm<TExtPat, TExtKind, TExtType>>,
+        Vec<Arm<TExtPat, TExtKind, TExtType>>,
+    ),
 
     // let expr with binding, value and then applied context
     Let(
         Box<ExtPattern<TExtPat>>,
-        Box<ExtTerm<TExtPat, TExtKind>>,
-        Box<ExtTerm<TExtPat, TExtKind>>,
+        Box<ExtTerm<TExtPat, TExtKind, TExtType>>,
+        Box<ExtTerm<TExtPat, TExtKind, TExtType>>,
     ),
     /// A lambda abstraction
-    Abs(Box<Type>, Box<ExtTerm<TExtPat, TExtKind>>),
+    Abs(Box<Type<TExtType>>, Box<ExtTerm<TExtPat, TExtKind, TExtType>>),
     /// Application of a term to another term
-    App(Box<ExtTerm<TExtPat, TExtKind>>, Box<ExtTerm<TExtPat, TExtKind>>),
+    App(
+        Box<ExtTerm<TExtPat, TExtKind, TExtType>>,
+        Box<ExtTerm<TExtPat, TExtKind, TExtType>>,
+    ),
     /// Type abstraction
-    TyAbs(Box<ExtTerm<TExtPat, TExtKind>>),
+    TyAbs(Box<ExtTerm<TExtPat, TExtKind, TExtType>>),
     /// Type application
-    TyApp(Box<ExtTerm<TExtPat, TExtKind>>, Box<Type>),
+    TyApp(Box<ExtTerm<TExtPat, TExtKind, TExtType>>, Box<Type<TExtType>>),
 
-    Fold(Box<Type>, Box<ExtTerm<TExtPat, TExtKind>>),
-    Unfold(Box<Type>, Box<ExtTerm<TExtPat, TExtKind>>),
+    Fold(Box<Type<TExtType>>, Box<ExtTerm<TExtPat, TExtKind, TExtType>>),
+    Unfold(Box<Type<TExtType>>, Box<ExtTerm<TExtPat, TExtKind, TExtType>>),
 
     /// Introduce an existential type
     /// { *Ty1, Term } as {∃X.Ty}
     /// essentially, concrete representation as interface
-    Pack(Box<Type>, Box<ExtTerm<TExtPat, TExtKind>>, Box<Type>),
+    Pack(
+        Box<Type<TExtType>>,
+        Box<ExtTerm<TExtPat, TExtKind, TExtType>>,
+        Box<Type<TExtType>>,
+    ),
     /// Unpack an existential type
     /// open {∃X, bind} in body -- X is bound as a TyVar, and bind as Var(0)
     /// Eliminate an existential type
-    Unpack(Box<ExtTerm<TExtPat, TExtKind>>, Box<ExtTerm<TExtPat, TExtKind>>),
+    Unpack(
+        Box<ExtTerm<TExtPat, TExtKind, TExtType>>,
+        Box<ExtTerm<TExtPat, TExtKind, TExtType>>,
+    ),
 
     /// Extension
     Extended(TExtKind),
@@ -132,7 +145,8 @@ pub enum ExtKind<
 impl<
         TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
         TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-    > Default for ExtKind<TExtPat, TExtKind>
+        TExtType: Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash,
+    > Default for ExtKind<TExtPat, TExtKind, TExtType>
 {
     fn default() -> Self {
         ExtKind::Lit(Literal::Unit)
@@ -144,10 +158,11 @@ impl<
 pub struct Arm<
     TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
     TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+    TExtType: Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash,
 > {
     pub span: Span,
     pub pat: ExtPattern<TExtPat>,
-    pub term: Box<ExtTerm<TExtPat, TExtKind>>,
+    pub term: Box<ExtTerm<TExtPat, TExtKind, TExtType>>,
     pub _kind: TExtKind,
 }
 
@@ -164,14 +179,15 @@ pub enum Literal {
 impl<
         TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
         TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-    > ExtTerm<TExtPat, TExtKind>
+        TExtType: Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash,
+    > ExtTerm<TExtPat, TExtKind, TExtType>
 {
-    pub fn new(kind: ExtKind<TExtPat, TExtKind>, span: Span) -> ExtTerm<TExtPat, TExtKind> {
+    pub fn new(kind: ExtKind<TExtPat, TExtKind, TExtType>, span: Span) -> ExtTerm<TExtPat, TExtKind, TExtType> {
         ExtTerm { span, kind }
     }
 
     #[allow(dead_code)]
-    pub const fn unit() -> ExtTerm<TExtPat, TExtKind> {
+    pub const fn unit() -> ExtTerm<TExtPat, TExtKind, TExtType> {
         ExtTerm {
             span: Span::dummy(),
             kind: ExtKind::Lit(Literal::Unit),
@@ -185,7 +201,7 @@ impl<
     }
 
     #[inline]
-    pub fn kind(&self) -> &ExtKind<TExtPat, TExtKind> {
+    pub fn kind(&self) -> &ExtKind<TExtPat, TExtKind, TExtType> {
         &self.kind
     }
 }
@@ -204,7 +220,8 @@ impl fmt::Display for Literal {
 impl<
         TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
         TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-    > fmt::Display for ExtTerm<TExtPat, TExtKind>
+        TExtType: Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash,
+    > fmt::Display for ExtTerm<TExtPat, TExtKind, TExtType>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match &self.kind {
@@ -248,7 +265,8 @@ impl<
 impl<
         TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
         TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    > fmt::Debug for ExtTerm<TExtPat, TExtKind>
+        TExtType: Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash,
+    > fmt::Debug for ExtTerm<TExtPat, TExtKind, TExtType>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self.kind)

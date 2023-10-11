@@ -40,12 +40,12 @@ along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-use crate::bottom::{BottomExtension, BottomKind, BottomPattern};
+use crate::bottom::{BottomExtension, BottomKind, BottomPattern, BottomType};
 use crate::diagnostics::Diagnostic;
 use crate::patterns::{ExtPattern, Pattern};
 use crate::platform_bindings::PlatformBindings;
 use crate::terms::visit::{Shift, Subst, TyTermSubst};
-use crate::terms::{ExtKind, ExtTerm, Literal, Primitive, Term};
+use crate::terms::{ExtKind, ExtTerm, Literal, Primitive};
 use crate::types::{Context, Type};
 use crate::visit::MutTermVisitor;
 
@@ -53,6 +53,8 @@ pub struct Eval<'ctx> {
     _context: &'ctx Context,
     platform_bindings: PlatformBindings,
 }
+
+type Term = ExtTerm<BottomPattern, BottomKind, BottomType>;
 
 impl<'ctx> Eval<'ctx> {
     pub fn with_context(_context: &Context) -> Eval<'_> {
@@ -63,7 +65,7 @@ impl<'ctx> Eval<'ctx> {
         }
     }
 
-    fn normal_form(term: &ExtTerm<BottomPattern, BottomKind>) -> bool {
+    fn normal_form(term: &ExtTerm<BottomPattern, BottomKind, BottomType>) -> bool {
         match &term.kind {
             ExtKind::Lit(_) => true,
             ExtKind::Abs(_, _) => true,
@@ -356,7 +358,7 @@ fn term_subst(mut s: Term, t: &mut Term) {
     Shift::new(-1).visit(t);
 }
 
-fn type_subst(s: Type, t: &mut Term) {
+fn type_subst(s: Type<BottomType>, t: &mut Term) {
     TyTermSubst::new(s).visit(t);
     Shift::new(-1).visit(t);
 }

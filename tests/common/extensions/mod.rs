@@ -1,9 +1,15 @@
 use system_r::{
-    extensions::struct_data::{StructDataContext, StructDataKind, StructDataPattern, StructDataTokenKind, StructDataState},
+    bottom::{BottomKind, BottomPattern, BottomState, BottomTokenKind, BottomType},
+    extensions::struct_data::{
+        StructDataContext, StructDataKind, StructDataPattern, StructDataState, StructDataTokenKind, StructDataType,
+    },
     platform_bindings::PlatformBindings,
-    terms::{ExtKind, ExtTerm, Kind, Term},
-    types::Context, syntax::parser::ParserState, bottom::{BottomTokenKind, BottomKind, BottomPattern, BottomState},
+    syntax::parser::ParserState,
+    terms::{ExtKind, ExtTerm, Kind},
+    types::{Context, Type},
 };
+
+type Term = ExtTerm<BottomPattern, BottomKind, BottomType>;
 
 #[derive(Clone, Default, Debug)]
 pub enum OmniContext {
@@ -18,8 +24,8 @@ pub enum OmniContext {
 pub enum OmniParser<'s> {
     #[default]
     Empty,
-    Bottom(ParserState<'s, BottomTokenKind, BottomKind, BottomPattern, BottomState>),
-    StructData(ParserState<'s, StructDataTokenKind, StructDataKind, StructDataPattern, StructDataState>),
+    Bottom(ParserState<'s, BottomTokenKind, BottomKind, BottomPattern, BottomType, BottomState>),
+    StructData(ParserState<'s, StructDataTokenKind, StructDataKind, StructDataPattern, StructDataType, StructDataState>),
 }
 
 impl OmniContext {
@@ -38,7 +44,7 @@ pub enum OmniKind {
     Empty,
     #[allow(dead_code)]
     Bottom(Kind),
-    StructData(ExtKind<StructDataPattern, StructDataKind>),
+    StructData(ExtKind<StructDataPattern, StructDataKind, StructDataType>),
 }
 
 #[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
@@ -47,5 +53,13 @@ pub enum OmniTerm {
     Empty,
     #[allow(dead_code)]
     Bottom(Term),
-    StructData(ExtTerm<StructDataPattern, StructDataKind>),
+    StructData(ExtTerm<StructDataPattern, StructDataKind, StructDataType>),
+}
+
+#[derive(Clone, Default, Debug, PartialEq, PartialOrd, Eq, Hash)]
+pub enum OmniType {
+    #[default]
+    Empty,
+    Bottom(Type<BottomType>),
+    StructData(Type<StructDataType>)
 }

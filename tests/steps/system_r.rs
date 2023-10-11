@@ -3,13 +3,15 @@ extern crate cucumber;
 use cucumber::{gherkin::Step, given, then, when};
 
 use system_r::{
-    terms::{Kind, Literal, Term},
+    terms::{Kind, Literal, ExtTerm},
     testing::{self, code_format},
     types::Context,
-    types::Type,
+    types::Type, bottom::{BottomPattern, BottomKind, BottomType},
 };
 
 use crate::common::{self, extensions::OmniContext};
+
+type Term = ExtTerm<BottomPattern, BottomKind, BottomType>;
 
 pub static CTX_NAME: &'static str = "system_r_bottom";
 

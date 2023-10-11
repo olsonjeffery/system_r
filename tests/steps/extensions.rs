@@ -1,19 +1,20 @@
 extern crate cucumber;
 
 use core::fmt;
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, rc::Rc, hash};
 
 use cucumber::{given, then, when};
 
 use system_r::{
+    bottom::BottomExtension,
     diagnostics::Diagnostic,
     extensions::{
         struct_data::{StructDataContext, StructDataExtension},
-        SystemRExtension,
-        SystemRConverter
+        SystemRConverter, SystemRExtension,
     },
+    syntax::parser::{self, ParserState},
     terms::ExtTerm,
-    testing, syntax::parser::{ParserState, self}, bottom::BottomExtension,
+    testing::{self, code_format},
 };
 
 use crate::common::{
@@ -31,13 +32,14 @@ pub fn parse_for_extension<
     TExtTokenKind: fmt::Debug + Default + Clone + PartialEq + PartialOrd,
     TExtKind: fmt::Debug + Default + Clone + PartialEq + PartialOrd,
     TEXtPat: fmt::Debug + Default + Clone + PartialEq + PartialOrd,
+    TExtType: fmt::Debug + Default + Clone + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: Clone + Default + fmt::Debug,
-    TLE: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TEXtPat, TExtState>,
+    TLE: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TEXtPat, TExtType, TExtState>,
 >(
     input: &str,
-    ps: &mut ParserState<'s, TExtTokenKind, TExtKind, TEXtPat, TExtState>,
+    ps: &mut ParserState<'s, TExtTokenKind, TExtKind, TEXtPat, TExtType, TExtState>,
     ext: &mut TLE,
-) -> Result<ExtTerm<TEXtPat, TExtKind>, Diagnostic> {
+) -> Result<ExtTerm<TEXtPat, TExtKind, TExtType>, Diagnostic> {
     testing::operate_parser_for(input, ps, ext)
 }
 
@@ -86,12 +88,16 @@ pub fn when_it_is_converted_to_bottom_dialect(world: &mut SpecsWorld) {
     given_a_new_context(world);
     let tm = match world.last_ext_parse_term.clone() {
         OmniTerm::StructData(t) => t,
-        _ => panic!("barf!")
+        _ => panic!("barf!"),
     };
 
     let bottom_tm = match StructDataExtension.resolve(tm) {
         Ok(tm) => tm,
-        Err(_) => { world.last_parse_success = false; return; }
+        Err(d) => {
+            world.last_parse_success = false;
+            world.last_parse_msg = code_format("", d);
+            return;
+        }
     };
 
     world.last_parse_term = bottom_tm.clone();

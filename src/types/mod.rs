@@ -39,11 +39,11 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
-//! Typechecking of the simply typed lambda calculus with parametric
+//! Type<TExtType>checking of the simply typed lambda calculus with parametric
 //! polymorphism
 pub mod patterns;
 pub mod visit;
-use crate::bottom::{BottomExtension, BottomKind, BottomPattern, BottomTokenKind};
+use crate::bottom::{BottomExtension, BottomKind, BottomPattern, BottomTokenKind, BottomType};
 use crate::diagnostics::*;
 use crate::extensions::SystemRExtension;
 use crate::platform_bindings::PlatformBindings;
@@ -51,11 +51,12 @@ use crate::system_r_util::span::Span;
 use crate::terms::{ExtKind, ExtTerm, Literal, Primitive};
 use crate::visit::{MutTermVisitor, MutTypeVisitor};
 use std::collections::{HashMap, VecDeque};
-use std::fmt;
+use std::hash::Hash;
+use std::{fmt, hash};
 use visit::{Shift, Subst};
 
 #[derive(Default, Clone, PartialEq, PartialOrd, Eq, Hash)]
-pub enum Type {
+pub enum Type<TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq> {
     #[default]
     Unit,
     Nat,
@@ -63,30 +64,31 @@ pub enum Type {
     Tag(String),
     Alias(String),
     Var(usize),
-    Variant(Vec<Variant>),
-    Product(Vec<Type>),
-    PlatformBinding(Box<Type>, Box<Type>),
-    Arrow(Box<Type>, Box<Type>),
-    Universal(Box<Type>),
-    Existential(Box<Type>),
-    Rec(Box<Type>),
+    Variant(Vec<Variant<TExtType>>),
+    Product(Vec<Type<TExtType>>),
+    PlatformBinding(Box<Type<TExtType>>, Box<Type<TExtType>>),
+    Arrow(Box<Type<TExtType>>, Box<Type<TExtType>>),
+    Universal(Box<Type<TExtType>>),
+    Existential(Box<Type<TExtType>>),
+    Rec(Box<Type<TExtType>>),
+    Extended(TExtType),
 }
 
 #[derive(Debug, Default, Clone, PartialEq, PartialOrd, Eq, Hash)]
-pub struct Variant {
+pub struct Variant<TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq> {
     pub label: String,
-    pub ty: Type,
+    pub ty: Type<TExtType>,
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
-pub struct TypeError {
+pub struct TypeError<TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq> {
     pub span: Span,
-    pub kind: TypeErrorKind,
+    pub kind: TypeErrorKind<TExtType>,
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
-pub enum TypeErrorKind {
-    ParameterMismatch(Box<Type>, Box<Type>, Span),
+pub enum TypeErrorKind<TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq> {
+    ParameterMismatch(Box<Type<TExtType>>, Box<Type<TExtType>>, Span),
 
     InvalidProjection,
     NotArrow,
@@ -101,16 +103,17 @@ pub enum TypeErrorKind {
     UnboundVariable(usize),
 }
 
-pub type Context = ExtContext<BottomTokenKind, BottomKind, BottomPattern>;
+pub type Context = ExtContext<BottomTokenKind, BottomKind, BottomPattern, BottomType>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ExtContext<
     TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
     TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
     TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq,
 > {
-    stack: VecDeque<Type>,
-    map: HashMap<String, Type>,
+    stack: VecDeque<Type<TExtType>>,
+    map: HashMap<String, Type<TExtType>>,
     pub platform_bindings: PlatformBindings,
     _token: TExtTokenKind,
     _kind: TExtKind,
@@ -121,7 +124,8 @@ impl<
         TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
         TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
         TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-    > Default for ExtContext<TExtTokenKind, TExtKind, TExtPat>
+        TExtType: Clone + Default + fmt::Debug + hash::Hash + PartialEq + PartialOrd + Eq,
+    > Default for ExtContext<TExtTokenKind, TExtKind, TExtPat, TExtType>
 {
     fn default() -> Self {
         Self {
@@ -139,9 +143,10 @@ impl<
         TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
         TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
         TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-    > ExtContext<TExtTokenKind, TExtKind, TExtPat>
+        TExtType: Clone + Default + fmt::Debug + hash::Hash + PartialEq + PartialOrd + Eq,
+    > ExtContext<TExtTokenKind, TExtKind, TExtPat, TExtType>
 {
-    fn push(&mut self, ty: Type) {
+    fn push(&mut self, ty: Type<TExtType>) {
         self.stack.push_front(ty);
     }
 
@@ -149,25 +154,29 @@ impl<
         self.stack.pop_front().expect("Context::pop() with empty type stack");
     }
 
-    fn find(&self, idx: usize) -> Option<&Type> {
+    fn find(&self, idx: usize) -> Option<&Type<TExtType>> {
         self.stack.get(idx)
     }
 
-    pub fn alias(&mut self, alias: String, ty: Type) {
+    pub fn alias(&mut self, alias: String, ty: Type<TExtType>) {
         self.map.insert(alias, ty);
     }
 
-    fn aliaser(&self) -> Aliaser<'_> {
+    fn aliaser(&self) -> Aliaser<'_, TExtType> {
         Aliaser { map: &self.map }
     }
 
-    pub fn de_alias(&mut self, term: &mut ExtTerm<TExtPat, TExtKind>) {
+    pub fn de_alias(&mut self, term: &mut ExtTerm<TExtPat, TExtKind, TExtType>) {
         crate::visit::MutTermVisitor::visit(self, term)
     }
 }
 
 /// Helper function for extracting type from a variant
-pub fn variant_field<'vs>(var: &'vs [Variant], label: &str, span: Span) -> Result<&'vs Type, Diagnostic> {
+pub fn variant_field<'vs, TExtType: Clone + Default + fmt::Debug + hash::Hash + PartialEq + PartialOrd + Eq>(
+    var: &'vs [Variant<TExtType>],
+    label: &str,
+    span: Span,
+) -> Result<&'vs Type<TExtType>, Diagnostic> {
     for f in var {
         if label == f.label {
             return Ok(&f.ty);
@@ -178,9 +187,9 @@ pub fn variant_field<'vs>(var: &'vs [Variant], label: &str, span: Span) -> Resul
         format!("constructor {} doesn't appear in variant fields", label),
     ))
 
-    // Err(TypeError {
+    // Err(Type<TExtType>Error {
     //     span,
-    //     kind: TypeErrorKind::NotVariant,
+    //     kind: Type<TExtType>ErrorKind::NotVariant,
     // })
 }
 
@@ -188,12 +197,17 @@ impl<
         TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
         TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
         TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-    > ExtContext<TExtTokenKind, TExtKind, TExtPat>
+        TExtType: Clone + Default + fmt::Debug + hash::Hash + PartialEq + PartialOrd + Eq,
+    > ExtContext<TExtTokenKind, TExtKind, TExtPat, TExtType>
 {
     pub fn type_check<
-    TExtState: Clone + Default + fmt::Debug,
-    TExt: Clone + fmt::Debug + Default + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
-    >(&mut self, term: &ExtTerm<TExtPat, TExtKind>, ext: &mut TExt) -> Result<Type, Diagnostic> {
+        TExtState: Clone + Default + fmt::Debug,
+        TExt: Clone + fmt::Debug + Default + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    >(
+        &mut self,
+        term: &ExtTerm<TExtPat, TExtKind, TExtType>,
+        ext: &mut TExt,
+    ) -> Result<Type<TExtType>, Diagnostic> {
         // dbg!(&self.stack);
 
         match term.kind() {
@@ -226,7 +240,7 @@ impl<
                         if *ty11 == ty2 {
                             Ok(*ty12)
                         } else {
-                            let d = Diagnostic::error(term.span, "Type mismatch in application")
+                            let d = Diagnostic::error(term.span, "Type<TExtType> mismatch in application")
                                 .message(t1.span, format!("Abstraction requires type {:?}", ty11))
                                 .message(t2.span, format!("Value has a type of {:?}", ty2));
                             Err(d)
@@ -237,9 +251,10 @@ impl<
                         if *ty11 == ty2 {
                             Ok(*ty12)
                         } else {
-                            let d = Diagnostic::error(term.span, "Type mismatch in PlatformBinding application")
-                                .message(t1.span, format!("PlatformBinding Abstraction requires type {:?}", ty11))
-                                .message(t2.span, format!("Value has a type of {:?}", ty2));
+                            let d =
+                                Diagnostic::error(term.span, "Type<TExtType> mismatch in PlatformBinding application")
+                                    .message(t1.span, format!("PlatformBinding Abstraction requires type {:?}", ty11))
+                                    .message(t2.span, format!("Value has a type of {:?}", ty2));
                             Err(d)
                         }
                     }
@@ -254,7 +269,7 @@ impl<
                         if ty1 == ty2 {
                             Ok(*ty1)
                         } else {
-                            let d = Diagnostic::error(term.span, "Type mismatch in fix term")
+                            let d = Diagnostic::error(term.span, "Type<TExtType> mismatch in fix term")
                                 .message(inner.span, format!("Abstraction requires type {:?}->{:?}", ty1, ty1));
                             Err(d)
                         }
@@ -315,7 +330,10 @@ impl<
                 )),
             },
             ExtKind::Product(terms) => Ok(Type::Product(
-                terms.iter().map(|t| self.type_check(t, ext)).collect::<Result<_, _>>()?,
+                terms
+                    .iter()
+                    .map(|t| self.type_check(t, ext))
+                    .collect::<Result<_, _>>()?,
             )),
             ExtKind::Let(pat, t1, t2) => {
                 let ty = self.type_check(t1, ext)?;
@@ -328,7 +346,7 @@ impl<
 
                 let height = self.stack.len();
 
-                let binds = crate::patterns::PatTyStack::<TExtPat, TExtKind>::collect(&ty, pat);
+                let binds = crate::patterns::PatTyStack::<TExtPat, TExtKind, TExtType>::collect(&ty, pat);
                 for b in binds.into_iter().rev() {
                     self.push(b.clone());
                 }
@@ -382,7 +400,7 @@ impl<
                         let s = subst(*rec.clone(), *inner.clone());
                         Ok(s)
                     } else {
-                        let d = Diagnostic::error(term.span, "Type mismatch in unfold")
+                        let d = Diagnostic::error(term.span, "Type<TExtType> mismatch in unfold")
                             .message(term.span, format!("unfold requires type {:?}", rec))
                             .message(tm.span, format!("term has a type of {:?}", ty_));
                         Err(d)
@@ -401,7 +419,7 @@ impl<
                     if ty_ == s {
                         Ok(*rec.clone())
                     } else {
-                        let d = Diagnostic::error(term.span, "Type mismatch in fold")
+                        let d = Diagnostic::error(term.span, "Type<TExtType> mismatch in fold")
                             .message(term.span, format!("unfold requires type {:?}", s))
                             .message(tm.span, format!("term has a type of {:?}", ty_));
                         Err(d)
@@ -419,7 +437,7 @@ impl<
                     if evidence_ty == sig_prime {
                         Ok(*signature.clone())
                     } else {
-                        let d = Diagnostic::error(term.span, "Type mismatch in pack")
+                        let d = Diagnostic::error(term.span, "Type<TExtType> mismatch in pack")
                             .message(term.span, format!("signature has type {:?}", sig_prime))
                             .message(evidence.span, format!("but term has a type {:?}", evidence_ty));
                         Err(d)
@@ -447,24 +465,29 @@ impl<
             }
         }
     }
-    pub fn type_check_ext(&mut self, t: &ExtTerm<TExtPat, TExtKind>) -> Result<Type, Diagnostic> {
+    pub fn type_check_ext(&mut self, t: &ExtTerm<TExtPat, TExtKind, TExtType>) -> Result<Type<TExtType>, Diagnostic> {
         panic!("Context::type_check_ext unimplemented");
     }
 }
 
-pub fn subst(mut s: Type, mut t: Type) -> Type {
+pub fn subst<TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + Hash>(
+    mut s: Type<TExtType>,
+    mut t: Type<TExtType>,
+) -> Type<TExtType> {
     Shift::new(1).visit(&mut s);
     Subst::new(s).visit(&mut t);
     Shift::new(-1).visit(&mut t);
     t
 }
 
-struct Aliaser<'ctx> {
-    map: &'ctx HashMap<String, Type>,
+struct Aliaser<'ctx, TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq> {
+    map: &'ctx HashMap<String, Type<TExtType>>,
 }
 
-impl<'ctx> MutTypeVisitor for Aliaser<'ctx> {
-    fn visit(&mut self, ty: &mut Type) {
+impl<'ctx, TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash> MutTypeVisitor<TExtType>
+    for Aliaser<'ctx, TExtType>
+{
+    fn visit(&mut self, ty: &mut Type<TExtType>) {
         match ty {
             Type::Unit | Type::Bool | Type::Nat | Type::Tag(_) => {}
             Type::Var(v) => {}
@@ -481,6 +504,7 @@ impl<'ctx> MutTypeVisitor for Aliaser<'ctx> {
             Type::Universal(ty) => self.visit_universal(ty),
             Type::Existential(ty) => self.visit_existential(ty),
             Type::Rec(ty) => self.visit_rec(ty),
+            Type::Extended(_) => panic!("FIXME extended visitor unimplemented"),
         }
     }
 }
@@ -489,14 +513,15 @@ impl<
         TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
         TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
         TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-    > MutTermVisitor<TExtPat, TExtKind> for ExtContext<TExtTokenKind, TExtKind, TExtPat>
+        TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
+    > MutTermVisitor<TExtPat, TExtKind, TExtType> for ExtContext<TExtTokenKind, TExtKind, TExtPat, TExtType>
 {
-    fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type, term: &mut ExtTerm<TExtPat, TExtKind>) {
+    fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type<TExtType>, term: &mut ExtTerm<TExtPat, TExtKind, TExtType>) {
         self.aliaser().visit(ty);
         self.visit(term);
     }
 
-    fn visit_tyapp(&mut self, sp: &mut Span, term: &mut ExtTerm<TExtPat, TExtKind>, ty: &mut Type) {
+    fn visit_tyapp(&mut self, sp: &mut Span, term: &mut ExtTerm<TExtPat, TExtKind, TExtType>, ty: &mut Type<TExtType>) {
         self.aliaser().visit(ty);
         self.visit(term);
     }
@@ -505,25 +530,25 @@ impl<
         &mut self,
         sp: &mut Span,
         label: &mut String,
-        term: &mut ExtTerm<TExtPat, TExtKind>,
-        ty: &mut Type,
+        term: &mut ExtTerm<TExtPat, TExtKind, TExtType>,
+        ty: &mut Type<TExtType>,
     ) {
         self.aliaser().visit(ty);
         self.visit(term);
     }
 
-    fn visit_fold(&mut self, sp: &mut Span, ty: &mut Type, tm: &mut ExtTerm<TExtPat, TExtKind>) {
+    fn visit_fold(&mut self, sp: &mut Span, ty: &mut Type<TExtType>, tm: &mut ExtTerm<TExtPat, TExtKind, TExtType>) {
         self.aliaser().visit(ty);
         self.visit(tm);
     }
 
-    fn visit_unfold(&mut self, sp: &mut Span, ty: &mut Type, tm: &mut ExtTerm<TExtPat, TExtKind>) {
+    fn visit_unfold(&mut self, sp: &mut Span, ty: &mut Type<TExtType>, tm: &mut ExtTerm<TExtPat, TExtKind, TExtType>) {
         self.aliaser().visit(ty);
         self.visit(tm);
     }
 }
 
-impl fmt::Debug for Type {
+impl<TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq> fmt::Debug for Type<TExtType> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Type::Unit => write!(f, "Unit"),
@@ -550,6 +575,7 @@ impl fmt::Debug for Type {
             Type::Universal(ty) => write!(f, "forall X.{:?}", ty),
             Type::Existential(ty) => write!(f, "exists X.{:?}", ty),
             Type::Rec(ty) => write!(f, "rec {:?}", ty),
+            Type::Extended(ty) => write!(f, "extended({:?})", ty),
         }
     }
 }

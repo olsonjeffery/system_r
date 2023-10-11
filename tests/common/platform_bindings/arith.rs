@@ -1,10 +1,14 @@
+use system_r::bottom::{BottomPattern, BottomKind, BottomType};
 use system_r::system_r_util::span::Span;
+use system_r::terms::ExtTerm;
 use system_r::{
     diagnostics::Diagnostic,
     platform_bindings::WrappedContent,
-    terms::{Kind, Literal, Term},
+    terms::{Kind, Literal},
     types::Type,
 };
+
+type Term = ExtTerm<BottomPattern, BottomKind, BottomType>;
 
 pub fn pull_u32_from(args: &Vec<Term>, idx: usize, span: &Span) -> Result<u32, Diagnostic> {
     let arg_t_raw = match args.get(idx) {
@@ -40,7 +44,7 @@ fn add(arg: Term, span: &Span) -> Result<Term, Diagnostic> {
             let arg0_actual = pull_u32_from(&args, 0, span)?;
             let arg1_actual = pull_u32_from(&args, 1, span)?;
             let sum = Kind::Lit(Literal::Nat(arg0_actual + arg1_actual));
-            let mut ret_term = Term::unit();
+            let mut ret_term = ExtTerm::unit();
             ret_term.kind = sum.clone();
             ret_term.span = *span;
             return Ok(ret_term);

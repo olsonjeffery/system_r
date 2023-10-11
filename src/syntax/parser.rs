@@ -40,22 +40,23 @@ along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 use super::debruijn::DeBruijnIndexer;
+use super::error::Error;
 use super::lexer::ExtLexer;
 use super::{ExtToken, ExtTokenKind};
-use super::error::Error;
-use crate::bottom::{BottomExtension, BottomKind, BottomPattern, BottomTokenKind, BottomState};
+use crate::bottom::{BottomExtension, BottomKind, BottomPattern, BottomState, BottomTokenKind, BottomType};
 use crate::extensions::SystemRExtension;
 
 use crate::system_r_util::diagnostic::Diagnostic;
 use crate::system_r_util::span::*;
 use core::fmt;
+use std::hash;
 
 use crate::patterns::{ExtPattern, PatVarStack};
 use crate::platform_bindings::PlatformBindings;
 use crate::terms::*;
 use crate::types::*;
 
-pub type Parser<'s> = ParserState<'s, BottomTokenKind, BottomKind, BottomPattern, BottomState>;
+pub type Parser<'s> = ParserState<'s, BottomTokenKind, BottomKind, BottomPattern, BottomType, BottomState>;
 
 #[derive(Default, Debug, Clone)]
 pub struct ParserState<
@@ -63,6 +64,7 @@ pub struct ParserState<
     TExtTokenKind: fmt::Debug + PartialEq + PartialOrd + Default + Sized + Clone,
     TExtKind: fmt::Debug + PartialEq + PartialOrd + Default + Sized + Clone,
     TExtPat: fmt::Debug + PartialEq + PartialOrd + Default + Sized + Clone,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
 > {
     pub tmvar: DeBruijnIndexer,
@@ -73,6 +75,7 @@ pub struct ParserState<
     pub token: ExtToken<TExtTokenKind>,
     pub platform_bindings: PlatformBindings,
     pub ext_state: TExtState,
+    pub ty: TExtType,
 }
 
 #[derive(Clone, Debug)]
@@ -89,19 +92,24 @@ pub enum ErrorKind<TExtTokenKind: PartialEq> {
 }
 
 impl<
-    's,
-    TExtTokenKind: fmt::Debug + PartialEq + PartialOrd + Default + Sized + Clone,
-    TExtKind: fmt::Debug + PartialEq + PartialOrd + Default + Sized + Clone,
-    TExtPat: fmt::Debug + PartialEq + PartialOrd + Default + Sized + Clone,
-    TExtState: fmt::Debug + Default + Clone,
-> ParserState<'s, TExtTokenKind, TExtKind, TExtPat, TExtState> {
+        's,
+        TExtTokenKind: fmt::Debug + PartialEq + PartialOrd + Default + Sized + Clone,
+        TExtKind: fmt::Debug + PartialEq + PartialOrd + Default + Sized + Clone,
+        TExtPat: fmt::Debug + PartialEq + PartialOrd + Default + Sized + Clone,
+        TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
+        TExtState: fmt::Debug + Default + Clone,
+    > ParserState<'s, TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>
+{
     pub fn die(self) -> String {
         let d = self.diagnostic;
         d.emit()
     }
 }
 
-pub fn new<'s>(platform_bindings: &'s PlatformBindings, input: &'s str) -> Parser<'s> {
+pub fn new<'s, TExtType: Clone + Default + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash>(
+    platform_bindings: &'s PlatformBindings,
+    input: &'s str,
+) -> Parser<'s> {
     let mut ext = BottomExtension;
     ext_new(platform_bindings, input, &mut ext)
 }
@@ -111,13 +119,14 @@ pub fn ext_new<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 >(
     platform_bindings: &'s PlatformBindings,
     input: &'s str,
     ext: &mut TExt,
-) -> ParserState<'s, TExtTokenKind, TExtKind, TExtPat, TExtState> {
+) -> ParserState<'s, TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState> {
     let mut p = ParserState {
         tmvar: DeBruijnIndexer::default(),
         tyvar: DeBruijnIndexer::default(),
@@ -127,6 +136,7 @@ pub fn ext_new<
         token: ExtToken::dummy(),
         platform_bindings: platform_bindings.clone(),
         ext_state: Default::default(),
+        ty: Default::default(),
     };
     bump(&mut p, ext);
     p
@@ -137,12 +147,13 @@ pub fn once_or_more<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: Clone + Default + fmt::Debug,
-    F: FnMut(&mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>) -> Result<T, Error<TExtTokenKind>>,
-    TExt: Clone + Copy + Default + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    F: FnMut(&mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>) -> Result<T, Error<TExtTokenKind>>,
+    TExt: Clone + Copy + Default + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     T,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     mut func: F,
     delimiter: ExtTokenKind<TExtTokenKind>,
     ext: &mut TExt,
@@ -162,11 +173,12 @@ pub fn once<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: Clone + Default + fmt::Debug,
-    F: FnMut(&mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>) -> Result<T, Error<TExtTokenKind>>,
+    F: FnMut(&mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>) -> Result<T, Error<TExtTokenKind>>,
     T,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     mut func: F,
     message: &str,
 ) -> Result<T, Error<TExtTokenKind>> {
@@ -183,10 +195,11 @@ pub fn diagnostic<
     's,
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtState: fmt::Debug + Default + Clone,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtState: fmt::Debug + Default + Clone,
 >(
-    ps: ParserState<'s, TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: ParserState<'s, TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 ) -> Diagnostic<'s> {
     ps.diagnostic
 }
@@ -196,10 +209,11 @@ pub fn error<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
     TError,
 >(
-    ps: &ParserState<'s, TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: &ParserState<'s, TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     kind: ErrorKind<TExtTokenKind>,
 ) -> Result<TError, Error<TExtTokenKind>> {
     Err(Error {
@@ -213,10 +227,11 @@ pub fn bump<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     ext: &mut TExt,
 ) -> ExtTokenKind<TExtTokenKind> {
     let prev = std::mem::replace(&mut ps.token, ps.lexer.lex(ext));
@@ -228,10 +243,11 @@ pub fn bump_if<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     ext: &mut TExt,
     kind: &ExtTokenKind<TExtTokenKind>,
 ) -> bool {
@@ -247,10 +263,11 @@ pub fn expect<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     ext: &mut TExt,
     kind: ExtTokenKind<TExtTokenKind>,
 ) -> Result<(), Error<TExtTokenKind>> {
@@ -258,21 +275,21 @@ pub fn expect<
         bump(ps, ext);
         Ok(())
     } else {
-        ps.diagnostic.push(
-            format!("expected token {:?}, found {:?}", kind, ps.token.kind),
-            ps.span,
-        );
+        ps.diagnostic
+            .push(format!("expected token {:?}, found {:?}", kind, ps.token.kind), ps.span);
         error(ps, ErrorKind::ExpectedToken(kind))
     }
 }
 
-pub fn kind<'s, 
+pub fn kind<
+    's,
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
 >(
-    ps: &'s ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: &'s ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 ) -> &'s ExtTokenKind<TExtTokenKind> {
     &ps.token.kind
 }
@@ -281,12 +298,13 @@ pub fn ty_variant<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     ext: &mut TExt,
-) -> Result<Variant, Error<TExtTokenKind>> {
+) -> Result<Variant<TExtType>, Error<TExtTokenKind>> {
     let label = uppercase_id(ps, ext)?;
     let ty = match ty(ps, ext) {
         Ok(ty) => ty,
@@ -300,12 +318,13 @@ pub fn ty_app<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     ext: &mut TExt,
-) -> Result<Type, Error<TExtTokenKind>> {
+) -> Result<Type<TExtType>, Error<TExtTokenKind>> {
     if !bump_if(ps, ext, &ExtTokenKind::LSquare) {
         return error(ps, ErrorKind::ExpectedToken(ExtTokenKind::LSquare));
     }
@@ -318,12 +337,13 @@ pub fn ty_atom<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     ext: &mut TExt,
-) -> Result<Type, Error<TExtTokenKind>> {
+) -> Result<Type<TExtType>, Error<TExtTokenKind>> {
     match kind(ps) {
         ExtTokenKind::Tag(s) => {
             let v = s.to_owned();
@@ -384,12 +404,13 @@ pub fn ty_tuple<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     ext: &mut TExt,
-) -> Result<Type, Error<TExtTokenKind>> {
+) -> Result<Type<TExtType>, Error<TExtTokenKind>> {
     if bump_if(ps, ext, &ExtTokenKind::LParen) {
         let mut ext2 = ext.clone();
         let mut ext3 = ext.clone();
@@ -410,12 +431,13 @@ pub fn ty<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     ext: &mut TExt,
-) -> Result<Type, Error<TExtTokenKind>> {
+) -> Result<Type<TExtType>, Error<TExtTokenKind>> {
     /*
     match kind(ps) {
         ExtTokenKind::AnyTag => return Ok(Type::AnyTag),
@@ -455,15 +477,16 @@ pub fn tyabs<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
     let tyvar = uppercase_id(ps, ext)?;
     let sp = ps.span;
-    let ty = Box::new(Type::Var(ps.tyvar.push(tyvar)));
+    let ty: Box<Type<TExtType>> = Box::new(Type::Var(ps.tyvar.push(tyvar)));
     let body = once(ps, |p| parse(p, ext), "abstraction body required")?;
     Ok(ExtTerm::new(ExtKind::TyAbs(Box::new(body)), sp + ps.span))
 }
@@ -472,12 +495,13 @@ pub fn tmabs<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
     let tmvar = lowercase_id(ps, ext)?;
     let sp = ps.span;
     ps.tmvar.push(tmvar);
@@ -494,12 +518,13 @@ pub fn fold<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
     expect(ps, ext, ExtTokenKind::Fold)?;
     let sp = ps.span;
     let ty = once(ps, |p| ty(p, ext), "type annotation required after `fold`")?;
@@ -511,32 +536,31 @@ pub fn unfold<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
     expect(ps, ext, ExtTokenKind::Unfold)?;
     let sp = ps.span;
     let ty = once(ps, |p| ty(p, ext), "type annotation required after `unfold`")?;
     let tm = once(ps, |p| parse(p, ext), "term required after `unfold`")?;
-    Ok(ExtTerm::new(
-        ExtKind::Unfold(Box::new(ty), Box::new(tm)),
-        sp + ps.span,
-    ))
+    Ok(ExtTerm::new(ExtKind::Unfold(Box::new(ty), Box::new(tm)), sp + ps.span))
 }
 
 pub fn fix<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
     let sp = ps.span;
     expect(ps, ext, ExtTokenKind::Fix)?;
     let t = parse(ps, ext)?;
@@ -547,12 +571,13 @@ pub fn letexpr<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
     let sp = ps.span;
     expect(ps, ext, ExtTokenKind::Let)?;
     let pat = once(ps, |p| pattern(p, ext), "missing pattern")?;
@@ -579,12 +604,13 @@ pub fn lambda<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
-    ext: &mut TExt
-) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ext: &mut TExt,
+) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
     expect(ps, ext, ExtTokenKind::Lambda)?;
     match kind(ps) {
         ExtTokenKind::Uppercase(_) => tyabs(ps, ext),
@@ -601,18 +627,19 @@ pub fn paren<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
     expect(ps, ext, ExtTokenKind::LParen)?;
     let span = ps.span;
 
     let mut ext2 = ext.clone();
     let mut ext3 = ext.clone();
-    let mut n = once_or_more(ps, |p| parse(p,&mut ext2), ExtTokenKind::Comma, &mut ext3)?;
+    let mut n = once_or_more(ps, |p| parse(p, &mut ext2), ExtTokenKind::Comma, &mut ext3)?;
     expect(ps, ext, ExtTokenKind::RParen)?;
     if n.len() > 1 {
         Ok(ExtTerm::new(ExtKind::Product(n), span + ps.span))
@@ -626,10 +653,11 @@ pub fn uppercase_id<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     ext: &mut TExt,
 ) -> Result<String, Error<TExtTokenKind>> {
     match bump(ps, ext) {
@@ -646,10 +674,11 @@ pub fn lowercase_id<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     ext: &mut TExt,
 ) -> Result<String, Error<TExtTokenKind>> {
     match bump(ps, ext) {
@@ -666,12 +695,13 @@ pub fn literal<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
-    ext: &mut TExt
-) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ext: &mut TExt,
+) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
     let lit = match bump(ps, ext) {
         ExtTokenKind::Nat(x) => Literal::Nat(x),
         ExtTokenKind::True => Literal::Bool(true),
@@ -687,12 +717,13 @@ pub fn primitive<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
     let p = match bump(ps, ext) {
         ExtTokenKind::IsZero => Primitive::IsZero,
         ExtTokenKind::Succ => Primitive::Succ,
@@ -709,10 +740,11 @@ pub fn pat_atom<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     ext: &mut TExt,
 ) -> Result<ExtPattern<TExtPat>, Error<TExtTokenKind>> {
     match kind(ps) {
@@ -765,10 +797,11 @@ pub fn pattern<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     ext: &mut TExt,
 ) -> Result<ExtPattern<TExtPat>, Error<TExtTokenKind>> {
     match kind(ps) {
@@ -794,12 +827,13 @@ pub fn case_arm<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     ext: &mut TExt,
-) -> Result<Arm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
+) -> Result<Arm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
     // match kind(ps) {
     //     ExtTokenKind::Bar => bump(ps),
     //     _ => return error(ps, ErrorKind::ExpectedToken(ExtTokenKind::Bar)),
@@ -844,19 +878,20 @@ pub fn case<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
     expect(ps, ext, ExtTokenKind::Case)?;
     let span = ps.span;
     let expr = once(ps, |p| parse(p, ext), "missing case expression")?;
     expect(ps, ext, ExtTokenKind::Of)?;
 
     bump_if(ps, ext, &ExtTokenKind::Bar);
-            
+
     let mut ext2 = ext.clone();
     let mut ext3 = ext.clone();
     let arms = once_or_more(ps, |p| case_arm(p, &mut ext3), ExtTokenKind::Bar, &mut ext2)?;
@@ -868,12 +903,13 @@ pub fn injection<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
-    ext: &mut TExt
-) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ext: &mut TExt,
+) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
     let label = uppercase_id(ps, ext)?;
     let sp = ps.span;
     let term = match parse(ps, ext) {
@@ -893,12 +929,13 @@ pub fn pack<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
     expect(ps, ext, ExtTokenKind::Pack)?;
     let sp = ps.span;
     let witness = ty(ps, ext)?;
@@ -917,12 +954,13 @@ pub fn unpack<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
     expect(ps, ext, ExtTokenKind::Unpack)?;
     let sp = ps.span;
     let package = parse(ps, ext)?;
@@ -947,12 +985,13 @@ pub fn atom<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
     match kind(ps) {
         ExtTokenKind::Extended(tk) => ext_atom(ps, ext),
         ExtTokenKind::LParen => paren(ps, ext),
@@ -971,8 +1010,7 @@ pub fn atom<
                     if let Some(idx) = ps.platform_bindings.has(&var) {
                         return Ok(ExtTerm::new(ExtKind::PlatformBinding(idx), ps.span));
                     }
-                    ps.diagnostic
-                        .push(format!("parser: unbound variable {}", var), ps.span);
+                    ps.diagnostic.push(format!("parser: unbound variable {}", var), ps.span);
                     error(ps, ErrorKind::UnboundTypeVar)
                 }
             }
@@ -996,12 +1034,13 @@ pub fn projection<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
     let atom = atom(ps, ext)?;
     if bump_if(ps, ext, &ExtTokenKind::Proj) {
         let idx = match bump(ps, ext) {
@@ -1026,12 +1065,13 @@ pub fn application<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
     let mut app = projection(ps, ext)?;
 
     loop {
@@ -1062,17 +1102,16 @@ pub fn ext_atom<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
     let r = {
         match ext.parser_ext_atom(ps) {
-            Err(e) => {
-                return Err(e)
-            },
+            Err(e) => return Err(e),
             Ok(t) => t,
         }
     };
@@ -1083,17 +1122,16 @@ pub fn ext_parse<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
     let r = {
         match ext.parser_ext_parse(ps) {
-            Err(e) => {
-                return Err(e)
-            },
+            Err(e) => return Err(e),
             Ok(t) => t,
         }
     };
@@ -1104,12 +1142,13 @@ pub fn parse<
     TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
+    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
     TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtState>,
+    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
     match kind(ps).clone() {
         ExtTokenKind::Case => case(ps, ext),
         ExtTokenKind::Lambda => lambda(ps, ext),
