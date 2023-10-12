@@ -4,7 +4,7 @@ use cucumber::World;
 
 use system_r::{
     platform_bindings::PlatformBindings,
-    terms::{Kind, ExtTerm},
+    terms::{Kind, ExtTerm, Term},
     types::Type, bottom::{BottomType, BottomKind, BottomPattern},
 };
 
@@ -12,8 +12,6 @@ use self::extensions::{OmniContext, OmniKind, OmniTerm, OmniType, OmniState};
 
 pub mod extensions;
 pub mod platform_bindings;
-
-type Term = ExtTerm<BottomPattern, BottomKind, BottomType>;
 
 #[derive(Debug, Default, World)]
 pub struct SpecsWorld {

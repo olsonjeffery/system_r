@@ -14,6 +14,7 @@ limitations under the License.
 */
 use crate::syntax::parser::ParserState;
 use crate::system_r_util::span::Span;
+use crate::terms::Term;
 use core::fmt;
 use std::hash;
 
@@ -30,8 +31,6 @@ use crate::{
     types::{self, Type},
     visit::MutTermVisitor,
 };
-
-type Term = ExtTerm<BottomPattern, BottomKind, BottomType>;
 
 pub fn code_format(src: &str, diag: Diagnostic) -> String {
     let srcl = src.lines().collect::<Vec<&str>>();

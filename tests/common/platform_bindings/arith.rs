@@ -1,14 +1,12 @@
 use system_r::bottom::{BottomPattern, BottomKind, BottomType};
 use system_r::system_r_util::span::Span;
-use system_r::terms::ExtTerm;
+use system_r::terms::{ExtTerm, Term};
 use system_r::{
     diagnostics::Diagnostic,
     platform_bindings::WrappedContent,
     terms::{Kind, Literal},
     types::Type,
 };
-
-type Term = ExtTerm<BottomPattern, BottomKind, BottomType>;
 
 pub fn pull_u32_from(args: &Vec<Term>, idx: usize, span: &Span) -> Result<u32, Diagnostic> {
     let arg_t_raw = match args.get(idx) {

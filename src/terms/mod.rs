@@ -44,6 +44,7 @@ use crate::types::Type;
 use std::{fmt, hash};
 pub mod visit;
 
+pub type Term = ExtTerm<BottomPattern, BottomKind, BottomType>;
 #[derive(Clone, Default, PartialEq, PartialOrd)]
 pub struct ExtTerm<
     TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,

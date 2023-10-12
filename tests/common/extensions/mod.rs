@@ -5,11 +5,9 @@ use system_r::{
     },
     platform_bindings::PlatformBindings,
     syntax::parser::ParserState,
-    terms::{ExtKind, ExtTerm, Kind},
+    terms::{ExtKind, ExtTerm, Kind, Term},
     types::{Context, Type},
 };
-
-type Term = ExtTerm<BottomPattern, BottomKind, BottomType>;
 
 #[derive(Clone, Default, Debug)]
 pub enum OmniContext {

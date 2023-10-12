@@ -42,7 +42,7 @@ use crate::diagnostics::Diagnostic;
 use crate::patterns::{ExtPattern, Pattern};
 use crate::platform_bindings::PlatformBindings;
 use crate::terms::visit::{Shift, Subst, TyTermSubst};
-use crate::terms::{ExtKind, ExtTerm, Literal, Primitive};
+use crate::terms::{ExtKind, ExtTerm, Literal, Primitive, Term};
 use crate::types::{Context, Type};
 use crate::visit::MutTermVisitor;
 
@@ -50,8 +50,6 @@ pub struct Eval<'ctx> {
     _context: &'ctx Context,
     platform_bindings: PlatformBindings,
 }
-
-type Term = ExtTerm<BottomPattern, BottomKind, BottomType>;
 
 impl<'ctx> Eval<'ctx> {
     pub fn with_context(_context: &Context) -> Eval<'_> {

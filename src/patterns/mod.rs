@@ -243,7 +243,7 @@ impl<
 #[cfg(test)]
 mod test {
 
-    use crate::bottom::BottomKind;
+    use crate::bottom::{BottomKind, BottomType};
 
     use super::*;
     #[test]
@@ -257,7 +257,7 @@ mod test {
         let mut pat: Pattern = ExtPattern::Variable(String::new());
         let ty = Type::Nat;
         assert_eq!(
-            PatTyStack::<BottomPattern, BottomKind>::collect(&ty, &mut pat),
+            PatTyStack::<BottomPattern, BottomKind, BottomType>::collect(&ty, &mut pat),
             vec![&ty]
         );
     }

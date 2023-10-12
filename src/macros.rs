@@ -37,11 +37,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 //! Macros to make writing tests easier
+//! 
+
+use crate::{terms::ExtTerm, bottom::{BottomPattern, BottomKind, BottomType}};
 
 /// Boolean term
 macro_rules! lit {
     ($x:expr) => {
-        crate::terms::Term::new(
+        Term::new(
             crate::terms::Kind::Lit(crate::terms::Literal::Bool($x)),
             crate::system_r_util::span::Span::dummy(),
         )
