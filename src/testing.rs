@@ -57,25 +57,42 @@ pub fn code_format(src: &str, diag: Diagnostic) -> String {
     output
 }
 
-pub fn type_check_term(
-    ctx: &mut types::ExtContext<BottomTokenKind, BottomKind, BottomPattern, BottomType>,
-    term: &ExtTerm<BottomPattern, BottomKind, BottomType>,
-) -> Result<Type<BottomType>, Diagnostic> {
+pub fn type_check_term<
+    's,
+    TExtTokenKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExtType: Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash,
+    TExtState: Clone + fmt::Debug + Default,
+    TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+>(
+    ctx: &mut types::ExtContext<TExtTokenKind, TExtKind, TExtPat, TExtType>,
+    term: &mut ExtTerm<TExtPat, TExtKind, TExtType>,
+    ext: &mut TExt,
+) -> Result<Type<TExtType>, Diagnostic> {
     // Step 1
-    let mut ext = BottomExtension;
-    let ty = ctx.type_check(term, &mut ext)?;
+    let ty = ctx.type_check(term, ext)?;
     Ok(ty)
 }
 
-pub fn dealias_and_type_check_term(
-    ctx: &mut types::ExtContext<BottomTokenKind, BottomKind, BottomPattern, BottomType>,
-    term: &mut ExtTerm<BottomPattern, BottomKind, BottomType>,
-) -> Result<Type<BottomType>, Diagnostic> {
+pub fn dealias_and_type_check_term<
+    's,
+    TExtTokenKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExtType: Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash,
+    TExtState: fmt::Debug + Clone + Default,
+    TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+>(
+    ctx: &mut types::ExtContext<TExtTokenKind, TExtKind, TExtPat, TExtType>,
+    term: &mut ExtTerm<TExtPat, TExtKind, TExtType>,
+    ext: &mut TExt,
+) -> Result<Type<TExtType>, Diagnostic> {
     // Step 0
     ctx.de_alias(term);
-    InjRewriter(BottomPattern::Placeholder, BottomKind::Placeholder).visit(term);
+    InjRewriter(Default::default(), Default::default()).visit(term);
 
-    type_check_term(ctx, term)
+    type_check_term(ctx, term, ext)
 }
 
 pub fn operate_parser_for<
@@ -129,20 +146,10 @@ pub fn parse_single_block(
     };
 }
 
-pub fn type_check_and_eval_single_block(
+pub fn do_bottom_eval(
     ctx: &mut types::ExtContext<BottomTokenKind, BottomKind, BottomPattern, BottomType>,
     term: &mut ExtTerm<BottomPattern, BottomKind, BottomType>,
-    src: &str,
-    fail_on_type_mismatch: bool,
-) -> Result<(Type<BottomType>, ExtTerm<BottomPattern, BottomKind, BottomType>), Diagnostic> {
-    // Step 0-1
-    let tc_result = dealias_and_type_check_term(ctx, term);
-    let Some(pre_ty) = tc_result.clone().ok() else {
-        let e = tc_result.err().unwrap();
-        return Err(e);
-    };
-
-    // Step 2
+) -> Result<ExtTerm<BottomPattern, BottomKind, BottomType>, Diagnostic> {
     let ev = eval::Eval::with_context(ctx);
     let mut t: Term = term.clone();
     let fin = loop {
@@ -152,9 +159,24 @@ pub fn type_check_and_eval_single_block(
             break t;
         }
     };
+    Ok(fin)
+}
+
+pub fn type_check_and_eval_single_block(
+    ctx: &mut types::ExtContext<BottomTokenKind, BottomKind, BottomPattern, BottomType>,
+    term: &mut ExtTerm<BottomPattern, BottomKind, BottomType>,
+    src: &str,
+    fail_on_type_mismatch: bool,
+) -> Result<(Type<BottomType>, ExtTerm<BottomPattern, BottomKind, BottomType>), Diagnostic> {
+    // Step 1
+    let mut ext = BottomExtension;
+    let pre_ty = do_type_check(ctx, term, &mut ext)?;
+
+    // Step 2
+    let fin = do_bottom_eval(ctx, term)?;
 
     // Step 3 -- optional disable?
-    let fin_ty = type_check_term(ctx, term)?;
+    let fin_ty = type_check_term(ctx, term, &mut ext)?;
     if fin_ty != pre_ty && fail_on_type_mismatch {
         let msg = format!(
             "Type change of term pre check typecheck to post-eval: {:?} {:?}",
@@ -164,4 +186,25 @@ pub fn type_check_and_eval_single_block(
     }
 
     Ok((fin_ty, fin))
+}
+
+pub fn do_type_check<
+    's,
+    TExtTokenKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExtType: Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash,
+    TExtState: Clone + fmt::Debug + Default,
+    TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+>(
+    ctx: &mut types::ExtContext<TExtTokenKind, TExtKind, TExtPat, TExtType>,
+    term: &mut ExtTerm<TExtPat, TExtKind, TExtType>,
+    ext: &mut TExt,
+) -> Result<Type<TExtType>, Diagnostic> {
+    let tc_result = dealias_and_type_check_term(ctx, term, ext);
+    let Some(pre_ty) = tc_result.clone().ok() else {
+        let e = tc_result.err().unwrap();
+        return Err(e);
+    };
+    Ok(pre_ty)
 }

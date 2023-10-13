@@ -14,7 +14,7 @@ use system_r::{
     },
     syntax::parser::{self, ParserState},
     terms::ExtTerm,
-    testing::{self, code_format},
+    testing::{self, code_format, do_type_check},
 };
 
 use crate::common::{
@@ -65,20 +65,23 @@ fn when_it_is_processed_for_StructData(world: &mut common::SpecsWorld) {
     let mut ps = parser::ext_new(&pb, &input, &mut ext);
 
     let res = parse_for_extension(&input, &mut ps, &mut ext);
-    match res {
-        Ok(t) => {
-            let k = OmniKind::StructData(t.clone().kind);
-            let t = OmniTerm::StructData(t);
+    let term = match res {
+        Ok(term) => {
+            let k = OmniKind::StructData(term.clone().kind);
+            let t = OmniTerm::StructData(term.clone());
             world.last_ext_parse_success = if k == OmniKind::Empty { false } else { true };
             world.last_ext_parse_kind = k;
             world.last_ext_parse_term = t;
             world.last_ext_state = OmniState::StructData(ps.to_ext_state());
+            term
         }
         Err(e) => {
             ps.die();
             world.last_ext_parse_msg = format!("error diag: {:?}", e);
+            return;
         }
     };
+
 
 }
 

@@ -4,7 +4,7 @@ use cucumber::{gherkin::Step, given, then, when};
 
 use system_r::{
     terms::{Kind, Literal, ExtTerm, Term},
-    testing::{self, code_format},
+    testing::{self, code_format, do_bottom_eval},
     types::Context,
     types::Type, bottom::{BottomPattern, BottomKind, BottomType},
 };
@@ -73,6 +73,31 @@ fn when_it_is_parsed(world: &mut common::SpecsWorld) {
     world.last_parse_term = eval_res.clone();
     world.last_parse_kind = eval_res.kind;
     world.last_parse_msg = "".to_owned();
+}
+#[when("bottom eval is ran")]
+fn when_bottom_eval_is_ran(world: &mut common::SpecsWorld) {
+    let Some(OmniContext::Bottom(ctx)) = world.contexts.get_mut(CTX_NAME) else {
+        panic!("expected to get a bottom context, didn't!");
+    };
+    let mut term = world.last_parse_term.clone();
+
+    match do_bottom_eval(ctx, &mut term) {
+        Ok(t) => {
+            world.last_eval_success = true;
+            world.last_eval_term = t.clone();
+            world.last_eval_fty = Type::Unit;
+            world.last_eval_kind = t.kind;
+            world.last_eval_msg = "".to_owned();
+        },
+        Err(e) => {
+            world.last_eval_success = false;
+            world.last_eval_term = Term::unit();
+            world.last_eval_fty = Type::Unit;
+            world.last_eval_kind = Kind::Lit(Literal::Unit);
+            world.last_eval_msg = code_format(&world.code_snippet, e);
+            return;
+        },
+    }
 }
 
 #[when("eval is ran")]

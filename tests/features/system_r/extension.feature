@@ -30,7 +30,7 @@ res ;
         """
         When it is processed for the StructData extension
         And StructData-dialect is resolved into bottom-dialect system_r
-        And eval is ran
+        And bottom eval is ran
         Then the last ext should parse successfully
         Then the last parse should be successful
         Then the last eval should be successful
