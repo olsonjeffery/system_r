@@ -43,7 +43,7 @@ pub fn parse_for_extension<
     testing::operate_parser_for(input, ps, ext)
 }
 
-#[given(regex = r#"^a system_r toolchain extended for StructData"#)]
+#[given(regex = r#"^a system_r toolchain extended for TypeAlias"#)]
 fn given_a_new_StructData_context(world: &mut common::SpecsWorld) {
     world.contexts.insert(
         StructData_CTX_NAME.to_owned(),
@@ -56,7 +56,7 @@ fn then_the_last_ext_should_parse_successfully(world: &mut common::SpecsWorld) {
     assert!(world.last_ext_parse_success, "fail msg: {:?}", world.last_ext_parse_msg);
 }
 
-#[when("it is processed for the StructData extension")]
+#[when("TypeAlias parses the code")]
 fn when_it_is_processed_for_StructData(world: &mut common::SpecsWorld) {
     let input = world.code_snippet.clone();
     let mut ext = StructDataExtension;
@@ -85,7 +85,12 @@ fn when_it_is_processed_for_StructData(world: &mut common::SpecsWorld) {
 
 }
 
-#[when("StructData-dialect is resolved into bottom-dialect system_r")]
+#[when("TypeAlias type checks the code")]
+fn when_type_alias_type_checks_the_code(world: &mut SpecsWorld) {
+
+}
+
+#[when("TypeAlias-dialect is resolved into bottom-dialect system_r")]
 pub fn when_it_is_converted_to_bottom_dialect(world: &mut SpecsWorld) {
     given_a_new_context(world);
     let tm = match world.last_ext_parse_term.clone() {

@@ -1,7 +1,7 @@
 @system_r
 Feature: Extension of system_r
     @wip
-    Scenario: StructData happy path
+    Scenario: TypeAlias happy path
         # Add structural type/data-shape capture with the StructData
         # keyword, all StructData alias application with $TypeName[Of V]
         # where V is a TyAbs in the StructData value
@@ -17,7 +17,7 @@ Feature: Extension of system_r
         # let Some(res) = tripler [Nat] (Some 7 of {None|Some Nat}) (\x: Nat. (x, x, x)) in
         # res ;
 
-        Given a system_r toolchain extended for StructData
+        Given a system_r toolchain extended for TypeAlias
         And a code block:
         """
 type $Option = \V {None | Some V} in
@@ -28,8 +28,9 @@ let tripler = \X (\c: $Option[of X]. \x: X->(X, X, X).
 let Some(res) = tripler [Nat] (Some 7 of $Option[of Nat]) (\x: Nat. (x, x, x)) in
 res ;
         """
-        When it is processed for the StructData extension
-        And StructData-dialect is resolved into bottom-dialect system_r
+        When TypeAlias parses the code
+        And TypeAlias type checks the code
+        And TypeAlias-dialect is resolved into bottom-dialect system_r
         And bottom eval is ran
         Then the last ext should parse successfully
         Then the last parse should be successful
