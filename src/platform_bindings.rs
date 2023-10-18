@@ -20,17 +20,17 @@ use crate::bottom::{BottomKind, BottomPattern, BottomTokenKind, BottomType, Bott
 use crate::extensions::{SystemRDialect, SystemRExtension};
 use crate::system_r_util::span::Span;
 
-use crate::terms::ExtTerm;
+use crate::terms::Term;
 use crate::types::Variant;
 use crate::{
     diagnostics::Diagnostic,
-    types::{ExtContext, Type},
+    types::{Context, Type},
 };
 
 pub type WrappedFn = fn(
-    input: ExtTerm<BottomDialect>,
+    input: Term<BottomDialect>,
     span: &Span,
-) -> Result<ExtTerm<BottomDialect>, Diagnostic>;
+) -> Result<Term<BottomDialect>, Diagnostic>;
 
 pub struct WrappedContent(pub WrappedFn, pub Type<BottomType>, pub Type<BottomType>);
 
@@ -137,7 +137,7 @@ fn resolve_pb_type<TExtType: Clone + Default + fmt::Debug + PartialEq + PartialO
     }
 }
 
-impl<TExtDialect: SystemRDialect + Clone + fmt::Debug + Default> ExtContext<TExtDialect> {
+impl<TExtDialect: SystemRDialect + Clone + fmt::Debug + Default> Context<TExtDialect> {
     pub(crate) fn type_check_platform_binding(
         &mut self,
         idx: &usize,

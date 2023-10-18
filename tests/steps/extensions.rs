@@ -13,7 +13,7 @@ use system_r::{
         SystemRExtension, SystemRTranslator, SystemRDialect,
     },
     syntax::parser::{self, ParserState},
-    terms::ExtTerm,
+    terms::Term,
     testing::{self, code_format, do_type_check},
 };
 
@@ -35,7 +35,7 @@ pub fn parse_for_extension<
     input: &str,
     ps: &mut ParserState<'s, TExtDialect>,
     ext: &mut TLE,
-) -> Result<ExtTerm<TExtDialect>, Diagnostic> {
+) -> Result<Term<TExtDialect>, Diagnostic> {
     testing::operate_parser_for(input, ps, ext)
 }
 

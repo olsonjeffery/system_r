@@ -18,7 +18,7 @@ use crate::{
     patterns::Pattern,
     syntax::{error::Error, lexer::ExtLexer /* lexer2::extlexer2 */},
     system_r_util::span::Span,
-    terms::{ExtKind, ExtTerm},
+    terms::{Kind, Term},
 };
 
 #[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
@@ -98,7 +98,7 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
     fn pat_ext_matches(
         &self,
         pat: &BottomPattern,
-        term: &crate::terms::ExtTerm<BottomDialect>,
+        term: &crate::terms::Term<BottomDialect>,
     ) -> bool {
         false
     }
@@ -114,14 +114,14 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
     fn parser_ext_parse<'s>(
         &mut self,
         ps: &mut crate::syntax::parser::ParserState<BottomDialect>,
-    ) -> Result<ExtTerm<BottomDialect>, Error<BottomTokenKind>> {
+    ) -> Result<Term<BottomDialect>, Error<BottomTokenKind>> {
         panic!("shouldn't be called");
     }
 
     fn parser_ext_atom<'s>(
         &mut self,
         ps: &mut crate::syntax::parser::ParserState<BottomDialect>,
-    ) -> Result<ExtTerm<BottomDialect>, Error<BottomTokenKind>> {
+    ) -> Result<Term<BottomDialect>, Error<BottomTokenKind>> {
         panic!("shouldn't be called");
     }
 

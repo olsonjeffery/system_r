@@ -20,13 +20,13 @@ use crate::{
     patterns::PatVarStack,
     platform_bindings::PlatformBindings,
     syntax::{
+        parser,
         error::Error,
-        parser::{self, BottomParserState},
         parser::{ErrorKind, ParserState},
         ExtTokenKind,
     },
-    terms::{ExtKind, ExtTerm},
-    types::{visit::Subst, ExtContext, Type},
+    terms::{Kind, Term},
+    types::{visit::Subst, Context, Type},
     visit::MutTypeVisitor,
 };
 
@@ -35,7 +35,7 @@ use super::{SystemRDialect, SystemRExtension, SystemRTranslator};
 #[derive(Copy, Clone, Debug, Default)]
 pub struct StructDataExtension;
 
-pub type StructDataContext = ExtContext<TypeAliasDialect>;
+pub type StructDataContext = Context<TypeAliasDialect>;
 
 pub fn new<'s>(
     platform_bindings: &'s PlatformBindings,
@@ -67,8 +67,8 @@ pub enum StructDataKind {
     /// (in let-polymorphism style)
     StructDataExpr(
         String,
-        Box<ExtTerm<TypeAliasDialect>>,
-        Box<ExtTerm<TypeAliasDialect>>,
+        Box<Term<TypeAliasDialect>>,
+        Box<Term<TypeAliasDialect>>,
     ),
     Below(BottomKind),
 }
@@ -145,7 +145,7 @@ impl SystemRExtension<TypeAliasDialect> for StructDataExtension {
     fn pat_ext_matches(
         &self,
         pat: &StructDataPattern,
-        term: &crate::terms::ExtTerm<TypeAliasDialect>,
+        term: &crate::terms::Term<TypeAliasDialect>,
     ) -> bool {
         false
     }
@@ -157,13 +157,13 @@ impl SystemRExtension<TypeAliasDialect> for StructDataExtension {
     fn parser_ext_parse<'s>(
         &mut self,
         ps: &mut ParserState<TypeAliasDialect>,
-    ) -> Result<ExtTerm<TypeAliasDialect>, Error<StructDataTokenKind>> {
+    ) -> Result<Term<TypeAliasDialect>, Error<StructDataTokenKind>> {
         let sp = ps.span;
         parser::expect(ps, self, ExtTokenKind::Extended(StructDataTokenKind::StructData))?;
 
         let struct_ident = parser::once(ps,|p| parser::atom(p, self), "missing struct identifier $Binding")?;
         let struct_ident = match struct_ident.kind {
-            ExtKind::Extended(StructDataKind::StructIdent(s)) => s,
+            Kind::Extended(StructDataKind::StructIdent(s)) => s,
             e => {
                 return Err(Error {
                     span: ps.span,
@@ -200,7 +200,7 @@ impl SystemRExtension<TypeAliasDialect> for StructDataExtension {
     fn parser_ext_atom<'s>(
         &mut self,
         ps: &mut ParserState<'s, TypeAliasDialect>,
-    ) -> Result<ExtTerm<TypeAliasDialect>, Error<StructDataTokenKind>> {
+    ) -> Result<Term<TypeAliasDialect>, Error<StructDataTokenKind>> {
         let name_tok = ps.token.clone();
         let name_val = match name_tok.kind.clone() {
             ExtTokenKind::Extended(n) => match n {
@@ -222,9 +222,9 @@ impl SystemRExtension<TypeAliasDialect> for StructDataExtension {
             }
         };
         parser::bump(ps, self);
-        Ok(ExtTerm {
+        Ok(Term {
             span: name_tok.span.clone(),
-            kind: ExtKind::Extended(StructDataKind::StructIdent(name_val)),
+            kind: Kind::Extended(StructDataKind::StructIdent(name_val)),
         })
     }
 
@@ -401,8 +401,8 @@ impl
     fn resolve(
         &self,
         st: &mut StructDataState,
-        tm: ExtTerm<TypeAliasDialect>,
-    ) -> Result<ExtTerm<BottomDialect>, Diagnostic> {
+        tm: Term<TypeAliasDialect>,
+    ) -> Result<Term<BottomDialect>, Diagnostic> {
         Err(Diagnostic::error(tm.span, format!("BottomExtension::resolve() unimpl")))
     }
 }

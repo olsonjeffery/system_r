@@ -40,14 +40,14 @@ limitations under the License.
 
 use crate::{
     bottom::{BottomKind, BottomPattern, BottomType},
-    terms::ExtTerm,
+    terms::Term,
 };
 
 /// Boolean term
 macro_rules! lit {
     ($x:expr) => {
-        Term::new(
-            crate::terms::ExtKind::<BottomDialect>::Lit(crate::terms::Literal::Bool($x)),
+        Term::<BottomDialect>::new(
+            crate::terms::Kind::<BottomDialect>::Lit(crate::terms::Literal::Bool($x)),
             crate::system_r_util::span::Span::dummy(),
         )
     };
@@ -56,8 +56,8 @@ macro_rules! lit {
 /// Integer term
 macro_rules! nat {
     ($x:expr) => {
-        crate::terms::Term::new(
-            crate::terms::ExtKind::<BottomDialect>::Lit(crate::terms::Literal::Nat($x)),
+        crate::terms::Term::<BottomDialect>::new(
+            crate::terms::Kind::<BottomDialect>::Lit(crate::terms::Literal::Nat($x)),
             crate::system_r_util::span::Span::dummy(),
         )
     };
@@ -66,15 +66,15 @@ macro_rules! nat {
 /// TmVar term
 macro_rules! var {
     ($x:expr) => {
-        crate::terms::Term::new(crate::terms::ExtKind::<BottomDialect>::Var($x), crate::system_r_util::span::Span::dummy())
+        crate::terms::Term::<BottomDialect>::new(crate::terms::Kind::<BottomDialect>::Var($x), crate::system_r_util::span::Span::dummy())
     };
 }
 
 /// Application term
 macro_rules! app {
     ($t1:expr, $t2:expr) => {
-        crate::terms::Term::new(
-            crate::terms::ExtKind::<BottomDialect>::App(Box::new($t1), Box::new($t2)),
+        crate::terms::Term::<BottomDialect>::new(
+            crate::terms::Kind::<BottomDialect>::App(Box::new($t1), Box::new($t2)),
             crate::system_r_util::span::Span::dummy(),
         )
     };
@@ -83,8 +83,8 @@ macro_rules! app {
 /// Lambda abstraction term
 macro_rules! abs {
     ($ty:expr, $t:expr) => {
-        crate::terms::Term::new(
-            crate::terms::ExtKind::<BottomDialect>::Abs(Box::new($ty), Box::new($t)),
+        crate::terms::Term::<BottomDialect>::new(
+            crate::terms::Kind::<BottomDialect>::Abs(Box::new($ty), Box::new($t)),
             crate::system_r_util::span::Span::dummy(),
         )
     };
@@ -93,8 +93,8 @@ macro_rules! abs {
 /// Type application term
 macro_rules! tyapp {
     ($t1:expr, $t2:expr) => {
-        crate::terms::Term::new(
-            crate::terms::ExtKind::<BottomDialect>::TyApp(Box::new($t1), Box::new($t2)),
+        crate::terms::Term::<BottomDialect>::new(
+            crate::terms::Kind::<BottomDialect>::TyApp(Box::new($t1), Box::new($t2)),
             crate::system_r_util::span::Span::dummy(),
         )
     };
@@ -103,8 +103,8 @@ macro_rules! tyapp {
 /// Type abstraction term
 macro_rules! tyabs {
     ( $t:expr) => {
-        crate::terms::Term::new(
-            crate::terms::ExtKind::<BottomDialect>::TyAbs(Box::new($t)),
+        crate::terms::Term::<BottomDialect>::new(
+            crate::terms::Kind::<BottomDialect>::TyAbs(Box::new($t)),
             crate::system_r_util::span::Span::dummy(),
         )
     };
@@ -113,8 +113,8 @@ macro_rules! tyabs {
 /// Primitive term
 macro_rules! prim {
     ($t:expr) => {
-        crate::terms::Term::new(
-            crate::terms::ExtKind::<BottomDialect>::Primitive($t),
+        crate::terms::Term::<BottomDialect>::new(
+            crate::terms::Kind::<BottomDialect>::Primitive($t),
             crate::system_r_util::span::Span::dummy(),
         )
     };
@@ -122,8 +122,8 @@ macro_rules! prim {
 
 macro_rules! inj {
     ($label:expr, $t:expr, $ty:expr) => {
-        crate::terms::Term::new(
-            crate::terms::ExtKind::<BottomDialect>::Injection($label.to_string(), Box::new($t), Box::new($ty)),
+        crate::terms::Term::<BottomDialect>::new(
+            crate::terms::Kind::<BottomDialect>::Injection($label.to_string(), Box::new($t), Box::new($ty)),
             crate::system_r_util::span::Span::dummy(),
         )
     };
@@ -131,7 +131,7 @@ macro_rules! inj {
 
 /// Product term
 macro_rules! tuple {
-    ($($ex:expr),+) => { crate::terms::Term::new(crate::terms::ExtKind::<BottomDialect>::Product(vec![$($ex),+]),
+    ($($ex:expr),+) => { crate::terms::Term::<BottomDialect>::new(crate::terms::Kind::<BottomDialect>::Product(vec![$($ex),+]),
     crate::system_r_util::span::Span::dummy()) }
 }
 

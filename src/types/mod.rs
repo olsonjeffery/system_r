@@ -45,7 +45,7 @@ use crate::diagnostics::*;
 use crate::extensions::{SystemRDialect, SystemRExtension};
 use crate::platform_bindings::PlatformBindings;
 use crate::system_r_util::span::Span;
-use crate::terms::{ExtKind, ExtTerm, Literal, Primitive};
+use crate::terms::{Kind, Term, Literal, Primitive};
 use crate::visit::{MutTermVisitor, MutTypeVisitor};
 use std::collections::{HashMap, VecDeque};
 use std::hash::Hash;
@@ -100,17 +100,15 @@ pub enum TypeErrorKind<TExtType: Default + Clone + fmt::Debug + PartialEq + Part
     UnboundVariable(usize),
 }
 
-pub type Context = ExtContext<BottomDialect>;
-
 #[derive(Clone, Debug, PartialEq)]
-pub struct ExtContext<TExtDialect: SystemRDialect + Clone + fmt::Debug + Default> {
+pub struct Context<TExtDialect: SystemRDialect + Clone + fmt::Debug + Default> {
     stack: VecDeque<Type<TExtDialect::TExtType>>,
     map: HashMap<String, Type<TExtDialect::TExtType>>,
     pub platform_bindings: PlatformBindings,
     _d: TExtDialect,
 }
 
-impl<TExtDialect: SystemRDialect + Clone + fmt::Debug + Default> Default for ExtContext<TExtDialect> {
+impl<TExtDialect: SystemRDialect + Clone + fmt::Debug + Default> Default for Context<TExtDialect> {
     fn default() -> Self {
         Self {
             stack: Default::default(),
@@ -121,7 +119,7 @@ impl<TExtDialect: SystemRDialect + Clone + fmt::Debug + Default> Default for Ext
     }
 }
 
-impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug + Default> ExtContext<TExtDialect> {
+impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug + Default> Context<TExtDialect> {
     fn push(&mut self, ty: Type<TExtDialect::TExtType>) {
         self.stack.push_front(ty);
     }
@@ -142,7 +140,7 @@ impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug +
         Aliaser { map: &self.map }
     }
 
-    pub fn de_alias(&mut self, term: &mut ExtTerm<TExtDialect>) {
+    pub fn de_alias(&mut self, term: &mut Term<TExtDialect>) {
         crate::visit::MutTermVisitor::visit(self, term)
     }
 }
@@ -169,32 +167,32 @@ pub fn variant_field<'vs, TExtDialect: SystemRDialect + PartialEq + PartialOrd +
     // })
 }
 
-impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug + Default> ExtContext<TExtDialect> {
+impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug + Default> Context<TExtDialect> {
     pub fn type_check<TExt: Clone + fmt::Debug + Default + SystemRExtension<TExtDialect>>(
         &mut self,
-        term: &ExtTerm<TExtDialect>,
+        term: &Term<TExtDialect>,
         ext: &mut TExt,
     ) -> Result<Type<TExtDialect::TExtType>, Diagnostic> {
         match term.kind() {
-            ExtKind::Extended(_) => self.type_check_ext(term),
-            ExtKind::Lit(Literal::Unit) => Ok(Type::Unit),
-            ExtKind::Lit(Literal::Bool(_)) => Ok(Type::Bool),
-            ExtKind::Lit(Literal::Nat(_)) => Ok(Type::Nat),
-            ExtKind::Lit(Literal::Tag(s)) => Ok(Type::Tag(s.clone())),
-            ExtKind::PlatformBinding(idx) => self.type_check_platform_binding(idx, &term.span),
-            ExtKind::Var(idx) => self
+            Kind::Extended(_) => self.type_check_ext(term),
+            Kind::Lit(Literal::Unit) => Ok(Type::Unit),
+            Kind::Lit(Literal::Bool(_)) => Ok(Type::Bool),
+            Kind::Lit(Literal::Nat(_)) => Ok(Type::Nat),
+            Kind::Lit(Literal::Tag(s)) => Ok(Type::Tag(s.clone())),
+            Kind::PlatformBinding(idx) => self.type_check_platform_binding(idx, &term.span),
+            Kind::Var(idx) => self
                 .find(*idx)
                 .cloned()
                 .ok_or_else(|| Diagnostic::error(term.span, format!("type_check: unbound variable {}", idx))),
 
-            ExtKind::Abs(ty, t2) => {
+            Kind::Abs(ty, t2) => {
                 self.push(*ty.clone());
                 let ty2 = self.type_check(&t2, ext)?;
                 // Shift::new(-1).visit(&mut ty2);
                 self.pop();
                 Ok(Type::Arrow(ty.clone(), Box::new(ty2)))
             }
-            ExtKind::App(t1, t2) => {
+            Kind::App(t1, t2) => {
                 let ty1 = self.type_check(&t1, ext)?;
                 let ty2 = self.type_check(&t2, ext)?;
                 match ty1.clone() {
@@ -227,7 +225,7 @@ impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug +
                         .message(t1.span, format!("operator has type {:?}", ty1))),
                 }
             }
-            ExtKind::Fix(inner) => {
+            Kind::Fix(inner) => {
                 let ty = self.type_check(&inner, ext)?;
                 match ty {
                     Type::Arrow(ty1, ty2) => {
@@ -243,11 +241,11 @@ impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug +
                         .message(inner.span, format!("operator has type {:?}", ty))),
                 }
             }
-            ExtKind::Primitive(prim) => match prim {
+            Kind::Primitive(prim) => match prim {
                 Primitive::IsZero => Ok(Type::Arrow(Box::new(Type::Nat), Box::new(Type::Bool))),
                 _ => Ok(Type::Arrow(Box::new(Type::Nat), Box::new(Type::Nat))),
             },
-            ExtKind::Injection(label, tm, ty) => match ty.as_ref() {
+            Kind::Injection(label, tm, ty) => match ty.as_ref() {
                 Type::Variant(fields) => {
                     for f in fields {
                         if label == &f.label {
@@ -281,7 +279,7 @@ impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug +
                     format!("Cannot injection {} into non-variant type {:?}", label, ty),
                 )),
             },
-            ExtKind::Projection(term, idx) => match self.type_check(&term, ext)? {
+            Kind::Projection(term, idx) => match self.type_check(&term, ext)? {
                 Type::Product(types) => match types.get(*idx) {
                     Some(ty) => Ok(ty.clone()),
                     None => Err(Diagnostic::error(
@@ -294,13 +292,13 @@ impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug +
                     format!("Cannot project on non-product type {:?}", ty),
                 )),
             },
-            ExtKind::Product(terms) => Ok(Type::Product(
+            Kind::Product(terms) => Ok(Type::Product(
                 terms
                     .iter()
                     .map(|t| self.type_check(t, ext))
                     .collect::<Result<_, _>>()?,
             )),
-            ExtKind::Let(pat, t1, t2) => {
+            Kind::Let(pat, t1, t2) => {
                 let ty = self.type_check(&t1, ext)?;
                 if !self.pattern_type_eq(&pat, &ty, ext) {
                     return Err(Diagnostic::error(
@@ -326,7 +324,7 @@ impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug +
 
                 y
             }
-            ExtKind::TyAbs(term) => {
+            Kind::TyAbs(term) => {
                 self.stack.iter_mut().for_each(|ty| {
                     if let Type::Var(v) = ty {
                         *v += 1;
@@ -340,7 +338,7 @@ impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug +
                 });
                 Ok(Type::Universal(Box::new(ty2)))
             }
-            ExtKind::TyApp(term, ty) => {
+            Kind::TyApp(term, ty) => {
                 let mut ty = ty.clone();
                 let ty1 = self.type_check(&term, ext)?;
                 match ty1 {
@@ -358,9 +356,9 @@ impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug +
             }
             // See src/types/patterns.rs for exhaustiveness and typechecking
             // of case expressions
-            ExtKind::Case(expr, arms) => self.type_check_case(&expr, &arms, ext),
+            Kind::Case(expr, arms) => self.type_check_case(&expr, &arms, ext),
 
-            ExtKind::Unfold(rec, tm) => match rec.as_ref() {
+            Kind::Unfold(rec, tm) => match rec.as_ref() {
                 Type::Rec(inner) => {
                     let ty_ = self.type_check(&tm, ext)?;
                     if ty_ == *rec.clone() {
@@ -379,7 +377,7 @@ impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug +
                 )),
             },
 
-            ExtKind::Fold(rec, tm) => match rec.as_ref() {
+            Kind::Fold(rec, tm) => match rec.as_ref() {
                 Type::Rec(inner) => {
                     let ty_ = self.type_check(&tm, ext)?;
                     let s = subst(*rec.clone(), *inner.clone());
@@ -397,7 +395,7 @@ impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug +
                     format!("Expected a recursive type, not {:?}", rec),
                 )),
             },
-            ExtKind::Pack(witness, evidence, signature) => {
+            Kind::Pack(witness, evidence, signature) => {
                 if let Type::Existential(exists) = signature.as_ref() {
                     let sig_prime = subst(*witness.clone(), *exists.clone());
                     let evidence_ty = self.type_check(&evidence, ext)?;
@@ -416,7 +414,7 @@ impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug +
                     ))
                 }
             }
-            ExtKind::Unpack(package, body) => {
+            Kind::Unpack(package, body) => {
                 let p_ty = self.type_check(&package, ext)?;
                 if let Type::Existential(xst) = p_ty {
                     self.push(*xst);
@@ -434,7 +432,7 @@ impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug +
     }
     pub fn type_check_ext(
         &mut self,
-        t: &ExtTerm<TExtDialect>,
+        t: &Term<TExtDialect>,
     ) -> Result<Type<TExtDialect::TExtType>, Diagnostic> {
         panic!("Context::type_check_ext unimplemented");
     }
@@ -480,13 +478,13 @@ impl<'ctx, TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq 
 }
 
 impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug + Default>
-    MutTermVisitor<TExtDialect> for ExtContext<TExtDialect>
+    MutTermVisitor<TExtDialect> for Context<TExtDialect>
 {
     fn visit_abs(
         &mut self,
         sp: &mut Span,
         ty: &mut Type<TExtDialect::TExtType>,
-        term: &mut ExtTerm<TExtDialect>,
+        term: &mut Term<TExtDialect>,
     ) {
         self.aliaser().visit(ty);
         self.visit(term);
@@ -495,7 +493,7 @@ impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug +
     fn visit_tyapp(
         &mut self,
         sp: &mut Span,
-        term: &mut ExtTerm<TExtDialect>,
+        term: &mut Term<TExtDialect>,
         ty: &mut Type<TExtDialect::TExtType>,
     ) {
         self.aliaser().visit(ty);
@@ -506,7 +504,7 @@ impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug +
         &mut self,
         sp: &mut Span,
         label: &mut String,
-        term: &mut ExtTerm<TExtDialect>,
+        term: &mut Term<TExtDialect>,
         ty: &mut Type<TExtDialect::TExtType>,
     ) {
         self.aliaser().visit(ty);
@@ -517,7 +515,7 @@ impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug +
         &mut self,
         sp: &mut Span,
         ty: &mut Type<TExtDialect::TExtType>,
-        tm: &mut ExtTerm<TExtDialect>,
+        tm: &mut Term<TExtDialect>,
     ) {
         self.aliaser().visit(ty);
         self.visit(tm);
@@ -527,7 +525,7 @@ impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug +
         &mut self,
         sp: &mut Span,
         ty: &mut Type<TExtDialect::TExtType>,
-        tm: &mut ExtTerm<TExtDialect>,
+        tm: &mut Term<TExtDialect>,
     ) {
         self.aliaser().visit(ty);
         self.visit(tm);

@@ -12,9 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-use crate::syntax::parser::{BottomParserState, ParserState};
+use crate::syntax::parser::ParserState;
 use crate::system_r_util::span::Span;
-use crate::terms::Term;
 use core::fmt;
 use std::hash;
 
@@ -27,7 +26,7 @@ use crate::{
     eval,
     platform_bindings::PlatformBindings,
     syntax::{error::Error, parser, parser::ErrorKind},
-    terms::{visit::InjRewriter, ExtTerm},
+    terms::{visit::InjRewriter, Term},
     types::{self, Type},
     visit::MutTermVisitor,
 };
@@ -62,8 +61,8 @@ pub fn type_check_term<
     TExtDialect: SystemRDialect + Clone +PartialEq + PartialOrd + fmt::Debug + Default,
     TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ctx: &mut types::ExtContext<TExtDialect>,
-    term: &mut ExtTerm<TExtDialect>,
+    ctx: &mut types::Context<TExtDialect>,
+    term: &mut Term<TExtDialect>,
     ext: &mut TExt,
 ) -> Result<Type<TExtDialect::TExtType>, Diagnostic> {
     // Step 1
@@ -76,8 +75,8 @@ pub fn dealias_and_type_check_term<
     TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug + Default,
     TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ctx: &mut types::ExtContext<TExtDialect>,
-    term: &mut ExtTerm<TExtDialect>,
+    ctx: &mut types::Context<TExtDialect>,
+    term: &mut Term<TExtDialect>,
     ext: &mut TExt,
 ) -> Result<Type<TExtDialect::TExtType>, Diagnostic> {
     // Step 0
@@ -95,7 +94,7 @@ pub fn operate_parser_for<
     input: &str,
     ps: &mut ParserState<'s, TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtDialect>, Diagnostic> {
+) -> Result<Term<TExtDialect>, Diagnostic> {
     return match parser::parse(ps, ext) {
         Ok(term) => Ok(term),
         Err(Error {
@@ -113,7 +112,7 @@ pub fn operate_parser_for<
 pub fn parse_single_block(
     platform_bindings: &PlatformBindings,
     input: &str,
-) -> Result<ExtTerm<BottomDialect>, Diagnostic> {
+) -> Result<Term<BottomDialect>, Diagnostic> {
     let mut ps = parser::new::<>(platform_bindings, input);
     let mut ext = BottomExtension;
     return match parser::parse(&mut ps, &mut ext) {
@@ -135,11 +134,11 @@ pub fn parse_single_block(
 }
 
 pub fn do_bottom_eval(
-    ctx: &mut types::ExtContext<BottomDialect>,
-    term: &mut ExtTerm<BottomDialect>,
-) -> Result<ExtTerm<BottomDialect>, Diagnostic> {
+    ctx: &mut types::Context<BottomDialect>,
+    term: &mut Term<BottomDialect>,
+) -> Result<Term<BottomDialect>, Diagnostic> {
     let ev = eval::Eval::with_context(ctx);
-    let mut t: Term = term.clone();
+    let mut t: Term<BottomDialect> = term.clone();
     let fin = loop {
         if let Some(res) = ev.small_step(t.clone())? {
             t = res;
@@ -151,11 +150,11 @@ pub fn do_bottom_eval(
 }
 
 pub fn type_check_and_eval_single_block(
-    ctx: &mut types::ExtContext<BottomDialect>,
-    term: &mut ExtTerm<BottomDialect>,
+    ctx: &mut types::Context<BottomDialect>,
+    term: &mut Term<BottomDialect>,
     src: &str,
     fail_on_type_mismatch: bool,
-) -> Result<(Type<BottomType>, ExtTerm<BottomDialect>), Diagnostic> {
+) -> Result<(Type<BottomType>, Term<BottomDialect>), Diagnostic> {
     // Step 1
     let mut ext = BottomExtension;
     let pre_ty = do_type_check(ctx, term, &mut ext)?;
@@ -181,8 +180,8 @@ pub fn do_type_check<
     TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
     TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ctx: &mut types::ExtContext<TExtDialect>,
-    term: &mut ExtTerm<TExtDialect>,
+    ctx: &mut types::Context<TExtDialect>,
+    term: &mut Term<TExtDialect>,
     ext: &mut TExt,
 ) -> Result<Type<TExtDialect::TExtType>, Diagnostic> {
     let tc_result = dealias_and_type_check_term(ctx, term, ext);

@@ -43,7 +43,7 @@ use std::hash;
 use crate::bottom::BottomPattern;
 use crate::extensions::{SystemRDialect, SystemRExtension};
 use crate::system_r_util::span::Span;
-use crate::terms::{ExtKind, ExtTerm, Literal};
+use crate::terms::{Kind, Term, Literal};
 use crate::types::{variant_field, Type};
 use crate::visit::PatternVisitor;
 
@@ -125,24 +125,24 @@ impl<
     pub fn matches<
     TPtE: SystemRExtension<TExtDialect>>(
         &self,
-        term: &ExtTerm<TExtDialect>,
+        term: &Term<TExtDialect>,
         ext: &TPtE,
     ) -> bool {
         match self {
             Pattern::Any => return true,
             Pattern::Variable(_) => return true,
             Pattern::Literal(l) => {
-                if let ExtKind::Lit(l2) = &term.kind {
+                if let Kind::Lit(l2) = &term.kind {
                     return l == l2;
                 }
             }
             Pattern::Product(vec) => {
-                if let ExtKind::Product(terms) = &term.kind {
+                if let Kind::Product(terms) = &term.kind {
                     return vec.iter().zip(terms).all(|(p, t)| p.matches(t, ext));
                 }
             }
             Pattern::Constructor(label, inner) => {
-                if let ExtKind::Injection(label_, tm, _) = &term.kind {
+                if let Kind::Injection(label_, tm, _) = &term.kind {
                     if label == label_ {
                         return inner.matches(tm, ext);
                     }

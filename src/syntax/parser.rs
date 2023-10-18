@@ -53,8 +53,6 @@ use crate::platform_bindings::PlatformBindings;
 use crate::terms::*;
 use crate::types::*;
 
-pub type BottomParserState<'s> = ParserState<'s, BottomDialect>;
-
 #[derive(Default, Debug, Clone)]
 pub struct ParserState<
     's,
@@ -102,7 +100,7 @@ impl<
 pub fn new<'s>(
     platform_bindings: &'s PlatformBindings,
     input: &'s str,
-) -> BottomParserState<'s> {
+) -> ParserState<'s, BottomDialect> {
     let mut ext = BottomExtension;
     ext_new(platform_bindings, input, &mut ext)
 }
@@ -423,12 +421,12 @@ pub fn tyabs<
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
+) -> Result<Term<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     let tyvar = uppercase_id(ps, ext)?;
     let sp = ps.span;
     let ty: Box<Type<TExtDialect::TExtType>> = Box::new(Type::Var(ps.tyvar.push(tyvar)));
     let body = once(ps, |p| parse(p, ext), "abstraction body required")?;
-    Ok(ExtTerm::new(ExtKind::TyAbs(Box::new(body)), sp + ps.span))
+    Ok(Term::new(Kind::TyAbs(Box::new(body)), sp + ps.span))
 }
 
 pub fn tmabs<
@@ -437,7 +435,7 @@ pub fn tmabs<
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
+) -> Result<Term<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     let tmvar = lowercase_id(ps, ext)?;
     let sp = ps.span;
     ps.tmvar.push(tmvar);
@@ -447,7 +445,7 @@ pub fn tmabs<
     expect(ps, ext, ExtTokenKind::Proj)?;
     let body = once(ps, |p| parse(p, ext), "abstraction body required")?;
     ps.tmvar.pop();
-    Ok(ExtTerm::new(ExtKind::Abs(Box::new(ty), Box::new(body)), sp + ps.span))
+    Ok(Term::new(Kind::Abs(Box::new(ty), Box::new(body)), sp + ps.span))
 }
 
 pub fn fold<
@@ -456,12 +454,12 @@ pub fn fold<
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
+) -> Result<Term<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     expect(ps, ext, ExtTokenKind::Fold)?;
     let sp = ps.span;
     let ty = once(ps, |p| ty(p, ext), "type annotation required after `fold`")?;
     let tm = once(ps, |p| parse(p, ext), "term required after `fold`")?;
-    Ok(ExtTerm::new(ExtKind::Fold(Box::new(ty), Box::new(tm)), sp + ps.span))
+    Ok(Term::new(Kind::Fold(Box::new(ty), Box::new(tm)), sp + ps.span))
 }
 
 pub fn unfold<
@@ -470,12 +468,12 @@ pub fn unfold<
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
+) -> Result<Term<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     expect(ps, ext, ExtTokenKind::Unfold)?;
     let sp = ps.span;
     let ty = once(ps, |p| ty(p, ext), "type annotation required after `unfold`")?;
     let tm = once(ps, |p| parse(p, ext), "term required after `unfold`")?;
-    Ok(ExtTerm::new(ExtKind::Unfold(Box::new(ty), Box::new(tm)), sp + ps.span))
+    Ok(Term::new(Kind::Unfold(Box::new(ty), Box::new(tm)), sp + ps.span))
 }
 
 pub fn fix<
@@ -484,11 +482,11 @@ pub fn fix<
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
+) -> Result<Term<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     let sp = ps.span;
     expect(ps, ext, ExtTokenKind::Fix)?;
     let t = parse(ps, ext)?;
-    Ok(ExtTerm::new(ExtKind::Fix(Box::new(t)), sp + ps.span))
+    Ok(Term::new(Kind::Fix(Box::new(t)), sp + ps.span))
 }
 
 pub fn letexpr<
@@ -497,7 +495,7 @@ pub fn letexpr<
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
+) -> Result<Term<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     let sp = ps.span;
     expect(ps, ext, ExtTokenKind::Let)?;
     let pat = once(ps, |p| pattern(p, ext), "missing pattern")?;
@@ -514,8 +512,8 @@ pub fn letexpr<
     while ps.tmvar.len() > len {
         ps.tmvar.pop();
     }
-    Ok(ExtTerm::new(
-        ExtKind::Let(Box::new(pat), Box::new(t1), Box::new(t2)),
+    Ok(Term::new(
+        Kind::Let(Box::new(pat), Box::new(t1), Box::new(t2)),
         sp + ps.span,
     ))
 }
@@ -526,7 +524,7 @@ pub fn lambda<
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
+) -> Result<Term<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     expect(ps, ext, ExtTokenKind::Lambda)?;
     match kind(ps) {
         ExtTokenKind::Uppercase(_) => tyabs(ps, ext),
@@ -545,7 +543,7 @@ pub fn paren<
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
+) -> Result<Term<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     expect(ps, ext, ExtTokenKind::LParen)?;
     let span = ps.span;
 
@@ -554,7 +552,7 @@ pub fn paren<
     let mut n = once_or_more(ps, |p| parse(p, &mut ext2), ExtTokenKind::Comma, &mut ext3)?;
     expect(ps, ext, ExtTokenKind::RParen)?;
     if n.len() > 1 {
-        Ok(ExtTerm::new(ExtKind::Product(n), span + ps.span))
+        Ok(Term::new(Kind::Product(n), span + ps.span))
     } else {
         // invariant, n.len() >= 1
         Ok(n.remove(0))
@@ -601,7 +599,7 @@ pub fn literal<
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
+) -> Result<Term<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     let lit = match bump(ps, ext) {
         ExtTokenKind::Nat(x) => Literal::Nat(x),
         ExtTokenKind::True => Literal::Bool(true),
@@ -610,7 +608,7 @@ pub fn literal<
         ExtTokenKind::Tag(s) => Literal::Tag(s),
         _ => return error(ps, ErrorKind::Unknown),
     };
-    Ok(ExtTerm::new(ExtKind::Lit(lit), ps.span))
+    Ok(Term::new(Kind::Lit(lit), ps.span))
 }
 
 pub fn primitive<
@@ -619,14 +617,14 @@ pub fn primitive<
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
+) -> Result<Term<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     let p = match bump(ps, ext) {
         ExtTokenKind::IsZero => Primitive::IsZero,
         ExtTokenKind::Succ => Primitive::Succ,
         ExtTokenKind::Pred => Primitive::Pred,
         _ => return error(ps, ErrorKind::Unknown),
     };
-    Ok(ExtTerm::new(ExtKind::Primitive(p), ps.span))
+    Ok(Term::new(Kind::Primitive(p), ps.span))
 }
 
 /// Important to note that this function can push variable names to the
@@ -764,7 +762,7 @@ pub fn case<
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
+) -> Result<Term<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     expect(ps, ext, ExtTokenKind::Case)?;
     let span = ps.span;
     let expr = once(ps, |p| parse(p, ext), "missing case expression")?;
@@ -776,7 +774,7 @@ pub fn case<
     let mut ext3 = ext.clone();
     let arms = once_or_more(ps, |p| case_arm(p, &mut ext3), ExtTokenKind::Bar, &mut ext2)?;
 
-    Ok(ExtTerm::new(ExtKind::Case(Box::new(expr), arms), span + ps.span))
+    Ok(Term::new(Kind::Case(Box::new(expr), arms), span + ps.span))
 }
 
 pub fn injection<
@@ -785,18 +783,18 @@ pub fn injection<
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
+) -> Result<Term<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     let label = uppercase_id(ps, ext)?;
     let sp = ps.span;
     let term = match parse(ps, ext) {
         Ok(t) => t,
-        _ => ExtTerm::new(ExtKind::Lit(Literal::Unit), ps.span),
+        _ => Term::new(Kind::Lit(Literal::Unit), ps.span),
     };
 
     expect(ps, ext, ExtTokenKind::Of)?;
     let ty = ty(ps, ext)?;
-    Ok(ExtTerm::new(
-        ExtKind::Injection(label, Box::new(term), Box::new(ty)),
+    Ok(Term::new(
+        Kind::Injection(label, Box::new(term), Box::new(ty)),
         sp + ps.span,
     ))
 }
@@ -807,7 +805,7 @@ pub fn pack<
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
+) -> Result<Term<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     expect(ps, ext, ExtTokenKind::Pack)?;
     let sp = ps.span;
     let witness = ty(ps, ext)?;
@@ -816,8 +814,8 @@ pub fn pack<
     expect(ps, ext, ExtTokenKind::As)?;
     let signature = ty(ps, ext)?;
 
-    Ok(ExtTerm::new(
-        ExtKind::Pack(Box::new(witness), Box::new(evidence), Box::new(signature)),
+    Ok(Term::new(
+        Kind::Pack(Box::new(witness), Box::new(evidence), Box::new(signature)),
         sp + ps.span,
     ))
 }
@@ -828,7 +826,7 @@ pub fn unpack<
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
+) -> Result<Term<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     expect(ps, ext, ExtTokenKind::Unpack)?;
     let sp = ps.span;
     let package = parse(ps, ext)?;
@@ -843,8 +841,8 @@ pub fn unpack<
     let expr = parse(ps, ext)?;
     ps.tmvar.pop();
     ps.tyvar.pop();
-    Ok(ExtTerm::new(
-        ExtKind::Unpack(Box::new(package), Box::new(expr)),
+    Ok(Term::new(
+        Kind::Unpack(Box::new(package), Box::new(expr)),
         sp + ps.span,
     ))
 }
@@ -855,7 +853,7 @@ pub fn atom<
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
+) -> Result<Term<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     match kind(ps) {
         ExtTokenKind::Extended(tk) => ext_atom(ps, ext),
         ExtTokenKind::LParen => paren(ps, ext),
@@ -869,10 +867,10 @@ pub fn atom<
         ExtTokenKind::Lowercase(s) => {
             let var = lowercase_id(ps, ext)?;
             match ps.tmvar.lookup(&var) {
-                Some(idx) => Ok(ExtTerm::new(ExtKind::Var(idx), ps.span)),
+                Some(idx) => Ok(Term::new(Kind::Var(idx), ps.span)),
                 None => {
                     if let Some(idx) = ps.platform_bindings.has(&var) {
-                        return Ok(ExtTerm::new(ExtKind::PlatformBinding(idx), ps.span));
+                        return Ok(Term::new(Kind::PlatformBinding(idx), ps.span));
                     }
                     ps.diagnostic.push(format!("parser: unbound variable {}", var), ps.span);
                     error(ps, ErrorKind::UnboundTypeVar)
@@ -900,7 +898,7 @@ pub fn projection<
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
+) -> Result<Term<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     let atom = atom(ps, ext)?;
     if bump_if(ps, ext, &ExtTokenKind::Proj) {
         let idx = match bump(ps, ext) {
@@ -912,7 +910,7 @@ pub fn projection<
             }
         };
         let sp = atom.span + ps.span;
-        Ok(ExtTerm::new(ExtKind::Projection(Box::new(atom), idx as usize), sp))
+        Ok(Term::new(Kind::Projection(Box::new(atom), idx as usize), sp))
     } else {
         Ok(atom)
     }
@@ -927,7 +925,7 @@ pub fn application<
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
+) -> Result<Term<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     let mut app = projection(ps, ext)?;
 
     loop {
@@ -944,9 +942,9 @@ pub fn application<
             // erasep(t1 t2) = erasep(t1) erasep(t2)
             // erasep(λX. t) = λX. erasep(t)
             // erasep(t T) = erasep(t) []      <--- erasure of TyApp
-            app = ExtTerm::new(ExtKind::TyApp(Box::new(app), Box::new(ty)), sp + ps.span);
+            app = Term::new(Kind::TyApp(Box::new(app), Box::new(ty)), sp + ps.span);
         } else if let Ok(term) = projection(ps, ext) {
-            app = ExtTerm::new(ExtKind::App(Box::new(app), Box::new(term)), sp + ps.span);
+            app = Term::new(Kind::App(Box::new(app), Box::new(term)), sp + ps.span);
         } else {
             break;
         }
@@ -960,7 +958,7 @@ pub fn ext_atom<
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
+) -> Result<Term<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     let r = {
         match ext.parser_ext_atom(ps) {
             Err(e) => return Err(e),
@@ -976,7 +974,7 @@ pub fn ext_parse<
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
+) -> Result<Term<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     let r = {
         match ext.parser_ext_parse(ps) {
             Err(e) => return Err(e),
@@ -992,7 +990,7 @@ pub fn parse<
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
+) -> Result<Term<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     match kind(ps).clone() {
         ExtTokenKind::Case => case(ps, ext),
         ExtTokenKind::Lambda => lambda(ps, ext),

@@ -5,7 +5,7 @@ use cucumber::World;
 use system_r::{
     bottom::{BottomKind, BottomPattern, BottomType, BottomDialect},
     platform_bindings::PlatformBindings,
-    terms::{ExtTerm, Term, ExtKind},
+    terms::{Term, Kind},
     types::Type,
 };
 
@@ -20,14 +20,14 @@ pub struct SpecsWorld {
     pub contexts: HashMap<String, OmniContext>,
     pub platform_bindings: PlatformBindings,
     pub last_parse_success: bool,
-    pub last_parse_kind: ExtKind<BottomDialect>,
-    pub last_parse_term: Term,
+    pub last_parse_kind: Kind<BottomDialect>,
+    pub last_parse_term: Term<BottomDialect>,
     pub last_parse_msg: String,
     pub last_eval_success: bool,
     pub last_eval_fty: Type<BottomType>,
-    pub last_eval_kind: ExtKind<BottomDialect>,
+    pub last_eval_kind: Kind<BottomDialect>,
     pub last_eval_msg: String,
-    pub last_eval_term: Term,
+    pub last_eval_term: Term<BottomDialect>,
     pub last_ext_parse_success: bool,
     pub last_ext_parse_kind: OmniKind,
     pub last_ext_parse_term: OmniTerm,

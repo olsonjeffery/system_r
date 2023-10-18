@@ -4,7 +4,7 @@ use cucumber::{gherkin::Step, given, then, when};
 
 use system_r::{
     bottom::{BottomKind, BottomPattern, BottomType},
-    terms::{ExtTerm, Literal, Term, ExtKind},
+    terms::{Term, Literal, Kind},
     testing::{self, code_format, do_bottom_eval},
     types::Context,
     types::Type,
@@ -64,7 +64,7 @@ fn when_it_is_parsed(world: &mut common::SpecsWorld) {
         Ok(term) => term,
         Err(e) => {
             world.last_parse_success = false;
-            world.last_parse_kind = ExtKind::Lit(Literal::Unit);
+            world.last_parse_kind = Kind::Lit(Literal::Unit);
             world.last_parse_msg = code_format(&world.code_snippet, e);
             world.last_parse_term = Term::unit();
             return;
@@ -94,7 +94,7 @@ fn when_bottom_eval_is_ran(world: &mut common::SpecsWorld) {
             world.last_eval_success = false;
             world.last_eval_term = Term::unit();
             world.last_eval_fty = Type::Unit;
-            world.last_eval_kind = ExtKind::Lit(Literal::Unit);
+            world.last_eval_kind = Kind::Lit(Literal::Unit);
             world.last_eval_msg = code_format(&world.code_snippet, e);
             return;
         }
@@ -119,7 +119,7 @@ fn when_eval_is_ran(world: &mut common::SpecsWorld) {
             world.last_eval_success = false;
             world.last_eval_term = Term::unit();
             world.last_eval_fty = Type::Unit;
-            world.last_eval_kind = ExtKind::Lit(Literal::Unit);
+            world.last_eval_kind = Kind::Lit(Literal::Unit);
             world.last_eval_msg = code_format(&world.code_snippet, e);
             return;
         }
@@ -167,7 +167,7 @@ fn then_the_last_parse_should_have_failed(world: &mut common::SpecsWorld) {
 #[then("the resulting sr eval Kind should be Unit")]
 fn then_the_evaluated_term_should_be_unit(world: &mut common::SpecsWorld) {
     assert!(
-        world.last_eval_kind == ExtKind::Lit(Literal::Unit),
+        world.last_eval_kind == Kind::Lit(Literal::Unit),
         "Kind {:?}",
         world.last_eval_kind
     );
@@ -177,7 +177,7 @@ fn then_the_evaluated_term_should_be_unit(world: &mut common::SpecsWorld) {
 #[then("the resulting sr eval Kind should be Boolean false")]
 fn then_the_evaluated_term_should_be_boolean_false(world: &mut common::SpecsWorld) {
     assert!(
-        world.last_eval_kind == ExtKind::Lit(Literal::Bool(false)),
+        world.last_eval_kind == Kind::Lit(Literal::Bool(false)),
         "Expected Boolean false, got {:?}",
         world.last_eval_kind
     );
@@ -187,7 +187,7 @@ fn then_the_evaluated_term_should_be_boolean_false(world: &mut common::SpecsWorl
 #[then("the resulting sr eval Kind should be Boolean true")]
 fn then_the_evaluated_term_should_be_boolean_true(world: &mut common::SpecsWorld) {
     assert!(
-        world.last_eval_kind == ExtKind::Lit(Literal::Bool(true)),
+        world.last_eval_kind == Kind::Lit(Literal::Bool(true)),
         "Expected Boolean true, got {:?}",
         world.last_eval_kind
     );
@@ -197,7 +197,7 @@ fn then_the_evaluated_term_should_be_boolean_true(world: &mut common::SpecsWorld
 #[then(regex = r#"the resulting sr eval Kind should be Nat of ([0-9]+)"#)]
 fn then_the_evaluated_value_should_be_nat_of(world: &mut common::SpecsWorld, nat_size: u32) {
     assert!(
-        world.last_eval_kind == ExtKind::Lit(Literal::Nat(nat_size)),
+        world.last_eval_kind == Kind::Lit(Literal::Nat(nat_size)),
         "Expected Nat of {:?}, got {:?}",
         nat_size,
         world.last_eval_kind
@@ -208,7 +208,7 @@ fn then_the_evaluated_value_should_be_nat_of(world: &mut common::SpecsWorld, nat
 #[then(regex = r#"the resulting sr eval Kind should be Tag of "([^"]*)""#)]
 fn then_the_evaluated_value_should_be_tag_of(world: &mut common::SpecsWorld, tag_label: String) {
     assert!(
-        world.last_eval_kind == ExtKind::Lit(Literal::Tag(tag_label.clone())),
+        world.last_eval_kind == Kind::Lit(Literal::Tag(tag_label.clone())),
         "Expected Tag of {:?}, got {:?}",
         tag_label,
         world.last_eval_kind
@@ -219,7 +219,7 @@ fn then_the_evaluated_value_should_be_tag_of(world: &mut common::SpecsWorld, tag
 #[then(regex = r#"the resulting sr eval Kind should be a fn abs"#)]
 fn then_the_evaluated_value_should_be_a_fn_abs(world: &mut common::SpecsWorld) {
     let match_result = match world.last_eval_kind {
-        ExtKind::Abs(_, _) => true,
+        Kind::Abs(_, _) => true,
         _ => false,
     };
     assert!(

@@ -1,6 +1,6 @@
-use system_r::bottom::{BottomKind, BottomPattern, BottomType};
+use system_r::bottom::{BottomKind, BottomPattern, BottomType, BottomDialect};
 use system_r::system_r_util::span::Span;
-use system_r::terms::{ExtTerm, Term, ExtKind};
+use system_r::terms::{Term, Kind};
 use system_r::{
     diagnostics::Diagnostic,
     platform_bindings::WrappedContent,
@@ -8,7 +8,7 @@ use system_r::{
     types::Type,
 };
 
-pub fn pull_u32_from(args: &Vec<Term>, idx: usize, span: &Span) -> Result<u32, Diagnostic> {
+pub fn pull_u32_from(args: &Vec<Term<BottomDialect>>, idx: usize, span: &Span) -> Result<u32, Diagnostic> {
     let arg_t_raw = match args.get(idx) {
         Some(t) => t,
         None => {
@@ -19,7 +19,7 @@ pub fn pull_u32_from(args: &Vec<Term>, idx: usize, span: &Span) -> Result<u32, D
         }
     };
     let arg_actual = match arg_t_raw.kind.clone() {
-        ExtKind::Lit(Literal::Nat(n)) => n,
+        Kind::Lit(Literal::Nat(n)) => n,
         k => {
             return Err(Diagnostic::error(
                 *span,
@@ -33,16 +33,16 @@ pub fn pull_u32_from(args: &Vec<Term>, idx: usize, span: &Span) -> Result<u32, D
 pub fn pb_add() -> WrappedContent {
     WrappedContent(add, Type::Product(vec![Type::Nat, Type::Nat]), Type::Nat)
 }
-fn add(arg: Term, span: &Span) -> Result<Term, Diagnostic> {
+fn add(arg: Term<BottomDialect>, span: &Span) -> Result<Term<BottomDialect>, Diagnostic> {
     match arg.kind {
-        ExtKind::Product(args) => {
+        Kind::Product(args) => {
             if args.len() != 2 {
                 return Err(Diagnostic::error(*span, "nat::arith::add: expected product of len 2"));
             }
             let arg0_actual = pull_u32_from(&args, 0, span)?;
             let arg1_actual = pull_u32_from(&args, 1, span)?;
-            let sum = ExtKind::Lit(Literal::Nat(arg0_actual + arg1_actual));
-            let mut ret_term = ExtTerm::unit();
+            let sum = Kind::Lit(Literal::Nat(arg0_actual + arg1_actual));
+            let mut ret_term = Term::unit();
             ret_term.kind = sum.clone();
             ret_term.span = *span;
             return Ok(ret_term);

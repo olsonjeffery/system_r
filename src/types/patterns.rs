@@ -231,7 +231,7 @@ impl<'pat, TExtDialect: PartialOrd + PartialEq + SystemRDialect + Clone + fmt::D
     }
 }
 
-impl<TExtDialect: SystemRDialect + Clone + PartialEq + PartialOrd + fmt::Debug + Default> ExtContext<TExtDialect> {
+impl<TExtDialect: SystemRDialect + Clone + PartialEq + PartialOrd + fmt::Debug + Default> Context<TExtDialect> {
     /// Type check a case expression, returning the Type of the arms, assuming
     /// that the case expression is exhaustive and well-typed
     ///
@@ -258,7 +258,7 @@ impl<TExtDialect: SystemRDialect + Clone + PartialEq + PartialOrd + fmt::Debug +
     /// the arms.
     pub(crate) fn type_check_case<TExt: Clone + fmt::Debug + Default + SystemRExtension<TExtDialect>>(
         &mut self,
-        expr: &ExtTerm<TExtDialect>,
+        expr: &Term<TExtDialect>,
         arms: &[Arm<TExtDialect>],
         ext: &mut TExt,
     ) -> Result<Type<TExtDialect::TExtType>, Diagnostic> {

@@ -42,7 +42,7 @@ use std::hash;
 use crate::extensions::SystemRDialect;
 use crate::patterns::{Pattern, PatternCount};
 use crate::system_r_util::span::Span;
-use crate::terms::{Arm, ExtKind, ExtTerm};
+use crate::terms::{Arm, Kind, Term};
 use crate::types::Type;
 use crate::visit::{MutTermVisitor, MutTypeVisitor};
 
@@ -67,7 +67,7 @@ impl<
         }
     }
 
-    fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect::TExtType>, term: &mut ExtTerm<TExtDialect>) {
+    fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect::TExtType>, term: &mut Term<TExtDialect>) {
         self.cutoff += 1;
         self.visit(term);
         self.cutoff -= 1;
@@ -77,8 +77,8 @@ impl<
         &mut self,
         sp: &mut Span,
         pat: &mut Pattern<TExtDialect>,
-        t1: &mut ExtTerm<TExtDialect>,
-        t2: &mut ExtTerm<TExtDialect>,
+        t1: &mut Term<TExtDialect>,
+        t2: &mut Term<TExtDialect>,
     ) {
         self.visit(t1);
         let c = PatternCount::<TExtDialect>::collect(pat);
@@ -90,7 +90,7 @@ impl<
     fn visit_case(
         &mut self,
         sp: &mut Span,
-        term: &mut ExtTerm<TExtDialect>,
+        term: &mut Term<TExtDialect>,
         arms: &mut Vec<Arm<TExtDialect>>,
     ) {
         self.visit(term);
@@ -105,8 +105,8 @@ impl<
     fn visit_unpack(
         &mut self,
         _: &mut Span,
-        package: &mut ExtTerm<TExtDialect>,
-        term: &mut ExtTerm<TExtDialect>,
+        package: &mut Term<TExtDialect>,
+        term: &mut Term<TExtDialect>,
     ) {
         self.visit(package);
         self.cutoff += 1;
@@ -119,14 +119,14 @@ pub struct Subst<
     TExtDialect: Clone + fmt::Debug + Default + PartialEq + PartialOrd + SystemRDialect,
 > {
     cutoff: usize,
-    term: ExtTerm<TExtDialect>,
+    term: Term<TExtDialect>,
 }
 
 impl<
     TExtDialect: Clone + fmt::Debug + Default + PartialEq + PartialOrd + SystemRDialect,
     > Subst<TExtDialect>
 {
-    pub fn new(term: ExtTerm<TExtDialect>) -> Subst<TExtDialect> {
+    pub fn new(term: Term<TExtDialect>) -> Subst<TExtDialect> {
         Subst { cutoff: 0, term }
     }
 }
@@ -135,7 +135,7 @@ impl<
     TExtDialect: Clone + fmt::Debug + Default + PartialEq + PartialOrd + SystemRDialect,
     > MutTermVisitor<TExtDialect> for Subst<TExtDialect>
 {
-    fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect::TExtType>, term: &mut ExtTerm<TExtDialect>) {
+    fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect::TExtType>, term: &mut Term<TExtDialect>) {
         self.cutoff += 1;
         self.visit(term);
         self.cutoff -= 1;
@@ -145,8 +145,8 @@ impl<
         &mut self,
         sp: &mut Span,
         pat: &mut Pattern<TExtDialect>,
-        t1: &mut ExtTerm<TExtDialect>,
-        t2: &mut ExtTerm<TExtDialect>,
+        t1: &mut Term<TExtDialect>,
+        t2: &mut Term<TExtDialect>,
     ) {
         self.visit(t1);
         let c = PatternCount::<TExtDialect>::collect(pat);
@@ -158,7 +158,7 @@ impl<
     fn visit_case(
         &mut self,
         sp: &mut Span,
-        term: &mut ExtTerm<TExtDialect>,
+        term: &mut Term<TExtDialect>,
         arms: &mut Vec<Arm<TExtDialect>>,
     ) {
         self.visit(term);
@@ -173,8 +173,8 @@ impl<
     fn visit_unpack(
         &mut self,
         _: &mut Span,
-        package: &mut ExtTerm<TExtDialect>,
-        term: &mut ExtTerm<TExtDialect>,
+        package: &mut Term<TExtDialect>,
+        term: &mut Term<TExtDialect>,
     ) {
         self.visit(package);
         self.cutoff += 1;
@@ -182,10 +182,10 @@ impl<
         self.cutoff -= 1;
     }
 
-    fn visit(&mut self, term: &mut ExtTerm<TExtDialect>) {
+    fn visit(&mut self, term: &mut Term<TExtDialect>) {
         let sp = &mut term.span;
         match &mut term.kind {
-            ExtKind::Var(v) if *v == self.cutoff => {
+            Kind::Var(v) if *v == self.cutoff => {
                 Shift::new(self.cutoff as isize).visit(&mut self.term);
                 *term = self.term.clone();
             }
@@ -220,25 +220,25 @@ impl<
     TExtDialect: Clone + fmt::Debug + Default + PartialEq + PartialOrd + SystemRDialect,
     > MutTermVisitor<TExtDialect> for TyTermSubst<TExtDialect::TExtType>
 {
-    fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect::TExtType>, term: &mut ExtTerm<TExtDialect>) {
+    fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect::TExtType>, term: &mut Term<TExtDialect>) {
         // self.cutoff += 1;
         self.visit_ty(ty);
         self.visit(term);
         // self.cutoff -= 1;
     }
 
-    fn visit_tyapp(&mut self, sp: &mut Span, term: &mut ExtTerm<TExtDialect>, ty: &mut Type<TExtDialect::TExtType>) {
+    fn visit_tyapp(&mut self, sp: &mut Span, term: &mut Term<TExtDialect>, ty: &mut Type<TExtDialect::TExtType>) {
         self.visit_ty(ty);
         self.visit(term);
     }
 
-    fn visit_tyabs(&mut self, sp: &mut Span, term: &mut ExtTerm<TExtDialect>) {
+    fn visit_tyabs(&mut self, sp: &mut Span, term: &mut Term<TExtDialect>) {
         self.cutoff += 1;
         self.visit(term);
         self.cutoff -= 1;
     }
 
-    fn visit_fold(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect::TExtType>, term: &mut ExtTerm<TExtDialect>) {
+    fn visit_fold(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect::TExtType>, term: &mut Term<TExtDialect>) {
         self.visit_ty(ty);
         self.visit(term);
     }
@@ -247,7 +247,7 @@ impl<
         &mut self,
         sp: &mut Span,
         ty: &mut Type<TExtDialect::TExtType>,
-        term: &mut ExtTerm<TExtDialect>,
+        term: &mut Term<TExtDialect>,
     ) {
         self.visit_ty(ty);
         self.visit(term);
@@ -256,8 +256,8 @@ impl<
     fn visit_unpack(
         &mut self,
         _: &mut Span,
-        package: &mut ExtTerm<TExtDialect>,
-        term: &mut ExtTerm<TExtDialect>,
+        package: &mut Term<TExtDialect>,
+        term: &mut Term<TExtDialect>,
     ) {
         self.visit(package);
         self.cutoff += 1;
@@ -269,7 +269,7 @@ impl<
         &mut self,
         _: &mut Span,
         wit: &mut Type<TExtDialect::TExtType>,
-        body: &mut ExtTerm<TExtDialect>,
+        body: &mut Term<TExtDialect>,
         sig: &mut Type<TExtDialect::TExtType>,
     ) {
         self.visit_ty(wit);
@@ -281,7 +281,7 @@ impl<
         &mut self,
         sp: &mut Span,
         label: &mut String,
-        term: &mut ExtTerm<TExtDialect>,
+        term: &mut Term<TExtDialect>,
         ty: &mut Type<TExtDialect::TExtType>,
     ) {
         self.visit_ty(ty);
@@ -302,17 +302,17 @@ impl<
     TExtDialect: Clone + fmt::Debug + Default + PartialEq + PartialOrd + SystemRDialect,
     > MutTermVisitor<TExtDialect> for InjRewriter<TExtDialect>
 {
-    fn visit(&mut self, term: &mut ExtTerm<TExtDialect>) {
+    fn visit(&mut self, term: &mut Term<TExtDialect>) {
         match &mut term.kind {
-            ExtKind::Injection(label, val, ty) => {
+            Kind::Injection(label, val, ty) => {
                 if let Type::Rec(inner) = *ty.clone() {
                     let ty_prime = crate::types::subst(*ty.clone(), *inner.clone());
-                    let rewrite_ty = ExtTerm::new(
-                        ExtKind::Injection(label.clone(), val.clone(), Box::new(ty_prime)),
+                    let rewrite_ty = Term::new(
+                        Kind::Injection(label.clone(), val.clone(), Box::new(ty_prime)),
                         term.span,
                     );
 
-                    *term = ExtTerm::new(ExtKind::Fold(ty.clone(), Box::new(rewrite_ty)), term.span);
+                    *term = Term::new(Kind::Fold(ty.clone(), Box::new(rewrite_ty)), term.span);
                 }
                 self.walk(term);
             }

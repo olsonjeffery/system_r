@@ -45,13 +45,12 @@ use crate::types::Type;
 use std::{fmt, hash};
 pub mod visit;
 
-pub type Term = ExtTerm<BottomDialect>;
 #[derive(Clone, Default, PartialEq, PartialOrd)]
-pub struct ExtTerm<
+pub struct Term<
     TExtDialect: SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone,
 > {
     pub span: Span,
-    pub kind: ExtKind<TExtDialect>,
+    pub kind: Kind<TExtDialect>,
 }
 
 /// Primitive functions supported by this implementation
@@ -64,7 +63,7 @@ pub enum Primitive {
 
 /// Abstract syntax of the parametric polymorphic lambda calculus
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
-pub enum ExtKind<
+pub enum Kind<
     TExtDialect: SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone,
 > {
     /// A literal value
@@ -75,60 +74,60 @@ pub enum ExtKind<
     PlatformBinding(usize),
     /// An intrinsic, referenced by alias
     /// Fixpoint operator/Y combinator
-    Fix(Box<ExtTerm<TExtDialect>>),
+    Fix(Box<Term<TExtDialect>>),
 
     Primitive(Primitive),
 
     /// Injection into a sum type
     /// fields: type constructor tag, term, and sum type
-    Injection(String, Box<ExtTerm<TExtDialect>>, Box<Type<TExtDialect::TExtType>>),
+    Injection(String, Box<Term<TExtDialect>>, Box<Type<TExtDialect::TExtType>>),
 
     /// Product type (tuple)
-    Product(Vec<ExtTerm<TExtDialect>>),
+    Product(Vec<Term<TExtDialect>>),
     /// Projection into a term
-    Projection(Box<ExtTerm<TExtDialect>>, usize),
+    Projection(Box<Term<TExtDialect>>, usize),
 
     /// A case expr, with case arms
     Case(
-        Box<ExtTerm<TExtDialect>>,
+        Box<Term<TExtDialect>>,
         Vec<Arm<TExtDialect>>,
     ),
 
     // let expr with binding, value and then applied context
     Let(
         Box<Pattern<TExtDialect>>,
-        Box<ExtTerm<TExtDialect>>,
-        Box<ExtTerm<TExtDialect>>,
+        Box<Term<TExtDialect>>,
+        Box<Term<TExtDialect>>,
     ),
     /// A lambda abstraction
-    Abs(Box<Type<TExtDialect::TExtType>>, Box<ExtTerm<TExtDialect>>),
+    Abs(Box<Type<TExtDialect::TExtType>>, Box<Term<TExtDialect>>),
     /// Application of a term to another term
     App(
-        Box<ExtTerm<TExtDialect>>,
-        Box<ExtTerm<TExtDialect>>,
+        Box<Term<TExtDialect>>,
+        Box<Term<TExtDialect>>,
     ),
     /// Type abstraction
-    TyAbs(Box<ExtTerm<TExtDialect>>),
+    TyAbs(Box<Term<TExtDialect>>),
     /// Type application
-    TyApp(Box<ExtTerm<TExtDialect>>, Box<Type<TExtDialect::TExtType>>),
+    TyApp(Box<Term<TExtDialect>>, Box<Type<TExtDialect::TExtType>>),
 
-    Fold(Box<Type<TExtDialect::TExtType>>, Box<ExtTerm<TExtDialect>>),
-    Unfold(Box<Type<TExtDialect::TExtType>>, Box<ExtTerm<TExtDialect>>),
+    Fold(Box<Type<TExtDialect::TExtType>>, Box<Term<TExtDialect>>),
+    Unfold(Box<Type<TExtDialect::TExtType>>, Box<Term<TExtDialect>>),
 
     /// Introduce an existential type
     /// { *Ty1, Term } as {∃X.Ty}
     /// essentially, concrete representation as interface
     Pack(
         Box<Type<TExtDialect::TExtType>>,
-        Box<ExtTerm<TExtDialect>>,
+        Box<Term<TExtDialect>>,
         Box<Type<TExtDialect::TExtType>>,
     ),
     /// Unpack an existential type
     /// open {∃X, bind} in body -- X is bound as a TyVar, and bind as Var(0)
     /// Eliminate an existential type
     Unpack(
-        Box<ExtTerm<TExtDialect>>,
-        Box<ExtTerm<TExtDialect>>,
+        Box<Term<TExtDialect>>,
+        Box<Term<TExtDialect>>,
     ),
 
     /// Extension
@@ -137,10 +136,10 @@ pub enum ExtKind<
 
 impl<
         TExtDialect: SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone,
-    > Default for ExtKind<TExtDialect>
+    > Default for Kind<TExtDialect>
 {
     fn default() -> Self {
-        ExtKind::Lit(Literal::Unit)
+        Kind::Lit(Literal::Unit)
     }
 }
 
@@ -151,7 +150,7 @@ pub struct Arm<
 > {
     pub span: Span,
     pub pat: Pattern<TExtDialect>,
-    pub term: Box<ExtTerm<TExtDialect>>,
+    pub term: Box<Term<TExtDialect>>,
     pub _d: TExtDialect,
 }
 
@@ -167,17 +166,17 @@ pub enum Literal {
 
 impl<
     TExtDialect: SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone,
-    > ExtTerm<TExtDialect>
+    > Term<TExtDialect>
 {
-    pub fn new(kind: ExtKind<TExtDialect>, span: Span) -> ExtTerm<TExtDialect> {
-        ExtTerm { span, kind }
+    pub fn new(kind: Kind<TExtDialect>, span: Span) -> Term<TExtDialect> {
+        Term { span, kind }
     }
 
     #[allow(dead_code)]
-    pub const fn unit() -> ExtTerm<TExtDialect> {
-        ExtTerm {
+    pub const fn unit() -> Term<TExtDialect> {
+        Term {
             span: Span::dummy(),
-            kind: ExtKind::Lit(Literal::Unit),
+            kind: Kind::Lit(Literal::Unit),
         }
     }
 
@@ -188,7 +187,7 @@ impl<
     }
 
     #[inline]
-    pub fn kind(&self) -> &ExtKind<TExtDialect> {
+    pub fn kind(&self) -> &Kind<TExtDialect> {
         &self.kind
     }
 }
@@ -206,19 +205,19 @@ impl fmt::Display for Literal {
 
 impl<
     TExtDialect: SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone,
-    > fmt::Display for ExtTerm<TExtDialect>
+    > fmt::Display for Term<TExtDialect>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match &self.kind {
-            ExtKind::Lit(lit) => write!(f, "{}", lit),
-            ExtKind::PlatformBinding(idx) => write!(f, "PlatformBinding({})", idx),
-            ExtKind::Var(v) => write!(f, "#{}", v),
-            ExtKind::Abs(ty, term) => write!(f, "(λ_:{:?}. {})", ty, term),
-            ExtKind::Fix(term) => write!(f, "Fix {:?}", term),
-            ExtKind::Primitive(p) => write!(f, "{:?}", p),
-            ExtKind::Injection(label, tm, ty) => write!(f, "{}({})", label, tm),
-            ExtKind::Projection(term, idx) => write!(f, "{}.{}", term, idx),
-            ExtKind::Product(terms) => write!(
+            Kind::Lit(lit) => write!(f, "{}", lit),
+            Kind::PlatformBinding(idx) => write!(f, "PlatformBinding({})", idx),
+            Kind::Var(v) => write!(f, "#{}", v),
+            Kind::Abs(ty, term) => write!(f, "(λ_:{:?}. {})", ty, term),
+            Kind::Fix(term) => write!(f, "Fix {:?}", term),
+            Kind::Primitive(p) => write!(f, "{:?}", p),
+            Kind::Injection(label, tm, ty) => write!(f, "{}({})", label, tm),
+            Kind::Projection(term, idx) => write!(f, "{}.{}", term, idx),
+            Kind::Product(terms) => write!(
                 f,
                 "({})",
                 terms
@@ -227,29 +226,29 @@ impl<
                     .collect::<Vec<String>>()
                     .join(",")
             ),
-            ExtKind::Case(term, arms) => {
+            Kind::Case(term, arms) => {
                 writeln!(f, "case {} of", term)?;
                 for arm in arms {
                     writeln!(f, "\t| {:?} => {},", arm.pat, arm.term)?;
                 }
                 write!(f, "")
             }
-            ExtKind::Let(pat, t1, t2) => write!(f, "let {:?} = {} in {}", pat, t1, t2),
-            ExtKind::App(t1, t2) => write!(f, "({} {})", t1, t2),
-            ExtKind::TyAbs(term) => write!(f, "(λTy {})", term),
-            ExtKind::TyApp(term, ty) => write!(f, "({} [{:?}])", term, ty),
-            ExtKind::Fold(ty, term) => write!(f, "fold [{:?}] {}", ty, term),
-            ExtKind::Unfold(ty, term) => write!(f, "unfold [{:?}] {}", ty, term),
-            ExtKind::Pack(witness, body, sig) => write!(f, "[|pack {{*{:?}, {}}} as {:?} |]", witness, body, sig),
-            ExtKind::Unpack(m, n) => write!(f, "unpack {} as {}", m, n),
-            ExtKind::Extended(k) => write!(f, "extended (kind: {:?})", k),
+            Kind::Let(pat, t1, t2) => write!(f, "let {:?} = {} in {}", pat, t1, t2),
+            Kind::App(t1, t2) => write!(f, "({} {})", t1, t2),
+            Kind::TyAbs(term) => write!(f, "(λTy {})", term),
+            Kind::TyApp(term, ty) => write!(f, "({} [{:?}])", term, ty),
+            Kind::Fold(ty, term) => write!(f, "fold [{:?}] {}", ty, term),
+            Kind::Unfold(ty, term) => write!(f, "unfold [{:?}] {}", ty, term),
+            Kind::Pack(witness, body, sig) => write!(f, "[|pack {{*{:?}, {}}} as {:?} |]", witness, body, sig),
+            Kind::Unpack(m, n) => write!(f, "unpack {} as {}", m, n),
+            Kind::Extended(k) => write!(f, "extended (kind: {:?})", k),
         }
     }
 }
 
 impl<
     TExtDialect: SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone,
-    > fmt::Debug for ExtTerm<TExtDialect>
+    > fmt::Debug for Term<TExtDialect>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self.kind)

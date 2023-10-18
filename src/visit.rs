@@ -43,7 +43,7 @@ use std::hash;
 use crate::extensions::SystemRDialect;
 use crate::patterns::Pattern;
 use crate::system_r_util::span::Span;
-use crate::terms::{Arm, ExtKind, ExtTerm, Literal, Primitive};
+use crate::terms::{Arm, Kind, Term, Literal, Primitive};
 use crate::types::{Type, Variant};
 
 pub trait MutTypeVisitor<TExtType: Clone + Default + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash>:
@@ -107,15 +107,15 @@ pub trait MutTermVisitor<
     fn visit_var(&mut self, sp: &mut Span, var: &mut usize) {}
     fn visit_pb(&mut self, sp: &mut Span, idx: &mut usize) {}
 
-    fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect::TExtType>, term: &mut ExtTerm<TExtDialect>) {
+    fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect::TExtType>, term: &mut Term<TExtDialect>) {
         self.visit(term);
     }
 
     fn visit_app(
         &mut self,
         sp: &mut Span,
-        t1: &mut ExtTerm<TExtDialect>,
-        t2: &mut ExtTerm<TExtDialect>,
+        t1: &mut Term<TExtDialect>,
+        t2: &mut Term<TExtDialect>,
     ) {
         self.visit(t1);
         self.visit(t2);
@@ -125,18 +125,18 @@ pub trait MutTermVisitor<
         &mut self,
         sp: &mut Span,
         pat: &mut Pattern<TExtDialect>,
-        t1: &mut ExtTerm<TExtDialect>,
-        t2: &mut ExtTerm<TExtDialect>,
+        t1: &mut Term<TExtDialect>,
+        t2: &mut Term<TExtDialect>,
     ) {
         self.visit(t1);
         self.visit(t2);
     }
 
-    fn visit_tyabs(&mut self, sp: &mut Span, term: &mut ExtTerm<TExtDialect>) {
+    fn visit_tyabs(&mut self, sp: &mut Span, term: &mut Term<TExtDialect>) {
         self.visit(term);
     }
 
-    fn visit_tyapp(&mut self, sp: &mut Span, term: &mut ExtTerm<TExtDialect>, ty: &mut Type<TExtDialect::TExtType>) {
+    fn visit_tyapp(&mut self, sp: &mut Span, term: &mut Term<TExtDialect>, ty: &mut Type<TExtDialect::TExtType>) {
         self.visit(term);
     }
 
@@ -145,7 +145,7 @@ pub trait MutTermVisitor<
         &mut self,
         sp: &mut Span,
         label: &mut String,
-        term: &mut ExtTerm<TExtDialect>,
+        term: &mut Term<TExtDialect>,
         ty: &mut Type<TExtDialect::TExtType>,
     ) {
         self.visit(term);
@@ -154,7 +154,7 @@ pub trait MutTermVisitor<
     fn visit_case(
         &mut self,
         sp: &mut Span,
-        term: &mut ExtTerm<TExtDialect>,
+        term: &mut Term<TExtDialect>,
         arms: &mut Vec<Arm<TExtDialect>>,
     ) {
         self.visit(term);
@@ -163,24 +163,24 @@ pub trait MutTermVisitor<
         }
     }
 
-    fn visit_product(&mut self, sp: &mut Span, product: &mut Vec<ExtTerm<TExtDialect>>) {
+    fn visit_product(&mut self, sp: &mut Span, product: &mut Vec<Term<TExtDialect>>) {
         for t in product {
             self.visit(t);
         }
     }
 
-    fn visit_projection(&mut self, sp: &mut Span, term: &mut ExtTerm<TExtDialect>, index: &mut usize) {
+    fn visit_projection(&mut self, sp: &mut Span, term: &mut Term<TExtDialect>, index: &mut usize) {
         self.visit(term);
     }
 
-    fn visit_fold(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect::TExtType>, term: &mut ExtTerm<TExtDialect>) {
+    fn visit_fold(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect::TExtType>, term: &mut Term<TExtDialect>) {
         self.visit(term);
     }
     fn visit_unfold(
         &mut self,
         sp: &mut Span,
         ty: &mut Type<TExtDialect::TExtType>,
-        term: &mut ExtTerm<TExtDialect>,
+        term: &mut Term<TExtDialect>,
     ) {
         self.visit(term);
     }
@@ -189,7 +189,7 @@ pub trait MutTermVisitor<
         &mut self,
         sp: &mut Span,
         witness: &mut Type<TExtDialect::TExtType>,
-        evidence: &mut ExtTerm<TExtDialect>,
+        evidence: &mut Term<TExtDialect>,
         signature: &mut Type<TExtDialect::TExtType>,
     ) {
         self.visit(evidence);
@@ -198,14 +198,14 @@ pub trait MutTermVisitor<
     fn visit_unpack(
         &mut self,
         sp: &mut Span,
-        package: &mut ExtTerm<TExtDialect>,
-        term: &mut ExtTerm<TExtDialect>,
+        package: &mut Term<TExtDialect>,
+        term: &mut Term<TExtDialect>,
     ) {
         self.visit(package);
         self.visit(term);
     }
 
-    fn visit(&mut self, term: &mut ExtTerm<TExtDialect>) {
+    fn visit(&mut self, term: &mut Term<TExtDialect>) {
         self.walk(term);
     }
 
@@ -213,29 +213,29 @@ pub trait MutTermVisitor<
         panic!("visit_ext unimpl; shouldn't be left this way lol..")
     }
 
-    fn walk(&mut self, term: &mut ExtTerm<TExtDialect>) {
+    fn walk(&mut self, term: &mut Term<TExtDialect>) {
         let sp = &mut term.span;
         match &mut term.kind {
-            ExtKind::Extended(k) => self.visit_ext(sp, k),
-            ExtKind::Lit(l) => self.visit_lit(sp, l),
-            ExtKind::Var(v) => self.visit_var(sp, v),
-            ExtKind::PlatformBinding(v) => self.visit_pb(sp, v),
-            ExtKind::Abs(ty, term) => self.visit_abs(sp, ty, term),
-            ExtKind::App(t1, t2) => self.visit_app(sp, t1, t2),
+            Kind::Extended(k) => self.visit_ext(sp, k),
+            Kind::Lit(l) => self.visit_lit(sp, l),
+            Kind::Var(v) => self.visit_var(sp, v),
+            Kind::PlatformBinding(v) => self.visit_pb(sp, v),
+            Kind::Abs(ty, term) => self.visit_abs(sp, ty, term),
+            Kind::App(t1, t2) => self.visit_app(sp, t1, t2),
             // Do we need a separate branch?
-            ExtKind::Fix(term) => self.visit(term),
-            ExtKind::Primitive(p) => self.visit_primitive(sp, p),
-            ExtKind::Injection(label, tm, ty) => self.visit_injection(sp, label, tm, ty),
-            ExtKind::Projection(term, idx) => self.visit_projection(sp, term, idx),
-            ExtKind::Product(terms) => self.visit_product(sp, terms),
-            ExtKind::Case(term, arms) => self.visit_case(sp, term, arms),
-            ExtKind::Let(pat, t1, t2) => self.visit_let(sp, pat, t1, t2),
-            ExtKind::TyAbs(term) => self.visit_tyabs(sp, term),
-            ExtKind::TyApp(term, ty) => self.visit_tyapp(sp, term, ty),
-            ExtKind::Fold(ty, term) => self.visit_fold(sp, ty, term),
-            ExtKind::Unfold(ty, term) => self.visit_unfold(sp, ty, term),
-            ExtKind::Pack(wit, term, sig) => self.visit_pack(sp, wit, term, sig),
-            ExtKind::Unpack(package, term) => self.visit_unpack(sp, package, term),
+            Kind::Fix(term) => self.visit(term),
+            Kind::Primitive(p) => self.visit_primitive(sp, p),
+            Kind::Injection(label, tm, ty) => self.visit_injection(sp, label, tm, ty),
+            Kind::Projection(term, idx) => self.visit_projection(sp, term, idx),
+            Kind::Product(terms) => self.visit_product(sp, terms),
+            Kind::Case(term, arms) => self.visit_case(sp, term, arms),
+            Kind::Let(pat, t1, t2) => self.visit_let(sp, pat, t1, t2),
+            Kind::TyAbs(term) => self.visit_tyabs(sp, term),
+            Kind::TyApp(term, ty) => self.visit_tyapp(sp, term, ty),
+            Kind::Fold(ty, term) => self.visit_fold(sp, ty, term),
+            Kind::Unfold(ty, term) => self.visit_unfold(sp, ty, term),
+            Kind::Pack(wit, term, sig) => self.visit_pack(sp, wit, term, sig),
+            Kind::Unpack(package, term) => self.visit_unpack(sp, package, term),
         }
     }
 }

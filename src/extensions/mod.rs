@@ -24,7 +24,7 @@ use crate::{
         parser::ParserState,
         ExtToken,
     },
-    terms::ExtTerm,
+    terms::Term,
     types::Type,
 };
 
@@ -50,12 +50,12 @@ pub trait SystemRExtension<TExtDialect: SystemRDialect + Default + fmt::Debug + 
     fn parser_ext_parse<'s>(
         &mut self,
         ps: &mut ParserState<TExtDialect>,
-    ) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>>;
+    ) -> Result<Term<TExtDialect>, Error<TExtDialect::TExtTokenKind>>;
     fn parser_has_ext_atom(&self, tk: &TExtDialect::TExtTokenKind) -> bool;
     fn parser_ext_atom<'s>(
         &mut self,
         ps: &mut ParserState<TExtDialect>,
-    ) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>>;
+    ) -> Result<Term<TExtDialect>, Error<TExtDialect::TExtTokenKind>>;
     fn pat_ext_pattern_type_eq(&self, pat: &TExtDialect::TExtPat, ty: &Type<TExtDialect::TExtType>) -> bool;
     fn pat_add_ext_pattern<'a>(
         &'a self,
@@ -65,7 +65,7 @@ pub trait SystemRExtension<TExtDialect: SystemRDialect + Default + fmt::Debug + 
     fn pat_ext_matches(
         &self,
         pat: &TExtDialect::TExtPat,
-        term: &ExtTerm<TExtDialect>,
+        term: &Term<TExtDialect>,
     ) -> bool;
     fn parser_ty(
         &mut self,
@@ -82,8 +82,8 @@ pub trait SystemRTranslator<
     fn resolve(
         &self,
         st: &mut InDialect::TExtDialectState,
-        tm: ExtTerm<InDialect>,
-    ) -> Result<ExtTerm<OutDialect>, Diagnostic>;
+        tm: Term<InDialect>,
+    ) -> Result<Term<OutDialect>, Diagnostic>;
 }
 
 // FIXME a set of translator visitor structs, with ::new(), to facilitate
