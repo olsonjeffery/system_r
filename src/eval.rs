@@ -37,9 +37,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-use crate::bottom::{BottomExtension, BottomKind, BottomPattern, BottomType};
+use crate::bottom::{BottomExtension, BottomKind, BottomPattern, BottomType, BottomDialect};
 use crate::diagnostics::Diagnostic;
-use crate::patterns::{ExtPattern, Pattern};
+use crate::patterns::Pattern;
 use crate::platform_bindings::PlatformBindings;
 use crate::terms::visit::{Shift, Subst, TyTermSubst};
 use crate::terms::{ExtKind, ExtTerm, Literal, Primitive, Term};
@@ -60,7 +60,7 @@ impl<'ctx> Eval<'ctx> {
         }
     }
 
-    fn normal_form(term: &ExtTerm<BottomPattern, BottomKind, BottomType>) -> bool {
+    fn normal_form(term: &ExtTerm<BottomDialect>) -> bool {
         match &term.kind {
             ExtKind::Lit(_) => true,
             ExtKind::Abs(_, _) => true,
@@ -316,8 +316,8 @@ impl<'ctx> Eval<'ctx> {
         }
     }
 
-    fn case_subst(pat: &Pattern, expr: &Term, term: &mut Term) {
-        use ExtPattern::*;
+    fn case_subst(pat: &Pattern<BottomDialect>, expr: &Term, term: &mut Term) {
+        use Pattern::*;
         match pat {
             Any => {}
             Literal(_) => {}

@@ -1,7 +1,7 @@
 extern crate cucumber;
 
 use core::fmt;
-use std::{cell::RefCell, rc::Rc, hash};
+use std::{cell::RefCell, hash, rc::Rc};
 
 use cucumber::{given, then, when};
 
@@ -10,7 +10,7 @@ use system_r::{
     diagnostics::Diagnostic,
     extensions::{
         struct_data::{StructDataContext, StructDataExtension},
-        SystemRTranslator, SystemRExtension,
+        SystemRExtension, SystemRTranslator, SystemRDialect,
     },
     syntax::parser::{self, ParserState},
     terms::ExtTerm,
@@ -19,7 +19,7 @@ use system_r::{
 
 use crate::common::{
     self,
-    extensions::{OmniContext, OmniKind, OmniTerm, OmniState},
+    extensions::{OmniContext, OmniKind, OmniState, OmniTerm},
     SpecsWorld,
 };
 
@@ -29,17 +29,13 @@ static StructData_CTX_NAME: &'static str = "StructData";
 
 pub fn parse_for_extension<
     's,
-    TExtTokenKind: fmt::Debug + Default + Clone + PartialEq + PartialOrd,
-    TExtKind: fmt::Debug + Default + Clone + PartialEq + PartialOrd,
-    TEXtPat: fmt::Debug + Default + Clone + PartialEq + PartialOrd,
-    TExtType: fmt::Debug + Default + Clone + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: Clone + Default + fmt::Debug,
-    TLE: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TEXtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + fmt::Debug + Default + Clone + PartialEq + PartialOrd,
+    TLE: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     input: &str,
-    ps: &mut ParserState<'s, TExtTokenKind, TExtKind, TEXtPat, TExtType, TExtState>,
+    ps: &mut ParserState<'s, TExtDialect>,
     ext: &mut TLE,
-) -> Result<ExtTerm<TEXtPat, TExtKind, TExtType>, Diagnostic> {
+) -> Result<ExtTerm<TExtDialect>, Diagnostic> {
     testing::operate_parser_for(input, ps, ext)
 }
 
@@ -81,14 +77,10 @@ fn when_it_is_processed_for_StructData(world: &mut common::SpecsWorld) {
             return;
         }
     };
-
-
 }
 
 #[when("TypeAlias type checks the code")]
-fn when_type_alias_type_checks_the_code(world: &mut SpecsWorld) {
-
-}
+fn when_type_alias_type_checks_the_code(world: &mut SpecsWorld) {}
 
 #[when("TypeAlias-dialect is resolved into bottom-dialect system_r")]
 pub fn when_it_is_converted_to_bottom_dialect(world: &mut SpecsWorld) {
@@ -100,7 +92,7 @@ pub fn when_it_is_converted_to_bottom_dialect(world: &mut SpecsWorld) {
 
     let mut ps = match &world.last_ext_state {
         OmniState::StructData(ps) => ps.clone(),
-        _ => panic!("expected OmniState::StructData")
+        _ => panic!("expected OmniState::StructData"),
     };
 
     let bottom_tm = match StructDataExtension.resolve(&mut ps, tm) {

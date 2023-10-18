@@ -37,15 +37,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 //! Macros to make writing tests easier
-//! 
 
-use crate::{terms::ExtTerm, bottom::{BottomPattern, BottomKind, BottomType}};
+use crate::{
+    bottom::{BottomKind, BottomPattern, BottomType},
+    terms::ExtTerm,
+};
 
 /// Boolean term
 macro_rules! lit {
     ($x:expr) => {
         Term::new(
-            crate::terms::Kind::Lit(crate::terms::Literal::Bool($x)),
+            crate::terms::ExtKind::<BottomDialect>::Lit(crate::terms::Literal::Bool($x)),
             crate::system_r_util::span::Span::dummy(),
         )
     };
@@ -55,7 +57,7 @@ macro_rules! lit {
 macro_rules! nat {
     ($x:expr) => {
         crate::terms::Term::new(
-            crate::terms::Kind::Lit(crate::terms::Literal::Nat($x)),
+            crate::terms::ExtKind::<BottomDialect>::Lit(crate::terms::Literal::Nat($x)),
             crate::system_r_util::span::Span::dummy(),
         )
     };
@@ -64,7 +66,7 @@ macro_rules! nat {
 /// TmVar term
 macro_rules! var {
     ($x:expr) => {
-        crate::terms::Term::new(crate::terms::Kind::Var($x), crate::system_r_util::span::Span::dummy())
+        crate::terms::Term::new(crate::terms::ExtKind::<BottomDialect>::Var($x), crate::system_r_util::span::Span::dummy())
     };
 }
 
@@ -72,7 +74,7 @@ macro_rules! var {
 macro_rules! app {
     ($t1:expr, $t2:expr) => {
         crate::terms::Term::new(
-            crate::terms::Kind::App(Box::new($t1), Box::new($t2)),
+            crate::terms::ExtKind::<BottomDialect>::App(Box::new($t1), Box::new($t2)),
             crate::system_r_util::span::Span::dummy(),
         )
     };
@@ -82,7 +84,7 @@ macro_rules! app {
 macro_rules! abs {
     ($ty:expr, $t:expr) => {
         crate::terms::Term::new(
-            crate::terms::Kind::Abs(Box::new($ty), Box::new($t)),
+            crate::terms::ExtKind::<BottomDialect>::Abs(Box::new($ty), Box::new($t)),
             crate::system_r_util::span::Span::dummy(),
         )
     };
@@ -92,7 +94,7 @@ macro_rules! abs {
 macro_rules! tyapp {
     ($t1:expr, $t2:expr) => {
         crate::terms::Term::new(
-            crate::terms::Kind::TyApp(Box::new($t1), Box::new($t2)),
+            crate::terms::ExtKind::<BottomDialect>::TyApp(Box::new($t1), Box::new($t2)),
             crate::system_r_util::span::Span::dummy(),
         )
     };
@@ -102,7 +104,7 @@ macro_rules! tyapp {
 macro_rules! tyabs {
     ( $t:expr) => {
         crate::terms::Term::new(
-            crate::terms::Kind::TyAbs(Box::new($t)),
+            crate::terms::ExtKind::<BottomDialect>::TyAbs(Box::new($t)),
             crate::system_r_util::span::Span::dummy(),
         )
     };
@@ -112,7 +114,7 @@ macro_rules! tyabs {
 macro_rules! prim {
     ($t:expr) => {
         crate::terms::Term::new(
-            crate::terms::Kind::Primitive($t),
+            crate::terms::ExtKind::<BottomDialect>::Primitive($t),
             crate::system_r_util::span::Span::dummy(),
         )
     };
@@ -121,7 +123,7 @@ macro_rules! prim {
 macro_rules! inj {
     ($label:expr, $t:expr, $ty:expr) => {
         crate::terms::Term::new(
-            crate::terms::Kind::Injection($label.to_string(), Box::new($t), Box::new($ty)),
+            crate::terms::ExtKind::<BottomDialect>::Injection($label.to_string(), Box::new($t), Box::new($ty)),
             crate::system_r_util::span::Span::dummy(),
         )
     };
@@ -129,7 +131,7 @@ macro_rules! inj {
 
 /// Product term
 macro_rules! tuple {
-    ($($ex:expr),+) => { crate::terms::Term::new(crate::terms::Kind::Product(vec![$($ex),+]),
+    ($($ex:expr),+) => { crate::terms::Term::new(crate::terms::ExtKind::<BottomDialect>::Product(vec![$($ex),+]),
     crate::system_r_util::span::Span::dummy()) }
 }
 

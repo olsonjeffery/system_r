@@ -1,10 +1,10 @@
-use system_r::bottom::{BottomPattern, BottomKind, BottomType};
+use system_r::bottom::{BottomKind, BottomPattern, BottomType};
 use system_r::system_r_util::span::Span;
-use system_r::terms::{ExtTerm, Term};
+use system_r::terms::{ExtTerm, Term, ExtKind};
 use system_r::{
     diagnostics::Diagnostic,
     platform_bindings::WrappedContent,
-    terms::{Kind, Literal},
+    terms::{Literal},
     types::Type,
 };
 
@@ -19,7 +19,7 @@ pub fn pull_u32_from(args: &Vec<Term>, idx: usize, span: &Span) -> Result<u32, D
         }
     };
     let arg_actual = match arg_t_raw.kind.clone() {
-        Kind::Lit(Literal::Nat(n)) => n,
+        ExtKind::Lit(Literal::Nat(n)) => n,
         k => {
             return Err(Diagnostic::error(
                 *span,
@@ -35,13 +35,13 @@ pub fn pb_add() -> WrappedContent {
 }
 fn add(arg: Term, span: &Span) -> Result<Term, Diagnostic> {
     match arg.kind {
-        Kind::Product(args) => {
+        ExtKind::Product(args) => {
             if args.len() != 2 {
                 return Err(Diagnostic::error(*span, "nat::arith::add: expected product of len 2"));
             }
             let arg0_actual = pull_u32_from(&args, 0, span)?;
             let arg1_actual = pull_u32_from(&args, 1, span)?;
-            let sum = Kind::Lit(Literal::Nat(arg0_actual + arg1_actual));
+            let sum = ExtKind::Lit(Literal::Nat(arg0_actual + arg1_actual));
             let mut ret_term = ExtTerm::unit();
             ret_term.kind = sum.clone();
             ret_term.span = *span;

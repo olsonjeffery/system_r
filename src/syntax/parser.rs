@@ -40,39 +40,35 @@ use super::debruijn::DeBruijnIndexer;
 use super::error::Error;
 use super::lexer::ExtLexer;
 use super::{ExtToken, ExtTokenKind};
-use crate::bottom::{BottomExtension, BottomKind, BottomPattern, BottomState, BottomTokenKind, BottomType};
-use crate::extensions::SystemRExtension;
+use crate::bottom::{BottomExtension, BottomKind, BottomPattern, BottomState, BottomTokenKind, BottomType, BottomDialect};
+use crate::extensions::{SystemRExtension, SystemRDialect};
 
 use crate::system_r_util::diagnostic::Diagnostic;
 use crate::system_r_util::span::*;
 use core::fmt;
 use std::hash;
 
-use crate::patterns::{ExtPattern, PatVarStack};
+use crate::patterns::{Pattern, PatVarStack};
 use crate::platform_bindings::PlatformBindings;
 use crate::terms::*;
 use crate::types::*;
 
-pub type Parser<'s> = ParserState<'s, BottomTokenKind, BottomKind, BottomPattern, BottomType, BottomState>;
+pub type BottomParserState<'s> = ParserState<'s, BottomDialect>;
 
 #[derive(Default, Debug, Clone)]
 pub struct ParserState<
     's,
-    TExtTokenKind: fmt::Debug + PartialEq + PartialOrd + Default + Sized + Clone,
-    TExtKind: fmt::Debug + PartialEq + PartialOrd + Default + Sized + Clone,
-    TExtPat: fmt::Debug + PartialEq + PartialOrd + Default + Sized + Clone,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
 > {
     pub tmvar: DeBruijnIndexer,
     pub tyvar: DeBruijnIndexer,
     pub diagnostic: Diagnostic<'s>,
-    pub lexer: ExtLexer<'s, TExtTokenKind, TExtKind, TExtPat>,
+    pub lexer: ExtLexer<'s, TExtDialect>,
     pub span: Span,
-    pub token: ExtToken<TExtTokenKind>,
+    pub token: ExtToken<TExtDialect::TExtTokenKind>,
     pub platform_bindings: PlatformBindings,
-    pub ext_state: TExtState,
-    pub ty: TExtType,
+    pub ext_state: TExtDialect::TExtDialectState,
+    pub ty: TExtDialect::TExtType,
 }
 
 #[derive(Clone, Debug)]
@@ -90,44 +86,36 @@ pub enum ErrorKind<TExtTokenKind: PartialEq> {
 
 impl<
         's,
-        TExtTokenKind: fmt::Debug + PartialEq + PartialOrd + Default + Sized + Clone,
-        TExtKind: fmt::Debug + PartialEq + PartialOrd + Default + Sized + Clone,
-        TExtPat: fmt::Debug + PartialEq + PartialOrd + Default + Sized + Clone,
-        TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-        TExtState: fmt::Debug + Default + Clone,
-    > ParserState<'s, TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    > ParserState<'s, TExtDialect>
 {
     pub fn die(self) -> String {
         let d = self.diagnostic;
         d.emit()
     }
 
-    pub fn to_ext_state(self) -> TExtState {
+    pub fn to_ext_state(self) -> TExtDialect::TExtDialectState {
         self.ext_state
     }
 }
 
-pub fn new<'s, TExtType: Clone + Default + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash>(
+pub fn new<'s>(
     platform_bindings: &'s PlatformBindings,
     input: &'s str,
-) -> Parser<'s> {
+) -> BottomParserState<'s> {
     let mut ext = BottomExtension;
     ext_new(platform_bindings, input, &mut ext)
 }
 
 pub fn ext_new<
     's,
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     platform_bindings: &'s PlatformBindings,
     input: &'s str,
     ext: &mut TExt,
-) -> ParserState<'s, TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState> {
+) -> ParserState<'s, TExtDialect> {
     let mut p = ParserState {
         tmvar: DeBruijnIndexer::default(),
         tyvar: DeBruijnIndexer::default(),
@@ -145,20 +133,16 @@ pub fn ext_new<
 
 /// Kleene Plus combinator
 pub fn once_or_more<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: Clone + Default + fmt::Debug,
-    F: FnMut(&mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>) -> Result<T, Error<TExtTokenKind>>,
-    TExt: Clone + Copy + Default + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    F: FnMut(&mut ParserState<TExtDialect>) -> Result<T, Error<TExtDialect::TExtTokenKind>>,
+    TExt: Clone + Copy + Default + SystemRExtension<TExtDialect>,
     T,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     mut func: F,
-    delimiter: ExtTokenKind<TExtTokenKind>,
+    delimiter: ExtTokenKind<TExtDialect::TExtTokenKind>,
     ext: &mut TExt,
-) -> Result<Vec<T>, Error<TExtTokenKind>> {
+) -> Result<Vec<T>, Error<TExtDialect::TExtTokenKind>> {
     let mut v = vec![func(ps)?];
     while bump_if(ps, ext, &delimiter) {
         v.push(func(ps)?);
@@ -171,18 +155,14 @@ pub fn once_or_more<
 /// diagnostic. This method should only be called after a token has
 /// already been bumped.
 pub fn once<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: Clone + Default + fmt::Debug,
-    F: FnMut(&mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>) -> Result<T, Error<TExtTokenKind>>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    F: FnMut(&mut ParserState<TExtDialect>) -> Result<T, Error<TExtDialect::TExtTokenKind>>,
     T,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     mut func: F,
     message: &str,
-) -> Result<T, Error<TExtTokenKind>> {
+) -> Result<T, Error<TExtDialect::TExtTokenKind>> {
     match func(ps) {
         Err(e) => {
             ps.diagnostic.push(message, ps.span);
@@ -194,29 +174,21 @@ pub fn once<
 
 pub fn diagnostic<
     's,
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtState: fmt::Debug + Default + Clone,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
 >(
-    ps: ParserState<'s, TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: ParserState<'s, TExtDialect>,
 ) -> Diagnostic<'s> {
     ps.diagnostic
 }
 
 pub fn error<
     's,
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
     TError,
 >(
-    ps: &ParserState<'s, TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
-    kind: ErrorKind<TExtTokenKind>,
-) -> Result<TError, Error<TExtTokenKind>> {
+    ps: &ParserState<'s, TExtDialect>,
+    kind: ErrorKind<TExtDialect::TExtTokenKind>,
+) -> Result<TError, Error<TExtDialect::TExtTokenKind>> {
     Err(Error {
         span: ps.token.span,
         tok: ps.token.clone(),
@@ -225,32 +197,27 @@ pub fn error<
 }
 
 pub fn bump<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> ExtTokenKind<TExtTokenKind> {
+) -> ExtTokenKind<TExtDialect::TExtTokenKind> {
     let prev = std::mem::replace(&mut ps.token, ps.lexer.lex(ext));
     ps.span = prev.span;
     prev.kind
 }
 
+/// Used within parser-logic to advance the ParserState to the next token,
+/// if the current token's kind matches the given `kind` arg and returning
+/// true, otherwise returns false
 pub fn bump_if<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-    kind: &ExtTokenKind<TExtTokenKind>,
+    kind: &ExtTokenKind<TExtDialect::TExtTokenKind>,
 ) -> bool {
     if &ps.token.kind == kind {
         bump(ps, ext);
@@ -260,18 +227,17 @@ pub fn bump_if<
     }
 }
 
+/// With the provided ParserState + TExt + a given TokenKind, return Err
+/// Result if current token kind is NOT eq to the given `kind` arg, otherwise
+/// returns an Ok(()) unit result
 pub fn expect<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-    kind: ExtTokenKind<TExtTokenKind>,
-) -> Result<(), Error<TExtTokenKind>> {
+    kind: ExtTokenKind<TExtDialect::TExtTokenKind>,
+) -> Result<(), Error<TExtDialect::TExtTokenKind>> {
     if ps.token.kind == kind {
         bump(ps, ext);
         Ok(())
@@ -282,30 +248,23 @@ pub fn expect<
     }
 }
 
+/// Return current TokenKind for the ParserState
 pub fn kind<
     's,
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
 >(
-    ps: &'s ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
-) -> &'s ExtTokenKind<TExtTokenKind> {
+    ps: &'s ParserState<TExtDialect>,
+) -> &'s ExtTokenKind<TExtDialect::TExtTokenKind> {
     &ps.token.kind
 }
 
 pub fn ty_variant<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<Variant<TExtType>, Error<TExtTokenKind>> {
+) -> Result<Variant<TExtDialect::TExtType>, Error<TExtDialect::TExtTokenKind>> {
     let label = uppercase_id(ps, ext)?;
     let ty = match ty(ps, ext) {
         Ok(ty) => ty,
@@ -316,16 +275,12 @@ pub fn ty_variant<
 }
 
 pub fn ty_app<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<Type<TExtType>, Error<TExtTokenKind>> {
+) -> Result<Type<TExtDialect::TExtType>, Error<TExtDialect::TExtTokenKind>> {
     if !bump_if(ps, ext, &ExtTokenKind::LSquare) {
         return error(ps, ErrorKind::ExpectedToken(ExtTokenKind::LSquare));
     }
@@ -335,16 +290,12 @@ pub fn ty_app<
 }
 
 pub fn ty_atom<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<Type<TExtType>, Error<TExtTokenKind>> {
+) -> Result<Type<TExtDialect::TExtType>, Error<TExtDialect::TExtTokenKind>> {
     match kind(ps) {
         ExtTokenKind::Tag(s) => {
             let v = s.to_owned();
@@ -402,16 +353,12 @@ pub fn ty_atom<
 }
 
 pub fn ty_tuple<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<Type<TExtType>, Error<TExtTokenKind>> {
+) -> Result<Type<TExtDialect::TExtType>, Error<TExtDialect::TExtTokenKind>> {
     if bump_if(ps, ext, &ExtTokenKind::LParen) {
         let mut ext2 = ext.clone();
         let mut ext3 = ext.clone();
@@ -429,16 +376,12 @@ pub fn ty_tuple<
 }
 
 pub fn ty<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<Type<TExtType>, Error<TExtTokenKind>> {
+) -> Result<Type<TExtDialect::TExtType>, Error<TExtDialect::TExtTokenKind>> {
     /*
     match kind(ps) {
         ExtTokenKind::AnyTag => return Ok(Type::AnyTag),
@@ -475,34 +418,26 @@ pub fn ty<
 }
 
 pub fn tyabs<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     let tyvar = uppercase_id(ps, ext)?;
     let sp = ps.span;
-    let ty: Box<Type<TExtType>> = Box::new(Type::Var(ps.tyvar.push(tyvar)));
+    let ty: Box<Type<TExtDialect::TExtType>> = Box::new(Type::Var(ps.tyvar.push(tyvar)));
     let body = once(ps, |p| parse(p, ext), "abstraction body required")?;
     Ok(ExtTerm::new(ExtKind::TyAbs(Box::new(body)), sp + ps.span))
 }
 
 pub fn tmabs<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     let tmvar = lowercase_id(ps, ext)?;
     let sp = ps.span;
     ps.tmvar.push(tmvar);
@@ -516,16 +451,12 @@ pub fn tmabs<
 }
 
 pub fn fold<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     expect(ps, ext, ExtTokenKind::Fold)?;
     let sp = ps.span;
     let ty = once(ps, |p| ty(p, ext), "type annotation required after `fold`")?;
@@ -534,16 +465,12 @@ pub fn fold<
 }
 
 pub fn unfold<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     expect(ps, ext, ExtTokenKind::Unfold)?;
     let sp = ps.span;
     let ty = once(ps, |p| ty(p, ext), "type annotation required after `unfold`")?;
@@ -552,16 +479,12 @@ pub fn unfold<
 }
 
 pub fn fix<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     let sp = ps.span;
     expect(ps, ext, ExtTokenKind::Fix)?;
     let t = parse(ps, ext)?;
@@ -569,16 +492,12 @@ pub fn fix<
 }
 
 pub fn letexpr<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     let sp = ps.span;
     expect(ps, ext, ExtTokenKind::Let)?;
     let pat = once(ps, |p| pattern(p, ext), "missing pattern")?;
@@ -587,7 +506,7 @@ pub fn letexpr<
 
     let t1 = once(ps, |p| parse(p, ext), "let binder required")?;
     let len = ps.tmvar.len();
-    for var in PatVarStack::<TExtPat, TExtKind>::collect(&pat).into_iter().rev() {
+    for var in PatVarStack::<TExtDialect>::collect(&pat).into_iter().rev() {
         ps.tmvar.push(var);
     }
     expect(ps, ext, ExtTokenKind::In)?;
@@ -602,16 +521,12 @@ pub fn letexpr<
 }
 
 pub fn lambda<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     expect(ps, ext, ExtTokenKind::Lambda)?;
     match kind(ps) {
         ExtTokenKind::Uppercase(_) => tyabs(ps, ext),
@@ -625,16 +540,12 @@ pub fn lambda<
 }
 
 pub fn paren<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     expect(ps, ext, ExtTokenKind::LParen)?;
     let span = ps.span;
 
@@ -651,16 +562,12 @@ pub fn paren<
 }
 
 pub fn uppercase_id<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<String, Error<TExtTokenKind>> {
+) -> Result<String, Error<TExtDialect::TExtTokenKind>> {
     match bump(ps, ext) {
         ExtTokenKind::Uppercase(s) => Ok(s),
         tk => {
@@ -672,16 +579,12 @@ pub fn uppercase_id<
 }
 
 pub fn lowercase_id<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<String, Error<TExtTokenKind>> {
+) -> Result<String, Error<TExtDialect::TExtTokenKind>> {
     match bump(ps, ext) {
         ExtTokenKind::Lowercase(s) => Ok(s),
         tk => {
@@ -693,16 +596,12 @@ pub fn lowercase_id<
 }
 
 pub fn literal<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     let lit = match bump(ps, ext) {
         ExtTokenKind::Nat(x) => Literal::Nat(x),
         ExtTokenKind::True => Literal::Bool(true),
@@ -715,16 +614,12 @@ pub fn literal<
 }
 
 pub fn primitive<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     let p = match bump(ps, ext) {
         ExtTokenKind::IsZero => Primitive::IsZero,
         ExtTokenKind::Succ => Primitive::Succ,
@@ -738,73 +633,65 @@ pub fn primitive<
 /// de Bruijn naming context. Callers of this function are responsible for
 /// making sure that the stack is balanced afterwards
 pub fn pat_atom<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtPattern<TExtPat>, Error<TExtTokenKind>> {
+) -> Result<Pattern<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     match kind(ps) {
         ExtTokenKind::LParen => pattern(ps, ext),
         ExtTokenKind::Wildcard => {
             bump(ps, ext);
-            Ok(ExtPattern::Any)
+            Ok(Pattern::Any)
         }
         ExtTokenKind::Uppercase(_) => {
             let tycon = uppercase_id(ps, ext)?;
             let inner = match pattern(ps, ext) {
                 Ok(pat) => pat,
-                _ => ExtPattern::Any,
+                _ => Pattern::Any,
             };
-            Ok(ExtPattern::Constructor(tycon, Box::new(inner)))
+            Ok(Pattern::Constructor(tycon, Box::new(inner)))
         }
         ExtTokenKind::Lowercase(_) => {
             let var = lowercase_id(ps, ext)?;
             // ps.tmvar.push(var.clone());
-            Ok(ExtPattern::Variable(var))
+            Ok(Pattern::Variable(var))
         }
         ExtTokenKind::True => {
             bump(ps, ext);
-            Ok(ExtPattern::Literal(Literal::Bool(true)))
+            Ok(Pattern::Literal(Literal::Bool(true)))
         }
         ExtTokenKind::False => {
             bump(ps, ext);
-            Ok(ExtPattern::Literal(Literal::Bool(false)))
+            Ok(Pattern::Literal(Literal::Bool(false)))
         }
         ExtTokenKind::Unit => {
             bump(ps, ext);
-            Ok(ExtPattern::Literal(Literal::Unit))
+            Ok(Pattern::Literal(Literal::Unit))
         }
         ExtTokenKind::Nat(n) => {
             // O great borrowck, may this humble offering appease thee
             let n = *n;
             bump(ps, ext);
-            Ok(ExtPattern::Literal(Literal::Nat(n)))
+            Ok(Pattern::Literal(Literal::Nat(n)))
         }
         ExtTokenKind::Tag(s) => {
             let s = s.clone();
             bump(ps, ext);
-            Ok(ExtPattern::Literal(Literal::Tag(s)))
+            Ok(Pattern::Literal(Literal::Tag(s)))
         }
         _ => error(ps, ErrorKind::ExpectedPattern),
     }
 }
 
 pub fn pattern<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtPattern<TExtPat>, Error<TExtTokenKind>> {
+) -> Result<Pattern<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     match kind(ps) {
         ExtTokenKind::LParen => {
             bump(ps, ext);
@@ -813,7 +700,7 @@ pub fn pattern<
             let mut v = once_or_more(ps, |p| pat_atom(p, &mut ext2), ExtTokenKind::Comma, &mut ext3)?;
             expect(ps, ext, ExtTokenKind::RParen)?;
             if v.len() > 1 {
-                Ok(ExtPattern::Product(v))
+                Ok(Pattern::Product(v))
             } else {
                 // v must have length == 1, else we would have early returned
                 assert_eq!(v.len(), 1);
@@ -825,16 +712,12 @@ pub fn pattern<
 }
 
 pub fn case_arm<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<Arm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
+) -> Result<Arm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     // match kind(ps) {
     //     ExtTokenKind::Bar => bump(ps),
     //     _ => return error(ps, ErrorKind::ExpectedToken(ExtTokenKind::Bar)),
@@ -849,7 +732,7 @@ pub fn case_arm<
 
     let pat = once(ps, |p| pattern(p, ext), "missing pattern")?;
 
-    for var in PatVarStack::<TExtPat, TExtKind>::collect(&pat).into_iter().rev() {
+    for var in PatVarStack::<TExtDialect>::collect(&pat).into_iter().rev() {
         ps.tmvar.push(var);
     }
 
@@ -871,21 +754,17 @@ pub fn case_arm<
         span,
         pat,
         term,
-        _kind: Default::default(),
+        _d: Default::default(),
     })
 }
 
 pub fn case<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     expect(ps, ext, ExtTokenKind::Case)?;
     let span = ps.span;
     let expr = once(ps, |p| parse(p, ext), "missing case expression")?;
@@ -901,16 +780,12 @@ pub fn case<
 }
 
 pub fn injection<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     let label = uppercase_id(ps, ext)?;
     let sp = ps.span;
     let term = match parse(ps, ext) {
@@ -927,16 +802,12 @@ pub fn injection<
 }
 
 pub fn pack<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     expect(ps, ext, ExtTokenKind::Pack)?;
     let sp = ps.span;
     let witness = ty(ps, ext)?;
@@ -952,16 +823,12 @@ pub fn pack<
 }
 
 pub fn unpack<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     expect(ps, ext, ExtTokenKind::Unpack)?;
     let sp = ps.span;
     let package = parse(ps, ext)?;
@@ -983,16 +850,12 @@ pub fn unpack<
 }
 
 pub fn atom<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     match kind(ps) {
         ExtTokenKind::Extended(tk) => ext_atom(ps, ext),
         ExtTokenKind::LParen => paren(ps, ext),
@@ -1032,16 +895,12 @@ pub fn atom<
 /// projection = atom `.` projection
 /// projection = atom
 pub fn projection<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     let atom = atom(ps, ext)?;
     if bump_if(ps, ext, &ExtTokenKind::Proj) {
         let idx = match bump(ps, ext) {
@@ -1063,16 +922,12 @@ pub fn projection<
 /// application = atom application' | atom
 /// application' = atom application' | empty
 pub fn application<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     let mut app = projection(ps, ext)?;
 
     loop {
@@ -1100,16 +955,12 @@ pub fn application<
 }
 
 pub fn ext_atom<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     let r = {
         match ext.parser_ext_atom(ps) {
             Err(e) => return Err(e),
@@ -1120,16 +971,12 @@ pub fn ext_atom<
 }
 
 pub fn ext_parse<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     let r = {
         match ext.parser_ext_parse(ps) {
             Err(e) => return Err(e),
@@ -1140,16 +987,12 @@ pub fn ext_parse<
 }
 
 pub fn parse<
-    TExtTokenKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
-    ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
+    ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>> {
+) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     match kind(ps).clone() {
         ExtTokenKind::Case => case(ps, ext),
         ExtTokenKind::Lambda => lambda(ps, ext),

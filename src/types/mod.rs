@@ -40,9 +40,9 @@ limitations under the License.
 //! polymorphism
 pub mod patterns;
 pub mod visit;
-use crate::bottom::{BottomExtension, BottomKind, BottomPattern, BottomTokenKind, BottomType};
+use crate::bottom::{BottomDialect, BottomExtension, BottomKind, BottomPattern, BottomTokenKind, BottomType};
 use crate::diagnostics::*;
-use crate::extensions::SystemRExtension;
+use crate::extensions::{SystemRDialect, SystemRExtension};
 use crate::platform_bindings::PlatformBindings;
 use crate::system_r_util::span::Span;
 use crate::terms::{ExtKind, ExtTerm, Literal, Primitive};
@@ -100,50 +100,29 @@ pub enum TypeErrorKind<TExtType: Default + Clone + fmt::Debug + PartialEq + Part
     UnboundVariable(usize),
 }
 
-pub type Context = ExtContext<BottomTokenKind, BottomKind, BottomPattern, BottomType>;
+pub type Context = ExtContext<BottomDialect>;
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct ExtContext<
-    TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-    TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-    TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq,
-> {
-    stack: VecDeque<Type<TExtType>>,
-    map: HashMap<String, Type<TExtType>>,
+pub struct ExtContext<TExtDialect: SystemRDialect + Clone + fmt::Debug + Default> {
+    stack: VecDeque<Type<TExtDialect::TExtType>>,
+    map: HashMap<String, Type<TExtDialect::TExtType>>,
     pub platform_bindings: PlatformBindings,
-    _token: TExtTokenKind,
-    _kind: TExtKind,
-    _pat: TExtPat,
+    _d: TExtDialect,
 }
 
-impl<
-        TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-        TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-        TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-        TExtType: Clone + Default + fmt::Debug + hash::Hash + PartialEq + PartialOrd + Eq,
-    > Default for ExtContext<TExtTokenKind, TExtKind, TExtPat, TExtType>
-{
+impl<TExtDialect: SystemRDialect + Clone + fmt::Debug + Default> Default for ExtContext<TExtDialect> {
     fn default() -> Self {
         Self {
             stack: Default::default(),
             map: Default::default(),
             platform_bindings: Default::default(),
-            _token: Default::default(),
-            _kind: Default::default(),
-            _pat: Default::default(),
+            _d: Default::default(),
         }
     }
 }
 
-impl<
-        TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-        TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-        TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-        TExtType: Clone + Default + fmt::Debug + hash::Hash + PartialEq + PartialOrd + Eq,
-    > ExtContext<TExtTokenKind, TExtKind, TExtPat, TExtType>
-{
-    fn push(&mut self, ty: Type<TExtType>) {
+impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug + Default> ExtContext<TExtDialect> {
+    fn push(&mut self, ty: Type<TExtDialect::TExtType>) {
         self.stack.push_front(ty);
     }
 
@@ -151,29 +130,29 @@ impl<
         self.stack.pop_front().expect("Context::pop() with empty type stack");
     }
 
-    fn find(&self, idx: usize) -> Option<&Type<TExtType>> {
+    fn find(&self, idx: usize) -> Option<&Type<TExtDialect::TExtType>> {
         self.stack.get(idx)
     }
 
-    pub fn alias(&mut self, alias: String, ty: Type<TExtType>) {
+    pub fn alias(&mut self, alias: String, ty: Type<TExtDialect::TExtType>) {
         self.map.insert(alias, ty);
     }
 
-    fn aliaser(&self) -> Aliaser<'_, TExtType> {
+    fn aliaser(&self) -> Aliaser<'_, TExtDialect::TExtType> {
         Aliaser { map: &self.map }
     }
 
-    pub fn de_alias(&mut self, term: &mut ExtTerm<TExtPat, TExtKind, TExtType>) {
+    pub fn de_alias(&mut self, term: &mut ExtTerm<TExtDialect>) {
         crate::visit::MutTermVisitor::visit(self, term)
     }
 }
 
 /// Helper function for extracting type from a variant
-pub fn variant_field<'vs, TExtType: Clone + Default + fmt::Debug + hash::Hash + PartialEq + PartialOrd + Eq>(
-    var: &'vs [Variant<TExtType>],
+pub fn variant_field<'vs, TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + Default + fmt::Debug>(
+    var: &'vs [Variant<TExtDialect::TExtType>],
     label: &str,
     span: Span,
-) -> Result<&'vs Type<TExtType>, Diagnostic> {
+) -> Result<&'vs Type<TExtDialect::TExtType>, Diagnostic> {
     for f in var {
         if label == f.label {
             return Ok(&f.ty);
@@ -190,23 +169,12 @@ pub fn variant_field<'vs, TExtType: Clone + Default + fmt::Debug + hash::Hash + 
     // })
 }
 
-impl<
-        TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-        TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-        TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-        TExtType: Clone + Default + fmt::Debug + hash::Hash + PartialEq + PartialOrd + Eq,
-    > ExtContext<TExtTokenKind, TExtKind, TExtPat, TExtType>
-{
-    pub fn type_check<
-        TExtState: Clone + Default + fmt::Debug,
-        TExt: Clone + fmt::Debug + Default + SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
-    >(
+impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug + Default> ExtContext<TExtDialect> {
+    pub fn type_check<TExt: Clone + fmt::Debug + Default + SystemRExtension<TExtDialect>>(
         &mut self,
-        term: &ExtTerm<TExtPat, TExtKind, TExtType>,
+        term: &ExtTerm<TExtDialect>,
         ext: &mut TExt,
-    ) -> Result<Type<TExtType>, Diagnostic> {
-        // dbg!(&self.stack);
-
+    ) -> Result<Type<TExtDialect::TExtType>, Diagnostic> {
         match term.kind() {
             ExtKind::Extended(_) => self.type_check_ext(term),
             ExtKind::Lit(Literal::Unit) => Ok(Type::Unit),
@@ -221,14 +189,14 @@ impl<
 
             ExtKind::Abs(ty, t2) => {
                 self.push(*ty.clone());
-                let ty2 = self.type_check(t2, ext)?;
+                let ty2 = self.type_check(&t2, ext)?;
                 // Shift::new(-1).visit(&mut ty2);
                 self.pop();
                 Ok(Type::Arrow(ty.clone(), Box::new(ty2)))
             }
             ExtKind::App(t1, t2) => {
-                let ty1 = self.type_check(t1, ext)?;
-                let ty2 = self.type_check(t2, ext)?;
+                let ty1 = self.type_check(&t1, ext)?;
+                let ty2 = self.type_check(&t2, ext)?;
                 match ty1.clone() {
                     Type::Arrow(ty11, ty12) => {
                         // does the invocation's type (ty2)
@@ -260,7 +228,7 @@ impl<
                 }
             }
             ExtKind::Fix(inner) => {
-                let ty = self.type_check(inner, ext)?;
+                let ty = self.type_check(&inner, ext)?;
                 match ty {
                     Type::Arrow(ty1, ty2) => {
                         if ty1 == ty2 {
@@ -283,7 +251,7 @@ impl<
                 Type::Variant(fields) => {
                     for f in fields {
                         if label == &f.label {
-                            let ty_ = self.type_check(tm, ext)?;
+                            let ty_ = self.type_check(&tm, ext)?;
                             if ty_ == f.ty {
                                 return Ok(*ty.clone());
                             } else {
@@ -313,7 +281,7 @@ impl<
                     format!("Cannot injection {} into non-variant type {:?}", label, ty),
                 )),
             },
-            ExtKind::Projection(term, idx) => match self.type_check(term, ext)? {
+            ExtKind::Projection(term, idx) => match self.type_check(&term, ext)? {
                 Type::Product(types) => match types.get(*idx) {
                     Some(ty) => Ok(ty.clone()),
                     None => Err(Diagnostic::error(
@@ -333,8 +301,8 @@ impl<
                     .collect::<Result<_, _>>()?,
             )),
             ExtKind::Let(pat, t1, t2) => {
-                let ty = self.type_check(t1, ext)?;
-                if !self.pattern_type_eq(pat, &ty, ext) {
+                let ty = self.type_check(&t1, ext)?;
+                if !self.pattern_type_eq(&pat, &ty, ext) {
                     return Err(Diagnostic::error(
                         t1.span,
                         "pattern does not match type of binder".to_string(),
@@ -343,12 +311,14 @@ impl<
 
                 let height = self.stack.len();
 
-                let binds = crate::patterns::PatTyStack::<TExtPat, TExtKind, TExtType>::collect(&ty, pat);
+                let binds = crate::patterns::PatTyStack::<
+                    TExtDialect,
+                >::collect(&ty, pat);
                 for b in binds.into_iter().rev() {
                     self.push(b.clone());
                 }
 
-                let y = self.type_check(t2, ext);
+                let y = self.type_check(&t2, ext);
 
                 while self.stack.len() > height {
                     self.pop();
@@ -362,7 +332,7 @@ impl<
                         *v += 1;
                     }
                 });
-                let ty2 = self.type_check(term, ext)?;
+                let ty2 = self.type_check(&term, ext)?;
                 self.stack.iter_mut().for_each(|ty| {
                     if let Type::Var(v) = ty {
                         *v -= 1;
@@ -372,7 +342,7 @@ impl<
             }
             ExtKind::TyApp(term, ty) => {
                 let mut ty = ty.clone();
-                let ty1 = self.type_check(term, ext)?;
+                let ty1 = self.type_check(&term, ext)?;
                 match ty1 {
                     Type::Universal(mut ty12) => {
                         Shift::new(1).visit(&mut ty);
@@ -388,11 +358,11 @@ impl<
             }
             // See src/types/patterns.rs for exhaustiveness and typechecking
             // of case expressions
-            ExtKind::Case(expr, arms) => self.type_check_case(expr, arms, ext),
+            ExtKind::Case(expr, arms) => self.type_check_case(&expr, &arms, ext),
 
             ExtKind::Unfold(rec, tm) => match rec.as_ref() {
                 Type::Rec(inner) => {
-                    let ty_ = self.type_check(tm, ext)?;
+                    let ty_ = self.type_check(&tm, ext)?;
                     if ty_ == *rec.clone() {
                         let s = subst(*rec.clone(), *inner.clone());
                         Ok(s)
@@ -411,7 +381,7 @@ impl<
 
             ExtKind::Fold(rec, tm) => match rec.as_ref() {
                 Type::Rec(inner) => {
-                    let ty_ = self.type_check(tm, ext)?;
+                    let ty_ = self.type_check(&tm, ext)?;
                     let s = subst(*rec.clone(), *inner.clone());
                     if ty_ == s {
                         Ok(*rec.clone())
@@ -430,7 +400,7 @@ impl<
             ExtKind::Pack(witness, evidence, signature) => {
                 if let Type::Existential(exists) = signature.as_ref() {
                     let sig_prime = subst(*witness.clone(), *exists.clone());
-                    let evidence_ty = self.type_check(evidence, ext)?;
+                    let evidence_ty = self.type_check(&evidence, ext)?;
                     if evidence_ty == sig_prime {
                         Ok(*signature.clone())
                     } else {
@@ -447,10 +417,10 @@ impl<
                 }
             }
             ExtKind::Unpack(package, body) => {
-                let p_ty = self.type_check(package, ext)?;
+                let p_ty = self.type_check(&package, ext)?;
                 if let Type::Existential(xst) = p_ty {
                     self.push(*xst);
-                    let body_ty = self.type_check(body, ext)?;
+                    let body_ty = self.type_check(&body, ext)?;
                     self.pop();
                     Ok(body_ty)
                 } else {
@@ -462,7 +432,10 @@ impl<
             }
         }
     }
-    pub fn type_check_ext(&mut self, t: &ExtTerm<TExtPat, TExtKind, TExtType>) -> Result<Type<TExtType>, Diagnostic> {
+    pub fn type_check_ext(
+        &mut self,
+        t: &ExtTerm<TExtDialect>,
+    ) -> Result<Type<TExtDialect::TExtType>, Diagnostic> {
         panic!("Context::type_check_ext unimplemented");
     }
 }
@@ -506,19 +479,25 @@ impl<'ctx, TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq 
     }
 }
 
-impl<
-        TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-        TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-        TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-        TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    > MutTermVisitor<TExtPat, TExtKind, TExtType> for ExtContext<TExtTokenKind, TExtKind, TExtPat, TExtType>
+impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug + Default>
+    MutTermVisitor<TExtDialect> for ExtContext<TExtDialect>
 {
-    fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type<TExtType>, term: &mut ExtTerm<TExtPat, TExtKind, TExtType>) {
+    fn visit_abs(
+        &mut self,
+        sp: &mut Span,
+        ty: &mut Type<TExtDialect::TExtType>,
+        term: &mut ExtTerm<TExtDialect>,
+    ) {
         self.aliaser().visit(ty);
         self.visit(term);
     }
 
-    fn visit_tyapp(&mut self, sp: &mut Span, term: &mut ExtTerm<TExtPat, TExtKind, TExtType>, ty: &mut Type<TExtType>) {
+    fn visit_tyapp(
+        &mut self,
+        sp: &mut Span,
+        term: &mut ExtTerm<TExtDialect>,
+        ty: &mut Type<TExtDialect::TExtType>,
+    ) {
         self.aliaser().visit(ty);
         self.visit(term);
     }
@@ -527,19 +506,29 @@ impl<
         &mut self,
         sp: &mut Span,
         label: &mut String,
-        term: &mut ExtTerm<TExtPat, TExtKind, TExtType>,
-        ty: &mut Type<TExtType>,
+        term: &mut ExtTerm<TExtDialect>,
+        ty: &mut Type<TExtDialect::TExtType>,
     ) {
         self.aliaser().visit(ty);
         self.visit(term);
     }
 
-    fn visit_fold(&mut self, sp: &mut Span, ty: &mut Type<TExtType>, tm: &mut ExtTerm<TExtPat, TExtKind, TExtType>) {
+    fn visit_fold(
+        &mut self,
+        sp: &mut Span,
+        ty: &mut Type<TExtDialect::TExtType>,
+        tm: &mut ExtTerm<TExtDialect>,
+    ) {
         self.aliaser().visit(ty);
         self.visit(tm);
     }
 
-    fn visit_unfold(&mut self, sp: &mut Span, ty: &mut Type<TExtType>, tm: &mut ExtTerm<TExtPat, TExtKind, TExtType>) {
+    fn visit_unfold(
+        &mut self,
+        sp: &mut Span,
+        ty: &mut Type<TExtDialect::TExtType>,
+        tm: &mut ExtTerm<TExtDialect>,
+    ) {
         self.aliaser().visit(ty);
         self.visit(tm);
     }

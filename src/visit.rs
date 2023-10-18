@@ -40,7 +40,8 @@ limitations under the License.
 use core::fmt;
 use std::hash;
 
-use crate::patterns::ExtPattern;
+use crate::extensions::SystemRDialect;
+use crate::patterns::Pattern;
 use crate::system_r_util::span::Span;
 use crate::terms::{Arm, ExtKind, ExtTerm, Literal, Primitive};
 use crate::types::{Type, Variant};
@@ -99,24 +100,22 @@ pub trait MutTypeVisitor<TExtType: Clone + Default + fmt::Debug + PartialEq + Pa
 }
 
 pub trait MutTermVisitor<
-    TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-    TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-    TExtType: Clone + Default + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
+    TExtDialect: SystemRDialect + Clone + Default + fmt::Debug + PartialEq + PartialOrd,
 >: Sized
 {
     fn visit_lit(&mut self, sp: &mut Span, lit: &mut Literal) {}
     fn visit_var(&mut self, sp: &mut Span, var: &mut usize) {}
     fn visit_pb(&mut self, sp: &mut Span, idx: &mut usize) {}
 
-    fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type<TExtType>, term: &mut ExtTerm<TExtPat, TExtKind, TExtType>) {
+    fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect::TExtType>, term: &mut ExtTerm<TExtDialect>) {
         self.visit(term);
     }
 
     fn visit_app(
         &mut self,
         sp: &mut Span,
-        t1: &mut ExtTerm<TExtPat, TExtKind, TExtType>,
-        t2: &mut ExtTerm<TExtPat, TExtKind, TExtType>,
+        t1: &mut ExtTerm<TExtDialect>,
+        t2: &mut ExtTerm<TExtDialect>,
     ) {
         self.visit(t1);
         self.visit(t2);
@@ -125,19 +124,19 @@ pub trait MutTermVisitor<
     fn visit_let(
         &mut self,
         sp: &mut Span,
-        pat: &mut ExtPattern<TExtPat>,
-        t1: &mut ExtTerm<TExtPat, TExtKind, TExtType>,
-        t2: &mut ExtTerm<TExtPat, TExtKind, TExtType>,
+        pat: &mut Pattern<TExtDialect>,
+        t1: &mut ExtTerm<TExtDialect>,
+        t2: &mut ExtTerm<TExtDialect>,
     ) {
         self.visit(t1);
         self.visit(t2);
     }
 
-    fn visit_tyabs(&mut self, sp: &mut Span, term: &mut ExtTerm<TExtPat, TExtKind, TExtType>) {
+    fn visit_tyabs(&mut self, sp: &mut Span, term: &mut ExtTerm<TExtDialect>) {
         self.visit(term);
     }
 
-    fn visit_tyapp(&mut self, sp: &mut Span, term: &mut ExtTerm<TExtPat, TExtKind, TExtType>, ty: &mut Type<TExtType>) {
+    fn visit_tyapp(&mut self, sp: &mut Span, term: &mut ExtTerm<TExtDialect>, ty: &mut Type<TExtDialect::TExtType>) {
         self.visit(term);
     }
 
@@ -146,8 +145,8 @@ pub trait MutTermVisitor<
         &mut self,
         sp: &mut Span,
         label: &mut String,
-        term: &mut ExtTerm<TExtPat, TExtKind, TExtType>,
-        ty: &mut Type<TExtType>,
+        term: &mut ExtTerm<TExtDialect>,
+        ty: &mut Type<TExtDialect::TExtType>,
     ) {
         self.visit(term);
     }
@@ -155,8 +154,8 @@ pub trait MutTermVisitor<
     fn visit_case(
         &mut self,
         sp: &mut Span,
-        term: &mut ExtTerm<TExtPat, TExtKind, TExtType>,
-        arms: &mut Vec<Arm<TExtPat, TExtKind, TExtType>>,
+        term: &mut ExtTerm<TExtDialect>,
+        arms: &mut Vec<Arm<TExtDialect>>,
     ) {
         self.visit(term);
         for arm in arms {
@@ -164,24 +163,24 @@ pub trait MutTermVisitor<
         }
     }
 
-    fn visit_product(&mut self, sp: &mut Span, product: &mut Vec<ExtTerm<TExtPat, TExtKind, TExtType>>) {
+    fn visit_product(&mut self, sp: &mut Span, product: &mut Vec<ExtTerm<TExtDialect>>) {
         for t in product {
             self.visit(t);
         }
     }
 
-    fn visit_projection(&mut self, sp: &mut Span, term: &mut ExtTerm<TExtPat, TExtKind, TExtType>, index: &mut usize) {
+    fn visit_projection(&mut self, sp: &mut Span, term: &mut ExtTerm<TExtDialect>, index: &mut usize) {
         self.visit(term);
     }
 
-    fn visit_fold(&mut self, sp: &mut Span, ty: &mut Type<TExtType>, term: &mut ExtTerm<TExtPat, TExtKind, TExtType>) {
+    fn visit_fold(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect::TExtType>, term: &mut ExtTerm<TExtDialect>) {
         self.visit(term);
     }
     fn visit_unfold(
         &mut self,
         sp: &mut Span,
-        ty: &mut Type<TExtType>,
-        term: &mut ExtTerm<TExtPat, TExtKind, TExtType>,
+        ty: &mut Type<TExtDialect::TExtType>,
+        term: &mut ExtTerm<TExtDialect>,
     ) {
         self.visit(term);
     }
@@ -189,9 +188,9 @@ pub trait MutTermVisitor<
     fn visit_pack(
         &mut self,
         sp: &mut Span,
-        witness: &mut Type<TExtType>,
-        evidence: &mut ExtTerm<TExtPat, TExtKind, TExtType>,
-        signature: &mut Type<TExtType>,
+        witness: &mut Type<TExtDialect::TExtType>,
+        evidence: &mut ExtTerm<TExtDialect>,
+        signature: &mut Type<TExtDialect::TExtType>,
     ) {
         self.visit(evidence);
     }
@@ -199,22 +198,22 @@ pub trait MutTermVisitor<
     fn visit_unpack(
         &mut self,
         sp: &mut Span,
-        package: &mut ExtTerm<TExtPat, TExtKind, TExtType>,
-        term: &mut ExtTerm<TExtPat, TExtKind, TExtType>,
+        package: &mut ExtTerm<TExtDialect>,
+        term: &mut ExtTerm<TExtDialect>,
     ) {
         self.visit(package);
         self.visit(term);
     }
 
-    fn visit(&mut self, term: &mut ExtTerm<TExtPat, TExtKind, TExtType>) {
+    fn visit(&mut self, term: &mut ExtTerm<TExtDialect>) {
         self.walk(term);
     }
 
-    fn visit_ext(&mut self, sp: &mut Span, k: &mut TExtKind) {
+    fn visit_ext(&mut self, sp: &mut Span, k: &mut TExtDialect::TExtKind) {
         panic!("visit_ext unimpl; shouldn't be left this way lol..")
     }
 
-    fn walk(&mut self, term: &mut ExtTerm<TExtPat, TExtKind, TExtType>) {
+    fn walk(&mut self, term: &mut ExtTerm<TExtDialect>) {
         let sp = &mut term.span;
         match &mut term.kind {
             ExtKind::Extended(k) => self.visit_ext(sp, k),
@@ -242,31 +241,30 @@ pub trait MutTermVisitor<
 }
 
 pub trait PatternVisitor<
-    TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-    TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+    TExtDialect: SystemRDialect + Clone + Default + fmt::Debug + PartialEq + PartialOrd,
 >: Sized
 {
-    fn visit_ext(&mut self, ext: &TExtPat) {}
+    fn visit_ext(&mut self, ext: &TExtDialect::TExtPat) {}
     fn visit_literal(&mut self, lit: &Literal) {}
     fn visit_variable(&mut self, var: &str) {}
-    fn visit_product(&mut self, pats: &Vec<ExtPattern<TExtPat>>) {
+    fn visit_product(&mut self, pats: &Vec<Pattern<TExtDialect>>) {
         for p in pats {
             self.visit_pattern(p);
         }
     }
 
-    fn visit_constructor(&mut self, label: &str, pat: &ExtPattern<TExtPat>) {
+    fn visit_constructor(&mut self, label: &str, pat: &Pattern<TExtDialect>) {
         self.visit_pattern(pat);
     }
 
-    fn visit_pattern(&mut self, pattern: &ExtPattern<TExtPat>) {
+    fn visit_pattern(&mut self, pattern: &Pattern<TExtDialect>) {
         match pattern {
-            ExtPattern::Any => {}
-            ExtPattern::Constructor(label, pat) => self.visit_constructor(label, pat),
-            ExtPattern::Product(pat) => self.visit_product(pat),
-            ExtPattern::Literal(lit) => self.visit_literal(lit),
-            ExtPattern::Variable(var) => self.visit_variable(var),
-            ExtPattern::Extended(v) => panic!("FIXME impl SystemRExtension check in this arm"),
+            Pattern::Any => {}
+            Pattern::Constructor(label, pat) => self.visit_constructor(label, pat),
+            Pattern::Product(pat) => self.visit_product(pat),
+            Pattern::Literal(lit) => self.visit_literal(lit),
+            Pattern::Variable(var) => self.visit_variable(var),
+            Pattern::Extended(v) => panic!("FIXME impl SystemRExtension check in this arm"),
         }
     }
 }

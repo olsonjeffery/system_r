@@ -14,12 +14,23 @@ limitations under the License.
 */
 use crate::{
     diagnostics::Diagnostic,
-    extensions::SystemRExtension,
-    patterns::ExtPattern,
+    extensions::{SystemRDialect, SystemRExtension},
+    patterns::Pattern,
     syntax::{error::Error, lexer::ExtLexer /* lexer2::extlexer2 */},
     system_r_util::span::Span,
     terms::{ExtKind, ExtTerm},
 };
+
+#[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
+pub struct BottomDialect;
+
+impl SystemRDialect for BottomDialect {
+    type TExtDialectState = BottomState;
+    type TExtKind = BottomKind;
+    type TExtPat = BottomPattern;
+    type TExtTokenKind = BottomTokenKind;
+    type TExtType = BottomType;
+}
 
 #[derive(Default, Debug, Clone)]
 pub struct BottomState;
@@ -48,10 +59,10 @@ pub enum BottomType {
     Placeholder,
 }
 
-#[derive(Copy, Clone, Default, Debug)]
+#[derive(Copy, Clone, Default, Debug, PartialEq, PartialOrd)]
 pub struct BottomExtension;
 
-impl SystemRExtension<BottomTokenKind, BottomKind, BottomPattern, BottomType, BottomState> for BottomExtension {
+impl SystemRExtension<BottomDialect> for BottomExtension {
     fn lex_is_ext_single(&self, x: char) -> bool {
         false
     }
@@ -78,8 +89,8 @@ impl SystemRExtension<BottomTokenKind, BottomKind, BottomPattern, BottomType, Bo
 
     fn pat_add_ext_pattern<'a>(
         &'a self,
-        parent: &crate::types::patterns::Matrix<'a, BottomPattern, BottomType>,
-        ext_pattern: &ExtPattern<BottomPattern>,
+        parent: &crate::types::patterns::Matrix<'a, BottomDialect>,
+        ext_pattern: &Pattern<BottomDialect>,
     ) -> bool {
         false
     }
@@ -87,7 +98,7 @@ impl SystemRExtension<BottomTokenKind, BottomKind, BottomPattern, BottomType, Bo
     fn pat_ext_matches(
         &self,
         pat: &BottomPattern,
-        term: &crate::terms::ExtTerm<BottomPattern, BottomKind, BottomType>,
+        term: &crate::terms::ExtTerm<BottomDialect>,
     ) -> bool {
         false
     }
@@ -102,52 +113,25 @@ impl SystemRExtension<BottomTokenKind, BottomKind, BottomPattern, BottomType, Bo
 
     fn parser_ext_parse<'s>(
         &mut self,
-        ps: &mut crate::syntax::parser::ParserState<
-            BottomTokenKind,
-            BottomKind,
-            BottomPattern,
-            BottomType,
-            BottomState,
-        >,
-    ) -> Result<ExtTerm<BottomPattern, BottomKind, BottomType>, Error<BottomTokenKind>> {
+        ps: &mut crate::syntax::parser::ParserState<BottomDialect>,
+    ) -> Result<ExtTerm<BottomDialect>, Error<BottomTokenKind>> {
         panic!("shouldn't be called");
     }
 
     fn parser_ext_atom<'s>(
         &mut self,
-        ps: &mut crate::syntax::parser::ParserState<
-            BottomTokenKind,
-            BottomKind,
-            BottomPattern,
-            BottomType,
-            BottomState,
-        >,
-    ) -> Result<ExtTerm<BottomPattern, BottomKind, BottomType>, Error<BottomTokenKind>> {
+        ps: &mut crate::syntax::parser::ParserState<BottomDialect>,
+    ) -> Result<ExtTerm<BottomDialect>, Error<BottomTokenKind>> {
         panic!("shouldn't be called");
     }
 
-    fn parser_ty_bump_if(
-        &mut self,
-        ps: &mut crate::syntax::parser::ParserState<
-            BottomTokenKind,
-            BottomKind,
-            BottomPattern,
-            BottomType,
-            BottomState,
-        >,
-    ) -> bool {
+    fn parser_ty_bump_if(&mut self, ps: &mut crate::syntax::parser::ParserState<BottomDialect>) -> bool {
         false
     }
 
     fn parser_ty(
         &mut self,
-        ps: &mut crate::syntax::parser::ParserState<
-            BottomTokenKind,
-            BottomKind,
-            BottomPattern,
-            BottomType,
-            BottomState,
-        >,
+        ps: &mut crate::syntax::parser::ParserState<BottomDialect>,
     ) -> Result<crate::types::Type<BottomType>, Error<BottomTokenKind>> {
         panic!("calling parser_ty on BottomExtension; shouldn't happen");
     }

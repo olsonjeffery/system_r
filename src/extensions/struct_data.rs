@@ -15,13 +15,13 @@ limitations under the License.
 use std::{cell::RefCell, collections::HashMap, ops::Range, rc::Rc};
 
 use crate::{
-    bottom::{BottomExtension, BottomKind, BottomPattern, BottomTokenKind, BottomType},
+    bottom::{BottomExtension, BottomKind, BottomPattern, BottomTokenKind, BottomType, BottomDialect},
     diagnostics::Diagnostic,
     patterns::PatVarStack,
     platform_bindings::PlatformBindings,
     syntax::{
         error::Error,
-        parser,
+        parser::{self, BottomParserState},
         parser::{ErrorKind, ParserState},
         ExtTokenKind,
     },
@@ -30,19 +30,19 @@ use crate::{
     visit::MutTypeVisitor,
 };
 
-use super::{SystemRTranslator, SystemRExtension};
+use super::{SystemRDialect, SystemRExtension, SystemRTranslator};
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct StructDataExtension;
 
-pub type StructDataContext = ExtContext<StructDataTokenKind, StructDataKind, StructDataPattern, StructDataType>;
+pub type StructDataContext = ExtContext<TypeAliasDialect>;
 
 pub fn new<'s>(
     platform_bindings: &'s PlatformBindings,
     input: &'s str,
     ty_let: Rc<RefCell<StructDataExtension>>,
-) -> ParserState<'s, StructDataTokenKind, StructDataKind, StructDataPattern, StructDataType, StructDataState> {
-    parser::ext_new(platform_bindings, input, &mut StructDataExtension)
+) -> ParserState<'s, TypeAliasDialect> {
+    parser::ext_new::<TypeAliasDialect, StructDataExtension>(platform_bindings, input, &mut StructDataExtension)
 }
 
 /// Extension 1: StructData
@@ -67,8 +67,8 @@ pub enum StructDataKind {
     /// (in let-polymorphism style)
     StructDataExpr(
         String,
-        Box<ExtTerm<StructDataPattern, Self, StructDataType>>,
-        Box<ExtTerm<StructDataPattern, Self, StructDataType>>,
+        Box<ExtTerm<TypeAliasDialect>>,
+        Box<ExtTerm<TypeAliasDialect>>,
     ),
     Below(BottomKind),
 }
@@ -93,11 +93,20 @@ pub struct StructDataState {
     type_map: HashMap<String, (usize, Type<StructDataType>)>,
 }
 
+#[derive(Clone, Debug, Default, PartialEq, PartialOrd)]
+pub struct TypeAliasDialect;
+
+impl SystemRDialect for TypeAliasDialect {
+    type TExtDialectState = StructDataState;
+    type TExtKind = StructDataKind;
+    type TExtPat = StructDataPattern;
+    type TExtTokenKind = StructDataTokenKind;
+    type TExtType = StructDataType;
+}
+
 pub const KEYWORD_TYPE: &str = "type";
 
-impl SystemRExtension<StructDataTokenKind, StructDataKind, StructDataPattern, StructDataType, StructDataState>
-    for StructDataExtension
-{
+impl SystemRExtension<TypeAliasDialect> for StructDataExtension {
     fn lex_is_ext_single(&self, x: char) -> bool {
         x == '$'
     }
@@ -127,8 +136,8 @@ impl SystemRExtension<StructDataTokenKind, StructDataKind, StructDataPattern, St
 
     fn pat_add_ext_pattern<'a>(
         &'a self,
-        parent: &crate::types::patterns::Matrix<'a, StructDataPattern, StructDataType>,
-        ext_pattern: &crate::patterns::ExtPattern<StructDataPattern>,
+        parent: &crate::types::patterns::Matrix<'a, TypeAliasDialect>,
+        ext_pattern: &crate::patterns::Pattern<TypeAliasDialect>,
     ) -> bool {
         false
     }
@@ -136,7 +145,7 @@ impl SystemRExtension<StructDataTokenKind, StructDataKind, StructDataPattern, St
     fn pat_ext_matches(
         &self,
         pat: &StructDataPattern,
-        term: &crate::terms::ExtTerm<StructDataPattern, StructDataKind, StructDataType>,
+        term: &crate::terms::ExtTerm<TypeAliasDialect>,
     ) -> bool {
         false
     }
@@ -147,19 +156,12 @@ impl SystemRExtension<StructDataTokenKind, StructDataKind, StructDataPattern, St
 
     fn parser_ext_parse<'s>(
         &mut self,
-        ps: &mut ParserState<
-            's,
-            StructDataTokenKind,
-            StructDataKind,
-            StructDataPattern,
-            StructDataType,
-            StructDataState,
-        >,
-    ) -> Result<ExtTerm<StructDataPattern, StructDataKind, StructDataType>, Error<StructDataTokenKind>> {
+        ps: &mut ParserState<TypeAliasDialect>,
+    ) -> Result<ExtTerm<TypeAliasDialect>, Error<StructDataTokenKind>> {
         let sp = ps.span;
         parser::expect(ps, self, ExtTokenKind::Extended(StructDataTokenKind::StructData))?;
 
-        let struct_ident = parser::once(ps, |p| parser::atom(p, self), "missing struct identifier $Binding")?;
+        let struct_ident = parser::once(ps,|p| parser::atom(p, self), "missing struct identifier $Binding")?;
         let struct_ident = match struct_ident.kind {
             ExtKind::Extended(StructDataKind::StructIdent(s)) => s,
             e => {
@@ -197,15 +199,8 @@ impl SystemRExtension<StructDataTokenKind, StructDataKind, StructDataPattern, St
 
     fn parser_ext_atom<'s>(
         &mut self,
-        ps: &mut ParserState<
-            's,
-            StructDataTokenKind,
-            StructDataKind,
-            StructDataPattern,
-            StructDataType,
-            StructDataState,
-        >,
-    ) -> Result<ExtTerm<StructDataPattern, StructDataKind, StructDataType>, Error<StructDataTokenKind>> {
+        ps: &mut ParserState<'s, TypeAliasDialect>,
+    ) -> Result<ExtTerm<TypeAliasDialect>, Error<StructDataTokenKind>> {
         let name_tok = ps.token.clone();
         let name_val = match name_tok.kind.clone() {
             ExtTokenKind::Extended(n) => match n {
@@ -233,10 +228,7 @@ impl SystemRExtension<StructDataTokenKind, StructDataKind, StructDataPattern, St
         })
     }
 
-    fn parser_ty_bump_if(
-        &mut self,
-        ps: &mut ParserState<StructDataTokenKind, StructDataKind, StructDataPattern, StructDataType, StructDataState>,
-    ) -> bool {
+    fn parser_ty_bump_if(&mut self, ps: &mut ParserState<TypeAliasDialect>) -> bool {
         match &ps.token.kind {
             ExtTokenKind::Extended(StructDataTokenKind::TypeBindingVar(_)) => true,
             _ => false,
@@ -245,7 +237,7 @@ impl SystemRExtension<StructDataTokenKind, StructDataKind, StructDataPattern, St
 
     fn parser_ty(
         &mut self,
-        ps: &mut ParserState<StructDataTokenKind, StructDataKind, StructDataPattern, StructDataType, StructDataState>,
+        ps: &mut ParserState<TypeAliasDialect>,
     ) -> Result<Type<StructDataType>, Error<StructDataTokenKind>> {
         let binding = ps.token.kind.clone();
 
@@ -270,14 +262,14 @@ impl SystemRExtension<StructDataTokenKind, StructDataKind, StructDataPattern, St
 }
 
 pub fn has_holed_type_named(
-    ps: &mut ParserState<StructDataTokenKind, StructDataKind, StructDataPattern, StructDataType, StructDataState>,
+    ps: &mut ParserState<TypeAliasDialect>,
     key: &str,
 ) -> Result<bool, Error<StructDataTokenKind>> {
     Ok(get_holed_type_from(ps, key).is_ok())
 }
 
 pub fn get_holed_type_from(
-    ps: &mut ParserState<StructDataTokenKind, StructDataKind, StructDataPattern, StructDataType, StructDataState>,
+    ps: &mut ParserState<TypeAliasDialect>,
     key: &str,
 ) -> Result<(usize, Type<StructDataType>), Error<StructDataTokenKind>> {
     match ps.ext_state.type_map.get(key) {
@@ -291,7 +283,7 @@ pub fn get_holed_type_from(
 }
 
 pub fn set_holed_type_for(
-    ps: &mut ParserState<StructDataTokenKind, StructDataKind, StructDataPattern, StructDataType, StructDataState>,
+    ps: &mut ParserState<TypeAliasDialect>,
     key: &str,
     ty: (usize, Type<StructDataType>),
 ) -> Result<(), Error<StructDataTokenKind>> {
@@ -309,7 +301,7 @@ pub fn set_holed_type_for(
 }
 
 pub fn reify_type<'s>(
-    ps: &mut ParserState<StructDataTokenKind, StructDataKind, StructDataPattern, StructDataType, StructDataState>,
+    ps: &mut ParserState<TypeAliasDialect>,
     ext: &mut StructDataExtension,
     type_decl_key: &str,
     applied_types: &Vec<Type<StructDataType>>,
@@ -342,7 +334,7 @@ pub fn reify_type<'s>(
 }
 
 pub fn pulls_types_from_tyapp(
-    ps: &mut ParserState<StructDataTokenKind, StructDataKind, StructDataPattern, StructDataType, StructDataState>,
+    ps: &mut ParserState<TypeAliasDialect>,
     ext: &mut StructDataExtension,
 ) -> Result<Vec<Type<StructDataType>>, Error<StructDataTokenKind>> {
     parser::expect(ps, ext, ExtTokenKind::LSquare)?;
@@ -372,7 +364,7 @@ pub fn pulls_types_from_tyapp(
 }
 
 pub fn extract_tyabs_for_type_shape<'s>(
-    ps: &mut ParserState<'s, StructDataTokenKind, StructDataKind, StructDataPattern, StructDataType, StructDataState>,
+    ps: &mut ParserState<'s, TypeAliasDialect>,
     ext: &mut StructDataExtension,
 ) -> Result<usize, Error<StructDataTokenKind>> {
     parser::expect(ps, ext, ExtTokenKind::Lambda)?;
@@ -383,18 +375,14 @@ pub fn extract_tyabs_for_type_shape<'s>(
 }
 
 pub fn get_holed_type_from_decl<'s>(
-    ps: &mut ParserState<'s, StructDataTokenKind, StructDataKind, StructDataPattern, StructDataType, StructDataState>,
+    ps: &mut ParserState<'s, TypeAliasDialect>,
     ext: &mut StructDataExtension,
 ) -> Result<(usize, Type<StructDataType>), Error<StructDataTokenKind>> {
     let sp = ps.span;
     let push_count = extract_tyabs_for_type_shape(ps, ext)?;
 
     // type def
-    let type_shape = parser::once(
-        ps,
-        |p| parser::ty_atom(p, &mut StructDataExtension),
-        "abstraction body required",
-    )?;
+    let type_shape = parser::once(ps, |p| parser::ty_atom(p, &mut StructDataExtension), "abstraction body required")?;
 
     // pop off the tyabs var, since they only apply for the purpose of defining
     // "type holes" in the type def
@@ -405,14 +393,16 @@ pub fn get_holed_type_from_decl<'s>(
     Ok((push_count, type_shape))
 }
 
-impl SystemRTranslator<StructDataPattern, StructDataKind, StructDataType, StructDataState, BottomPattern, BottomKind, BottomType>
-    for StructDataExtension
+impl
+    SystemRTranslator<
+        TypeAliasDialect, BottomDialect
+    > for StructDataExtension
 {
     fn resolve(
         &self,
         st: &mut StructDataState,
-        tm: ExtTerm<StructDataPattern, StructDataKind, StructDataType>,
-    ) -> Result<ExtTerm<BottomPattern, BottomKind, BottomType>, Diagnostic> {
+        tm: ExtTerm<TypeAliasDialect>,
+    ) -> Result<ExtTerm<BottomDialect>, Diagnostic> {
         Err(Diagnostic::error(tm.span, format!("BottomExtension::resolve() unimpl")))
     }
 }

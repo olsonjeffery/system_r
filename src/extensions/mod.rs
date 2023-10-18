@@ -17,7 +17,7 @@ use std::hash;
 
 use crate::{
     diagnostics::Diagnostic,
-    patterns::ExtPattern,
+    patterns::Pattern,
     syntax::{
         error::Error,
         lexer::{ExtLexer, Lexer},
@@ -28,63 +28,62 @@ use crate::{
     types::Type,
 };
 
+use self::struct_data::TypeAliasDialect;
+
 pub mod struct_data;
 
-pub trait SystemRExtension<
-    TExtTokenKind: fmt::Debug + PartialEq + PartialOrd + Default + Clone,
-    TExtKind: fmt::Debug + PartialEq + PartialOrd + Default + Clone,
-    TExtPat: fmt::Debug + PartialEq + PartialOrd + Default + Clone,
-    TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExtState: fmt::Debug + Default + Clone,
->
-{
+pub trait SystemRDialect {
+    type TExtTokenKind: fmt::Debug + PartialEq + PartialOrd + Default + Clone;
+    type TExtKind: fmt::Debug + PartialEq + PartialOrd + Default + Clone;
+    type TExtPat: fmt::Debug + PartialEq + PartialOrd + Default + Clone;
+    type TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash;
+    type TExtDialectState: fmt::Debug + Default + Clone;
+}
+
+pub trait SystemRExtension<TExtDialect: SystemRDialect + Default + fmt::Debug + Clone + PartialEq + PartialOrd> {
     fn lex_is_ext_single(&self, x: char) -> bool;
     fn lex_is_extended_single_pred(&self, x: char) -> bool;
     fn lex_is_ext_keyword(&self, data: &str) -> bool;
-    fn lex_extended_single(&mut self, data: &str) -> TExtTokenKind;
-    fn lex_ext_keyword(&mut self, data: &str) -> TExtTokenKind;
-    fn parser_has_ext_parse(&self, tk: &TExtTokenKind) -> bool;
+    fn lex_extended_single(&mut self, data: &str) -> TExtDialect::TExtTokenKind;
+    fn lex_ext_keyword(&mut self, data: &str) -> TExtDialect::TExtTokenKind;
+    fn parser_has_ext_parse(&self, tk: &TExtDialect::TExtTokenKind) -> bool;
     fn parser_ext_parse<'s>(
         &mut self,
-        ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
-    ) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>>;
-    fn parser_has_ext_atom(&self, tk: &TExtTokenKind) -> bool;
+        ps: &mut ParserState<TExtDialect>,
+    ) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>>;
+    fn parser_has_ext_atom(&self, tk: &TExtDialect::TExtTokenKind) -> bool;
     fn parser_ext_atom<'s>(
         &mut self,
-        ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
-    ) -> Result<ExtTerm<TExtPat, TExtKind, TExtType>, Error<TExtTokenKind>>;
-    fn pat_ext_pattern_type_eq(&self, pat: &TExtPat, ty: &Type<TExtType>) -> bool;
+        ps: &mut ParserState<TExtDialect>,
+    ) -> Result<ExtTerm<TExtDialect>, Error<TExtDialect::TExtTokenKind>>;
+    fn pat_ext_pattern_type_eq(&self, pat: &TExtDialect::TExtPat, ty: &Type<TExtDialect::TExtType>) -> bool;
     fn pat_add_ext_pattern<'a>(
         &'a self,
-        parent: &crate::types::patterns::Matrix<'a, TExtPat, TExtType>,
-        ext_pattern: &ExtPattern<TExtPat>,
+        parent: &crate::types::patterns::Matrix<'a, TExtDialect>,
+        ext_pattern: &Pattern<TExtDialect>,
     ) -> bool;
-    fn pat_ext_matches(&self, pat: &TExtPat, term: &ExtTerm<TExtPat, TExtKind, TExtType>) -> bool;
+    fn pat_ext_matches(
+        &self,
+        pat: &TExtDialect::TExtPat,
+        term: &ExtTerm<TExtDialect>,
+    ) -> bool;
     fn parser_ty(
         &mut self,
-        ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
-    ) -> Result<Type<TExtType>, Error<TExtTokenKind>>;
-    fn parser_ty_bump_if(
-        &mut self,
-        ps: &mut ParserState<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
-    ) -> bool;
+        ps: &mut ParserState<TExtDialect>,
+    ) -> Result<Type<TExtDialect::TExtType>, Error<TExtDialect::TExtTokenKind>>;
+    fn parser_ty_bump_if(&mut self, ps: &mut ParserState<TExtDialect>) -> bool;
 }
 
 pub trait SystemRTranslator<
-    InExtPat: fmt::Debug + PartialEq + PartialOrd + Default + Clone,
-    InExtKind: fmt::Debug + PartialEq + PartialOrd + Default + Clone,
-    InExtType: fmt::Debug + PartialEq + PartialOrd + Default + Clone + Eq + hash::Hash,
-    InExtState: fmt::Debug +  Default + Clone,
-    OutExtPat: fmt::Debug + PartialEq + PartialOrd + Default + Clone,
-    OutExtKind: fmt::Debug + PartialEq + PartialOrd + Default + Clone,
-    OutExtType: fmt::Debug + PartialEq + PartialOrd + Default + Clone + Eq + hash::Hash,
+    InDialect: SystemRDialect + Clone + PartialEq + PartialOrd + fmt::Debug + Default,
+    OutDialect: SystemRDialect + Clone + PartialEq + PartialOrd + fmt::Debug + Default,
 >
 {
     fn resolve(
         &self,
-        st: &mut InExtState,
-        tm: ExtTerm<InExtPat, InExtKind, InExtType>,
-    ) -> Result<ExtTerm<OutExtPat, OutExtKind, OutExtType>, Diagnostic>;
+        st: &mut InDialect::TExtDialectState,
+        tm: ExtTerm<InDialect>,
+    ) -> Result<ExtTerm<OutDialect>, Diagnostic>;
 }
 
 // FIXME a set of translator visitor structs, with ::new(), to facilitate

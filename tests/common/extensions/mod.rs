@@ -1,11 +1,11 @@
 use system_r::{
     bottom::{BottomKind, BottomPattern, BottomState, BottomTokenKind, BottomType},
     extensions::struct_data::{
-        StructDataContext, StructDataKind, StructDataPattern, StructDataState, StructDataTokenKind, StructDataType,
+        StructDataContext, StructDataKind, StructDataPattern, StructDataState, StructDataTokenKind, StructDataType, TypeAliasDialect,
     },
     platform_bindings::PlatformBindings,
     syntax::parser::ParserState,
-    terms::{ExtKind, ExtTerm, Kind, Term},
+    terms::{ExtKind, ExtTerm, Term},
     types::{Context, Type},
 };
 
@@ -41,8 +41,8 @@ pub enum OmniKind {
     #[default]
     Empty,
     #[allow(dead_code)]
-    Bottom(Kind),
-    StructData(ExtKind<StructDataPattern, StructDataKind, StructDataType>),
+    Bottom(BottomKind),
+    StructData(ExtKind<TypeAliasDialect>),
 }
 
 #[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
@@ -51,7 +51,7 @@ pub enum OmniTerm {
     Empty,
     #[allow(dead_code)]
     Bottom(Term),
-    StructData(ExtTerm<StructDataPattern, StructDataKind, StructDataType>),
+    StructData(ExtTerm<TypeAliasDialect>),
 }
 
 #[derive(Clone, Default, Debug, PartialEq, PartialOrd, Eq, Hash)]
@@ -59,5 +59,5 @@ pub enum OmniType {
     #[default]
     Empty,
     Bottom(Type<BottomType>),
-    StructData(Type<StructDataType>)
+    StructData(Type<StructDataType>),
 }

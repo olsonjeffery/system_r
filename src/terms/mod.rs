@@ -37,22 +37,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 //! Representation lambda calculus terms
-use crate::bottom::{BottomKind, BottomPattern, BottomType};
-use crate::patterns::ExtPattern;
+use crate::bottom::{BottomKind, BottomPattern, BottomType, BottomDialect};
+use crate::extensions::SystemRDialect;
+use crate::patterns::Pattern;
 use crate::system_r_util::span::Span;
 use crate::types::Type;
 use std::{fmt, hash};
 pub mod visit;
 
-pub type Term = ExtTerm<BottomPattern, BottomKind, BottomType>;
+pub type Term = ExtTerm<BottomDialect>;
 #[derive(Clone, Default, PartialEq, PartialOrd)]
 pub struct ExtTerm<
-    TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtKind: Clone + fmt::Debug + PartialEq + PartialOrd + Default,
-    TExtType: fmt::Debug + PartialEq + PartialOrd + Default + Clone + Eq + hash::Hash,
+    TExtDialect: SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone,
 > {
     pub span: Span,
-    pub kind: ExtKind<TExtPat, TExtKind, TExtType>,
+    pub kind: ExtKind<TExtDialect>,
 }
 
 /// Primitive functions supported by this implementation
@@ -63,14 +62,10 @@ pub enum Primitive {
     IsZero,
 }
 
-pub type Kind = ExtKind<BottomPattern, BottomKind, BottomType>;
-
 /// Abstract syntax of the parametric polymorphic lambda calculus
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum ExtKind<
-    TExtPat: Default + Clone + fmt::Debug + PartialEq + PartialOrd,
-    TExtKind: Default + Clone + fmt::Debug + PartialEq + PartialOrd,
-    TExtType: fmt::Debug + PartialEq + PartialOrd + Default + Clone + Eq + hash::Hash,
+    TExtDialect: SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone,
 > {
     /// A literal value
     Lit(Literal),
@@ -80,71 +75,69 @@ pub enum ExtKind<
     PlatformBinding(usize),
     /// An intrinsic, referenced by alias
     /// Fixpoint operator/Y combinator
-    Fix(Box<ExtTerm<TExtPat, TExtKind, TExtType>>),
+    Fix(Box<ExtTerm<TExtDialect>>),
 
     Primitive(Primitive),
 
     /// Injection into a sum type
     /// fields: type constructor tag, term, and sum type
-    Injection(String, Box<ExtTerm<TExtPat, TExtKind, TExtType>>, Box<Type<TExtType>>),
+    Injection(String, Box<ExtTerm<TExtDialect>>, Box<Type<TExtDialect::TExtType>>),
 
     /// Product type (tuple)
-    Product(Vec<ExtTerm<TExtPat, TExtKind, TExtType>>),
+    Product(Vec<ExtTerm<TExtDialect>>),
     /// Projection into a term
-    Projection(Box<ExtTerm<TExtPat, TExtKind, TExtType>>, usize),
+    Projection(Box<ExtTerm<TExtDialect>>, usize),
 
     /// A case expr, with case arms
     Case(
-        Box<ExtTerm<TExtPat, TExtKind, TExtType>>,
-        Vec<Arm<TExtPat, TExtKind, TExtType>>,
+        Box<ExtTerm<TExtDialect>>,
+        Vec<Arm<TExtDialect>>,
     ),
 
     // let expr with binding, value and then applied context
     Let(
-        Box<ExtPattern<TExtPat>>,
-        Box<ExtTerm<TExtPat, TExtKind, TExtType>>,
-        Box<ExtTerm<TExtPat, TExtKind, TExtType>>,
+        Box<Pattern<TExtDialect>>,
+        Box<ExtTerm<TExtDialect>>,
+        Box<ExtTerm<TExtDialect>>,
     ),
     /// A lambda abstraction
-    Abs(Box<Type<TExtType>>, Box<ExtTerm<TExtPat, TExtKind, TExtType>>),
+    Abs(Box<Type<TExtDialect::TExtType>>, Box<ExtTerm<TExtDialect>>),
     /// Application of a term to another term
     App(
-        Box<ExtTerm<TExtPat, TExtKind, TExtType>>,
-        Box<ExtTerm<TExtPat, TExtKind, TExtType>>,
+        Box<ExtTerm<TExtDialect>>,
+        Box<ExtTerm<TExtDialect>>,
     ),
     /// Type abstraction
-    TyAbs(Box<ExtTerm<TExtPat, TExtKind, TExtType>>),
+    TyAbs(Box<ExtTerm<TExtDialect>>),
     /// Type application
-    TyApp(Box<ExtTerm<TExtPat, TExtKind, TExtType>>, Box<Type<TExtType>>),
+    TyApp(Box<ExtTerm<TExtDialect>>, Box<Type<TExtDialect::TExtType>>),
 
-    Fold(Box<Type<TExtType>>, Box<ExtTerm<TExtPat, TExtKind, TExtType>>),
-    Unfold(Box<Type<TExtType>>, Box<ExtTerm<TExtPat, TExtKind, TExtType>>),
+    Fold(Box<Type<TExtDialect::TExtType>>, Box<ExtTerm<TExtDialect>>),
+    Unfold(Box<Type<TExtDialect::TExtType>>, Box<ExtTerm<TExtDialect>>),
 
     /// Introduce an existential type
     /// { *Ty1, Term } as {∃X.Ty}
     /// essentially, concrete representation as interface
     Pack(
-        Box<Type<TExtType>>,
-        Box<ExtTerm<TExtPat, TExtKind, TExtType>>,
-        Box<Type<TExtType>>,
+        Box<Type<TExtDialect::TExtType>>,
+        Box<ExtTerm<TExtDialect>>,
+        Box<Type<TExtDialect::TExtType>>,
     ),
     /// Unpack an existential type
     /// open {∃X, bind} in body -- X is bound as a TyVar, and bind as Var(0)
     /// Eliminate an existential type
     Unpack(
-        Box<ExtTerm<TExtPat, TExtKind, TExtType>>,
-        Box<ExtTerm<TExtPat, TExtKind, TExtType>>,
+        Box<ExtTerm<TExtDialect>>,
+        Box<ExtTerm<TExtDialect>>,
     ),
 
     /// Extension
-    Extended(TExtKind),
+    Extended(TExtDialect::TExtKind),
 }
 
 impl<
-        TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-        TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-        TExtType: Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash,
-    > Default for ExtKind<TExtPat, TExtKind, TExtType>
+        TExtDialect: SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone,
+    > Default for ExtKind<TExtDialect>
 {
     fn default() -> Self {
         ExtKind::Lit(Literal::Unit)
@@ -154,14 +147,12 @@ impl<
 /// Arm of a case expression
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Arm<
-    TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-    TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-    TExtType: Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash,
+    TExtDialect: SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone,
 > {
     pub span: Span,
-    pub pat: ExtPattern<TExtPat>,
-    pub term: Box<ExtTerm<TExtPat, TExtKind, TExtType>>,
-    pub _kind: TExtKind,
+    pub pat: Pattern<TExtDialect>,
+    pub term: Box<ExtTerm<TExtDialect>>,
+    pub _d: TExtDialect,
 }
 
 /// Constant literal expression or pattern
@@ -175,17 +166,15 @@ pub enum Literal {
 }
 
 impl<
-        TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-        TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-        TExtType: Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash,
-    > ExtTerm<TExtPat, TExtKind, TExtType>
+    TExtDialect: SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone,
+    > ExtTerm<TExtDialect>
 {
-    pub fn new(kind: ExtKind<TExtPat, TExtKind, TExtType>, span: Span) -> ExtTerm<TExtPat, TExtKind, TExtType> {
+    pub fn new(kind: ExtKind<TExtDialect>, span: Span) -> ExtTerm<TExtDialect> {
         ExtTerm { span, kind }
     }
 
     #[allow(dead_code)]
-    pub const fn unit() -> ExtTerm<TExtPat, TExtKind, TExtType> {
+    pub const fn unit() -> ExtTerm<TExtDialect> {
         ExtTerm {
             span: Span::dummy(),
             kind: ExtKind::Lit(Literal::Unit),
@@ -199,7 +188,7 @@ impl<
     }
 
     #[inline]
-    pub fn kind(&self) -> &ExtKind<TExtPat, TExtKind, TExtType> {
+    pub fn kind(&self) -> &ExtKind<TExtDialect> {
         &self.kind
     }
 }
@@ -216,10 +205,8 @@ impl fmt::Display for Literal {
 }
 
 impl<
-        TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-        TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-        TExtType: Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash,
-    > fmt::Display for ExtTerm<TExtPat, TExtKind, TExtType>
+    TExtDialect: SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone,
+    > fmt::Display for ExtTerm<TExtDialect>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match &self.kind {
@@ -261,10 +248,8 @@ impl<
 }
 
 impl<
-        TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-        TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-        TExtType: Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash,
-    > fmt::Debug for ExtTerm<TExtPat, TExtKind, TExtType>
+    TExtDialect: SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone,
+    > fmt::Debug for ExtTerm<TExtDialect>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self.kind)
@@ -284,12 +269,12 @@ mod test {
             variant!("B", Type::Product(vec![Type::Nat, Type::Bool])),
         ]);
 
-        let a_pats = vec![con!("A", ExtPattern::Any), con!("A", num!(9)), con!("A", num!(10))];
+        let a_pats = vec![con!("A", Pattern::Any), con!("A", num!(9)), con!("A", num!(10))];
 
         let b_pats = vec![
-            con!("B", ExtPattern::Any),
+            con!("B", Pattern::Any),
             con!("B", prod!(num!(1), boolean!(true))),
-            con!("B", prod!(ExtPattern::Any, boolean!(false))),
+            con!("B", prod!(Pattern::Any, boolean!(false))),
         ];
 
         let res = [true, false, true];

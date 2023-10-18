@@ -41,17 +41,15 @@ use core::fmt;
 use std::hash;
 
 use crate::bottom::BottomPattern;
-use crate::extensions::SystemRExtension;
+use crate::extensions::{SystemRDialect, SystemRExtension};
 use crate::system_r_util::span::Span;
 use crate::terms::{ExtKind, ExtTerm, Literal};
 use crate::types::{variant_field, Type};
 use crate::visit::PatternVisitor;
 
-pub type Pattern = ExtPattern<BottomPattern>;
-
 /// Patterns for case and let expressions
 #[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Hash)]
-pub enum ExtPattern<TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Default> {
+pub enum Pattern<TExtDialect: SystemRDialect + Clone + fmt::Debug + Default> {
     /// Wildcard pattern, this always matches
     Any,
     /// Constant pattern
@@ -59,28 +57,25 @@ pub enum ExtPattern<TExtPat: Clone + fmt::Debug + PartialEq + PartialOrd + Defau
     /// Variable binding pattern, this always matches
     Variable(String),
     /// Tuple of pattern bindings
-    Product(Vec<ExtPattern<TExtPat>>),
+    Product(Vec<Pattern<TExtDialect>>),
     /// Algebraic datatype constructor, along with binding pattern
-    Constructor(String, Box<ExtPattern<TExtPat>>),
-    Extended(TExtPat),
+    Constructor(String, Box<Pattern<TExtDialect>>),
+    Extended(TExtDialect::TExtPat),
 }
 
 #[derive(Clone, Debug, Default)]
 pub struct PatVarStack<
-    TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExtDialect: SystemRDialect + Default + fmt::Debug + Clone + PartialEq + PartialOrd,
 > {
     pub inner: Vec<String>,
-    _pat: TExtPat,
-    _kind: TExtKind,
+    _d: TExtDialect,
 }
 
 impl<
-        TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-        TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    > PatVarStack<TExtPat, TExtKind>
+        TExtDialect: SystemRDialect + Default + fmt::Debug + Clone + PartialEq + PartialOrd,
+    > PatVarStack<TExtDialect>
 {
-    pub fn collect(pat: &ExtPattern<TExtPat>) -> Vec<String> {
+    pub fn collect(pat: &Pattern<TExtDialect>) -> Vec<String> {
         let mut p = Self::default();
         p.visit_pattern(pat);
         p.inner
@@ -88,9 +83,8 @@ impl<
 }
 
 impl<
-        TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-        TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    > PatternVisitor<TExtPat, TExtKind> for PatVarStack<TExtPat, TExtKind>
+        TExtDialect: SystemRDialect + Default + fmt::Debug + Clone + PartialEq + PartialOrd,
+    > PatternVisitor<TExtDialect> for PatVarStack<TExtDialect>
 {
     fn visit_variable(&mut self, var: &str) {
         self.inner.push(var.to_owned());
@@ -100,66 +94,61 @@ impl<
 /// Visitor that simply counts the number of binders (variables) within a
 /// pattern
 pub struct PatternCount<
-    TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
->(pub usize, pub TExtPat, pub TExtKind);
+    TExtDialect: SystemRDialect + Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+>(pub usize, pub TExtDialect::TExtPat, pub TExtDialect::TExtKind);
 
 impl<
-        TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-        TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    > PatternCount<TExtPat, TExtKind>
+    TExtDialect: SystemRDialect + Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+    > PatternCount<TExtDialect>
 {
-    pub fn collect(pat: &ExtPattern<TExtPat>) -> usize {
-        let mut p = PatternCount(0, TExtPat::default(), TExtKind::default());
+    pub fn collect<
+    >(pat: &Pattern<TExtDialect>) -> usize {
+        let mut p = PatternCount(0, Default::default(), Default::default());
         p.visit_pattern(pat);
         p.0
     }
 }
 
 impl<
-        TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-        TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    > PatternVisitor<TExtPat, TExtKind> for PatternCount<TExtPat, TExtKind>
+    TExtDialect: SystemRDialect + Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+    > PatternVisitor<TExtDialect> for PatternCount<TExtDialect>
 {
     fn visit_variable(&mut self, var: &str) {
         self.0 += 1;
     }
 }
 
-impl<TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd> ExtPattern<TExtPat> {
+impl<
+        TExtDialect: SystemRDialect + Default + fmt::Debug + Clone + PartialEq + PartialOrd,
+> Pattern<TExtDialect> {
     /// Does this pattern match the given [`Term`]?
     pub fn matches<
-        TExtTokenKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-        TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-        TExtType: Clone + Default + fmt::Debug + hash::Hash + PartialEq + PartialOrd + Eq,
-        TExtState: fmt::Debug + Default + Clone,
-        TPtE: SystemRExtension<TExtTokenKind, TExtKind, TExtPat, TExtType, TExtState>,
-    >(
+    TPtE: SystemRExtension<TExtDialect>>(
         &self,
-        term: &ExtTerm<TExtPat, TExtKind, TExtType>,
+        term: &ExtTerm<TExtDialect>,
         ext: &TPtE,
     ) -> bool {
         match self {
-            ExtPattern::Any => return true,
-            ExtPattern::Variable(_) => return true,
-            ExtPattern::Literal(l) => {
+            Pattern::Any => return true,
+            Pattern::Variable(_) => return true,
+            Pattern::Literal(l) => {
                 if let ExtKind::Lit(l2) = &term.kind {
                     return l == l2;
                 }
             }
-            ExtPattern::Product(vec) => {
+            Pattern::Product(vec) => {
                 if let ExtKind::Product(terms) = &term.kind {
                     return vec.iter().zip(terms).all(|(p, t)| p.matches(t, ext));
                 }
             }
-            ExtPattern::Constructor(label, inner) => {
+            Pattern::Constructor(label, inner) => {
                 if let ExtKind::Injection(label_, tm, _) = &term.kind {
                     if label == label_ {
                         return inner.matches(tm, ext);
                     }
                 }
             }
-            ExtPattern::Extended(v) => return ext.pat_ext_matches(v, term),
+            Pattern::Extended(v) => return ext.pat_ext_matches(v, term),
         }
         false
     }
@@ -172,29 +161,22 @@ impl<TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd> ExtPattern<
 /// types after calling this function
 pub struct PatTyStack<
     'ty,
-    TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExtType: Clone + Default + fmt::Debug + hash::Hash + PartialEq + PartialOrd + Eq,
+    TExtDialect: SystemRDialect + Clone + Default + fmt::Debug + PartialEq + PartialOrd,
 > {
-    pub ty: &'ty Type<TExtType>,
-    pub inner: Vec<&'ty Type<TExtType>>,
-    _pat: TExtPat,
-    _kind: TExtKind,
+    pub ty: &'ty Type<TExtDialect::TExtType>,
+    pub inner: Vec<&'ty Type<TExtDialect::TExtType>>,
 }
 
 impl<
         'ty,
-        TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-        TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-        TExtType: Clone + Default + fmt::Debug + hash::Hash + PartialEq + PartialOrd + Eq,
-    > PatTyStack<'ty, TExtPat, TExtKind, TExtType>
+        TExtDialect: SystemRDialect + Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+    > PatTyStack<'ty, TExtDialect>
 {
-    pub fn collect(ty: &'ty Type<TExtType>, pat: &ExtPattern<TExtPat>) -> Vec<&'ty Type<TExtType>> {
+    pub fn collect<
+    >(ty: &'ty Type<TExtDialect::TExtType>, pat: &Pattern<TExtDialect>) -> Vec<&'ty Type<TExtDialect::TExtType>> {
         let mut p = PatTyStack {
             ty,
             inner: Vec::with_capacity(16),
-            _pat: TExtPat::default(),
-            _kind: TExtKind::default(),
         };
         p.visit_pattern(pat);
         p.inner
@@ -202,12 +184,11 @@ impl<
 }
 
 impl<
-        TExtPat: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-        TExtKind: Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-        TExtType: Clone + Default + fmt::Debug + hash::Hash + PartialEq + PartialOrd + Eq,
-    > PatternVisitor<TExtPat, TExtKind> for PatTyStack<'_, TExtPat, TExtKind, TExtType>
+        TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    > PatternVisitor<TExtDialect> for PatTyStack<'_, TExtDialect>
 {
-    fn visit_product(&mut self, pats: &Vec<ExtPattern<TExtPat>>) {
+    fn visit_product<
+    >(&mut self, pats: &Vec<Pattern<TExtDialect>>) {
         if let Type::Product(tys) = self.ty {
             let ty = self.ty;
             for (ty, pat) in tys.iter().zip(pats.iter()) {
@@ -218,24 +199,26 @@ impl<
         }
     }
 
-    fn visit_constructor(&mut self, label: &str, pat: &ExtPattern<TExtPat>) {
+    fn visit_constructor<
+    >(&mut self, label: &str, pat: &Pattern<TExtDialect>) {
         if let Type::Variant(vs) = self.ty {
             let ty = self.ty;
-            self.ty = variant_field(vs, label, Span::zero()).unwrap();
+            self.ty = variant_field::<TExtDialect>(vs, label, Span::zero()).unwrap();
             self.visit_pattern(pat);
             self.ty = ty;
         }
     }
 
-    fn visit_ext(&mut self, p: &TExtPat) {}
+    fn visit_ext(&mut self, p: &TExtDialect::TExtPat) {}
 
-    fn visit_pattern(&mut self, pattern: &ExtPattern<TExtPat>) {
+    fn visit_pattern<
+    >(&mut self, pattern: &Pattern<TExtDialect>) {
         match pattern {
-            ExtPattern::Any | ExtPattern::Literal(_) => {}
-            ExtPattern::Variable(_) => self.inner.push(self.ty),
-            ExtPattern::Constructor(label, pat) => self.visit_constructor(label, pat),
-            ExtPattern::Product(pats) => self.visit_product(pats),
-            ExtPattern::Extended(p) => self.visit_ext(p),
+            Pattern::Any | Pattern::Literal(_) => {}
+            Pattern::Variable(_) => self.inner.push(self.ty),
+            Pattern::Constructor(label, pat) => self.visit_constructor(label, pat),
+            Pattern::Product(pats) => self.visit_product(pats),
+            Pattern::Extended(p) => self.visit_ext(p),
         }
     }
 }
@@ -243,30 +226,30 @@ impl<
 #[cfg(test)]
 mod test {
 
-    use crate::bottom::{BottomKind, BottomType};
+    use crate::bottom::{BottomKind, BottomType, BottomDialect};
 
     use super::*;
     #[test]
     fn pattern_count() {
-        let mut pat: Pattern = ExtPattern::Variable(String::new());
-        assert_eq!(PatternCount::<BottomPattern, BottomKind>::collect(&mut pat), 1);
+        let mut pat: Pattern<BottomDialect> = Pattern::Variable(String::new());
+        assert_eq!(PatternCount::<BottomDialect>::collect(&mut pat), 1);
     }
 
     #[test]
     fn pattern_ty_stack() {
-        let mut pat: Pattern = ExtPattern::Variable(String::new());
+        let mut pat: Pattern<BottomDialect> = Pattern::Variable(String::new());
         let ty = Type::Nat;
         assert_eq!(
-            PatTyStack::<BottomPattern, BottomKind, BottomType>::collect(&ty, &mut pat),
+            PatTyStack::<BottomDialect>::collect(&ty, &mut pat),
             vec![&ty]
         );
     }
 
     #[test]
     fn pattern_var_stack() {
-        let mut pat: Pattern = ExtPattern::Variable("x".into());
+        let mut pat: Pattern<BottomDialect> = Pattern::Variable("x".into());
         assert_eq!(
-            PatVarStack::<BottomPattern, BottomKind>::collect(&mut pat),
+            PatVarStack::<BottomDialect>::collect(&mut pat),
             vec![String::from("x")]
         );
     }

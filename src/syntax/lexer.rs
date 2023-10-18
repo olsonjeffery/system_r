@@ -37,6 +37,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 use super::{ExtToken, ExtTokenKind};
+use crate::bottom::BottomDialect;
+use crate::extensions::SystemRDialect;
 use crate::system_r_util::span::{Location, Span};
 use crate::{
     bottom::{BottomExtension, BottomPattern, BottomTokenKind},
@@ -49,35 +51,24 @@ use std::rc::Rc;
 use std::str::Chars;
 use std::{char, hash};
 
-pub type Lexer<'s> = ExtLexer<'s, BottomTokenKind, BottomExtension, BottomPattern>;
+pub type Lexer<'s> = ExtLexer<'s, BottomDialect>;
 
 #[derive(Clone, Debug)]
-pub struct ExtLexer<
-    's,
-    TExtTokenKind: PartialOrd + PartialEq + Default + fmt::Debug + Clone,
-    TExtKind: PartialOrd + PartialEq + Default + fmt::Debug + Clone,
-    TExtPattern: PartialOrd + PartialEq + Default + fmt::Debug + Clone,
-> {
+pub struct ExtLexer<'s, TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd> {
     input: Peekable<Chars<'s>>,
     current: Location,
-    _token: TExtTokenKind,
-    _kind: TExtKind,
-    _pat: TExtPattern,
+    _token: TExtDialect::TExtTokenKind,
+    _kind: TExtDialect::TExtKind,
+    _pat: TExtDialect::TExtPat,
 }
 
-impl<
-        's,
-        TExtTokenKind: PartialEq + PartialOrd + Default + fmt::Debug + Clone,
-        TExtKind: PartialEq + PartialOrd + Default + fmt::Debug + Clone,
-        TExtPattern: PartialEq + PartialOrd + Default + fmt::Debug + Clone,
-    > Default for ExtLexer<'s, TExtTokenKind, TExtKind, TExtPattern>
-{
+impl<'s, TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd> Default for ExtLexer<'s, TExtDialect> {
     fn default() -> Self {
         Self {
             input: "".chars().peekable(),
             current: Default::default(),
             _token: Default::default(),
-            _kind: TExtKind::default(),
+            _kind: Default::default(),
             _pat: Default::default(),
         }
     }
@@ -90,14 +81,8 @@ fn is_tag(x: char) -> bool {
     false
 }
 
-impl<
-        's,
-        TExtTokenKind: PartialEq + PartialOrd + Default + Clone + fmt::Debug,
-        TExtKind: PartialEq + PartialOrd + Default + Clone + fmt::Debug,
-        TExtPattern: PartialEq + PartialOrd + Default + Clone + fmt::Debug,
-    > ExtLexer<'s, TExtTokenKind, TExtKind, TExtPattern>
-{
-    pub fn new(input: Chars<'s>) -> ExtLexer<'s, TExtTokenKind, TExtKind, TExtPattern> {
+impl<'s, TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd> ExtLexer<'s, TExtDialect> {
+    pub fn new(input: Chars<'s>) -> ExtLexer<'s, TExtDialect> {
         ExtLexer {
             input: input.peekable(),
             current: Location {
@@ -105,8 +90,8 @@ impl<
                 col: 0,
                 abs: 0,
             },
-            _token: TExtTokenKind::default(),
-            _kind: TExtKind::default(),
+            _token: Default::default(),
+            _kind: Default::default(),
             _pat: Default::default(),
         }
     }
@@ -164,7 +149,7 @@ impl<
     }
 
     /// Lex a natural number
-    fn number(&mut self) -> ExtToken<TExtTokenKind> {
+    fn number(&mut self) -> ExtToken<TExtDialect::TExtTokenKind> {
         // Since we peeked at least one numeric char, we should always
         // have a string containing at least 1 single digit, as such
         // it is safe to call unwrap() on str::parse<u32>
@@ -173,20 +158,18 @@ impl<
         ExtToken::new(ExtTokenKind::Nat(n), span)
     }
 
-    fn tag(&mut self) -> ExtToken<TExtTokenKind> {
+    fn tag(&mut self) -> ExtToken<TExtDialect::TExtTokenKind> {
         let (data, span) = self.consume_while(|ch| is_tag(ch) || ch.is_ascii_alphanumeric());
         let kind = ExtTokenKind::Tag(data);
         ExtToken::new(kind, span)
     }
 
     fn extended_single<
-        TExtType: Clone + Default + fmt::Debug + hash::Hash + PartialEq + PartialOrd + Eq,
-        TExtState: Clone + fmt::Debug + Default,
-        TExt: Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern, TExtType, TExtState>,
+        TExt: Copy + Clone + SystemRExtension<TExtDialect>,
     >(
         &mut self,
         ext: &mut TExt,
-    ) -> ExtToken<TExtTokenKind> {
+    ) -> ExtToken<TExtDialect::TExtTokenKind> {
         let (data, span) = self.consume_while(|ch| ext.lex_is_extended_single_pred(ch));
         let kind = ext.lex_extended_single(&data);
         ExtToken::new(ExtTokenKind::Extended(kind), span)
@@ -195,13 +178,11 @@ impl<
 
     /// Lex a reserved keyword or an identifier
     fn keyword<
-        TExtType: Clone + Default + fmt::Debug + hash::Hash + PartialEq + PartialOrd + Eq,
-        TExtState: Clone + fmt::Debug + Default,
-        TExt: Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern, TExtType, TExtState>,
+        TExt: Copy + Clone + SystemRExtension<TExtDialect>,
     >(
         &mut self,
         ext: &mut TExt,
-    ) -> ExtToken<TExtTokenKind> {
+    ) -> ExtToken<TExtDialect::TExtTokenKind> {
         let (data, span) = self.consume_while(|ch| ch.is_ascii_alphanumeric());
         let kind = match data.as_ref() {
             data if ext.lex_is_ext_keyword(data) => ExtTokenKind::Extended(ext.lex_ext_keyword(data)),
@@ -247,7 +228,11 @@ impl<
     /// Consume the next input character, expecting to match `ch`.
     /// Return a [`ExtTokenKind::Invalid`] if the next character does not match,
     /// or the argument `kind` if it does
-    fn eat(&mut self, ch: char, kind: ExtTokenKind<TExtTokenKind>) -> ExtToken<TExtTokenKind> {
+    fn eat(
+        &mut self,
+        ch: char,
+        kind: ExtTokenKind<TExtDialect::TExtTokenKind>,
+    ) -> ExtToken<TExtDialect::TExtTokenKind> {
         let loc = self.current;
         // Lexer::eat() should only be called internally after calling peek()
         // so we know that it's safe to unwrap the result of Lexer::consume()
@@ -258,13 +243,11 @@ impl<
 
     /// Return the next lexeme in the input as a [`Token`]
     pub fn lex<
-        TExtType: Clone + Default + fmt::Debug + hash::Hash + PartialEq + PartialOrd + Eq,
-        TExtState: Clone + fmt::Debug + Default,
-        TExt: Copy + Clone + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern, TExtType, TExtState>,
+        TExt: Copy + Clone + SystemRExtension<TExtDialect>,
     >(
         &mut self,
         ext: &mut TExt,
-    ) -> ExtToken<TExtTokenKind> {
+    ) -> ExtToken<TExtDialect::TExtTokenKind> {
         self.consume_delimiter();
         let next = match self.peek() {
             Some(ch) => ch,
@@ -302,26 +285,14 @@ impl<
     }
 }
 
-impl<
-        's,
-        TExtTokenKind: PartialEq + PartialOrd + Default + Clone + fmt::Debug,
-        TExtKind: PartialEq + PartialOrd + Default + Clone + fmt::Debug,
-        TExtPattern: PartialEq + PartialOrd + Default + Clone + fmt::Debug,
-    > ExtLexer<'s, TExtTokenKind, TExtKind, TExtPattern>
-{
+impl<'s, TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd> ExtLexer<'s, TExtDialect> {
     fn next<
-        TExtType: Clone + Default + fmt::Debug + hash::Hash + PartialEq + PartialOrd + Eq,
-        TExtState: Clone + fmt::Debug + Default,
-        TExt: fmt::Debug
-            + Default
-            + Copy
-            + Clone
-            + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern, TExtType, TExtState>,
+        TExt: fmt::Debug + Default + Copy + Clone + PartialEq + PartialOrd + SystemRExtension<TExtDialect>,
     >(
         &mut self,
         ext: &mut TExt,
-    ) -> Option<ExtToken<TExtTokenKind>> {
-        match self.lex::<TExtType, TExtState, TExt>(ext) {
+    ) -> Option<ExtToken<TExtDialect::TExtTokenKind>> {
+        match self.lex(ext) {
             ExtToken {
                 kind: ExtTokenKind::Eof,
                 ..
@@ -333,7 +304,7 @@ impl<
 
 #[cfg(test)]
 mod test {
-    use crate::bottom::{BottomExtension, BottomKind, BottomTokenKind};
+    use crate::bottom::{BottomDialect, BottomExtension, BottomKind, BottomTokenKind};
 
     use super::*;
     use ExtTokenKind::*;
@@ -341,7 +312,7 @@ mod test {
     fn get_tokens_from<'s>(input: &'s str) -> Vec<ExtTokenKind<BottomTokenKind>> {
         let mut stub_ext = BottomExtension;
         let mut ret_val = Vec::new();
-        let mut lexer: ExtLexer<'s, BottomTokenKind, BottomKind, BottomPattern> = ExtLexer::new(input.chars());
+        let mut lexer: ExtLexer<'s, BottomDialect> = ExtLexer::new(input.chars());
 
         let mut next_token = lexer.next(&mut stub_ext);
         while next_token.is_some() {

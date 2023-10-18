@@ -16,8 +16,8 @@ use core::fmt;
 use std::collections::HashMap;
 use std::hash;
 
-use crate::bottom::{BottomKind, BottomPattern, BottomTokenKind, BottomType};
-use crate::extensions::SystemRExtension;
+use crate::bottom::{BottomKind, BottomPattern, BottomTokenKind, BottomType, BottomDialect};
+use crate::extensions::{SystemRDialect, SystemRExtension};
 use crate::system_r_util::span::Span;
 
 use crate::terms::ExtTerm;
@@ -28,9 +28,9 @@ use crate::{
 };
 
 pub type WrappedFn = fn(
-    input: ExtTerm<BottomPattern, BottomKind, BottomType>,
+    input: ExtTerm<BottomDialect>,
     span: &Span,
-) -> Result<ExtTerm<BottomPattern, BottomKind, BottomType>, Diagnostic>;
+) -> Result<ExtTerm<BottomDialect>, Diagnostic>;
 
 pub struct WrappedContent(pub WrappedFn, pub Type<BottomType>, pub Type<BottomType>);
 
@@ -137,18 +137,12 @@ fn resolve_pb_type<TExtType: Clone + Default + fmt::Debug + PartialEq + PartialO
     }
 }
 
-impl<
-        TExtTokenKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-        TExtKind: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-        TExtPat: Clone + Default + fmt::Debug + PartialEq + PartialOrd,
-        TExtType: Clone + Default + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    > ExtContext<TExtTokenKind, TExtKind, TExtPat, TExtType>
-{
+impl<TExtDialect: SystemRDialect + Clone + fmt::Debug + Default> ExtContext<TExtDialect> {
     pub(crate) fn type_check_platform_binding(
         &mut self,
         idx: &usize,
         span: &Span,
-    ) -> Result<Type<TExtType>, Diagnostic> {
+    ) -> Result<Type<TExtDialect::TExtType>, Diagnostic> {
         match self.platform_bindings.get(*idx) {
             Some(wc) => {
                 let args_resolved = resolve_pb_type(wc.1.clone())?;
