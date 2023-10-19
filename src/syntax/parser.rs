@@ -40,24 +40,23 @@ use super::debruijn::DeBruijnIndexer;
 use super::error::Error;
 use super::lexer::ExtLexer;
 use super::{ExtToken, ExtTokenKind};
-use crate::bottom::{BottomExtension, BottomKind, BottomPattern, BottomState, BottomTokenKind, BottomType, BottomDialect};
-use crate::extensions::{SystemRExtension, SystemRDialect};
+use crate::bottom::{
+    BottomDialect, BottomExtension, BottomKind, BottomPattern, BottomState, BottomTokenKind, BottomType,
+};
+use crate::extensions::{SystemRDialect, SystemRExtension};
 
 use crate::system_r_util::diagnostic::Diagnostic;
 use crate::system_r_util::span::*;
 use core::fmt;
 use std::hash;
 
-use crate::patterns::{Pattern, PatVarStack};
+use crate::patterns::{PatVarStack, Pattern};
 use crate::platform_bindings::PlatformBindings;
 use crate::terms::*;
 use crate::types::*;
 
 #[derive(Default, Debug, Clone)]
-pub struct ParserState<
-    's,
-    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-> {
+pub struct ParserState<'s, TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd> {
     pub tmvar: DeBruijnIndexer,
     pub tyvar: DeBruijnIndexer,
     pub diagnostic: Diagnostic<'s>,
@@ -82,10 +81,8 @@ pub enum ErrorKind<TExtTokenKind: PartialEq> {
     ExtendedError(String),
 }
 
-impl<
-        's,
-    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    > ParserState<'s, TExtDialect>
+impl<'s, TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd>
+    ParserState<'s, TExtDialect>
 {
     pub fn die(self) -> String {
         let d = self.diagnostic;
@@ -97,10 +94,7 @@ impl<
     }
 }
 
-pub fn new<'s>(
-    platform_bindings: &'s PlatformBindings,
-    input: &'s str,
-) -> ParserState<'s, BottomDialect> {
+pub fn new<'s>(platform_bindings: &'s PlatformBindings, input: &'s str) -> ParserState<'s, BottomDialect> {
     let mut ext = BottomExtension;
     ext_new(platform_bindings, input, &mut ext)
 }
@@ -170,20 +164,13 @@ pub fn once<
     }
 }
 
-pub fn diagnostic<
-    's,
-    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
->(
+pub fn diagnostic<'s, TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd>(
     ps: ParserState<'s, TExtDialect>,
 ) -> Diagnostic<'s> {
     ps.diagnostic
 }
 
-pub fn error<
-    's,
-    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TError,
->(
+pub fn error<'s, TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd, TError>(
     ps: &ParserState<'s, TExtDialect>,
     kind: ErrorKind<TExtDialect::TExtTokenKind>,
 ) -> Result<TError, Error<TExtDialect::TExtTokenKind>> {
@@ -247,10 +234,7 @@ pub fn expect<
 }
 
 /// Return current TokenKind for the ParserState
-pub fn kind<
-    's,
-    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
->(
+pub fn kind<'s, TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd>(
     ps: &'s ParserState<TExtDialect>,
 ) -> &'s ExtTokenKind<TExtDialect::TExtTokenKind> {
     &ps.token.kind
@@ -841,10 +825,7 @@ pub fn unpack<
     let expr = parse(ps, ext)?;
     ps.tmvar.pop();
     ps.tyvar.pop();
-    Ok(Term::new(
-        Kind::Unpack(Box::new(package), Box::new(expr)),
-        sp + ps.span,
-    ))
+    Ok(Term::new(Kind::Unpack(Box::new(package), Box::new(expr)), sp + ps.span))
 }
 
 pub fn atom<

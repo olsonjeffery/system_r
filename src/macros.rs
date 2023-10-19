@@ -66,7 +66,10 @@ macro_rules! nat {
 /// TmVar term
 macro_rules! var {
     ($x:expr) => {
-        crate::terms::Term::<BottomDialect>::new(crate::terms::Kind::<BottomDialect>::Var($x), crate::system_r_util::span::Span::dummy())
+        crate::terms::Term::<BottomDialect>::new(
+            crate::terms::Kind::<BottomDialect>::Var($x),
+            crate::system_r_util::span::Span::dummy(),
+        )
     };
 }
 

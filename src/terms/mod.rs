@@ -37,7 +37,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 //! Representation lambda calculus terms
-use crate::bottom::{BottomKind, BottomPattern, BottomType, BottomDialect};
+use crate::bottom::{BottomDialect, BottomKind, BottomPattern, BottomType};
 use crate::extensions::SystemRDialect;
 use crate::patterns::Pattern;
 use crate::system_r_util::span::Span;
@@ -46,9 +46,7 @@ use std::{fmt, hash};
 pub mod visit;
 
 #[derive(Clone, Default, PartialEq, PartialOrd)]
-pub struct Term<
-    TExtDialect: SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone,
-> {
+pub struct Term<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone> {
     pub span: Span,
     pub kind: Kind<TExtDialect>,
 }
@@ -63,9 +61,7 @@ pub enum Primitive {
 
 /// Abstract syntax of the parametric polymorphic lambda calculus
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
-pub enum Kind<
-    TExtDialect: SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone,
-> {
+pub enum Kind<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone> {
     /// A literal value
     Lit(Literal),
     /// A bound variable, represented by it's de Bruijn index
@@ -88,10 +84,7 @@ pub enum Kind<
     Projection(Box<Term<TExtDialect>>, usize),
 
     /// A case expr, with case arms
-    Case(
-        Box<Term<TExtDialect>>,
-        Vec<Arm<TExtDialect>>,
-    ),
+    Case(Box<Term<TExtDialect>>, Vec<Arm<TExtDialect>>),
 
     // let expr with binding, value and then applied context
     Let(
@@ -102,10 +95,7 @@ pub enum Kind<
     /// A lambda abstraction
     Abs(Box<Type<TExtDialect::TExtType>>, Box<Term<TExtDialect>>),
     /// Application of a term to another term
-    App(
-        Box<Term<TExtDialect>>,
-        Box<Term<TExtDialect>>,
-    ),
+    App(Box<Term<TExtDialect>>, Box<Term<TExtDialect>>),
     /// Type abstraction
     TyAbs(Box<Term<TExtDialect>>),
     /// Type application
@@ -125,18 +115,14 @@ pub enum Kind<
     /// Unpack an existential type
     /// open {∃X, bind} in body -- X is bound as a TyVar, and bind as Var(0)
     /// Eliminate an existential type
-    Unpack(
-        Box<Term<TExtDialect>>,
-        Box<Term<TExtDialect>>,
-    ),
+    Unpack(Box<Term<TExtDialect>>, Box<Term<TExtDialect>>),
 
     /// Extension
     Extended(TExtDialect::TExtKind),
 }
 
-impl<
-        TExtDialect: SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone,
-    > Default for Kind<TExtDialect>
+impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone> Default
+    for Kind<TExtDialect>
 {
     fn default() -> Self {
         Kind::Lit(Literal::Unit)
@@ -145,9 +131,7 @@ impl<
 
 /// Arm of a case expression
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
-pub struct Arm<
-    TExtDialect: SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone,
-> {
+pub struct Arm<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone> {
     pub span: Span,
     pub pat: Pattern<TExtDialect>,
     pub term: Box<Term<TExtDialect>>,
@@ -164,10 +148,7 @@ pub enum Literal {
     Tag(String),
 }
 
-impl<
-    TExtDialect: SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone,
-    > Term<TExtDialect>
-{
+impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone> Term<TExtDialect> {
     pub fn new(kind: Kind<TExtDialect>, span: Span) -> Term<TExtDialect> {
         Term { span, kind }
     }
@@ -203,9 +184,8 @@ impl fmt::Display for Literal {
     }
 }
 
-impl<
-    TExtDialect: SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone,
-    > fmt::Display for Term<TExtDialect>
+impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone> fmt::Display
+    for Term<TExtDialect>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match &self.kind {
@@ -246,9 +226,8 @@ impl<
     }
 }
 
-impl<
-    TExtDialect: SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone,
-    > fmt::Debug for Term<TExtDialect>
+impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone> fmt::Debug
+    for Term<TExtDialect>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self.kind)

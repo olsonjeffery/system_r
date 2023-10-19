@@ -3,9 +3,9 @@ use std::collections::HashMap;
 use cucumber::World;
 
 use system_r::{
-    bottom::{BottomKind, BottomPattern, BottomType, BottomDialect},
+    bottom::{BottomDialect, BottomKind, BottomPattern, BottomType},
     platform_bindings::PlatformBindings,
-    terms::{Term, Kind},
+    terms::{Kind, Term},
     types::Type,
 };
 
@@ -34,4 +34,11 @@ pub struct SpecsWorld {
     pub last_ext_parse_msg: String,
     pub last_ext_state: OmniState,
     pub last_ext_ty: OmniType,
+}
+
+impl SpecsWorld {
+    pub fn take_last_ext_state(&mut self) -> OmniState {
+        let st = std::mem::replace(&mut self.last_ext_state, OmniState::Empty);
+        st
+    }
 }

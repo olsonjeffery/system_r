@@ -1,7 +1,8 @@
 use system_r::{
-    bottom::{BottomKind, BottomPattern, BottomState, BottomTokenKind, BottomType, BottomDialect},
+    bottom::{BottomDialect, BottomKind, BottomPattern, BottomState, BottomTokenKind, BottomType},
     extensions::struct_data::{
-        StructDataContext, StructDataKind, StructDataPattern, StructDataState, StructDataTokenKind, StructDataType, TypeAliasDialect,
+        StructDataContext, StructDataKind, StructDataPattern, StructDataState, StructDataTokenKind, StructDataType,
+        TypeAliasDialect,
     },
     platform_bindings::PlatformBindings,
     syntax::parser::ParserState,

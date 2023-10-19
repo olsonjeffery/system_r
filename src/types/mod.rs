@@ -45,7 +45,7 @@ use crate::diagnostics::*;
 use crate::extensions::{SystemRDialect, SystemRExtension};
 use crate::platform_bindings::PlatformBindings;
 use crate::system_r_util::span::Span;
-use crate::terms::{Kind, Term, Literal, Primitive};
+use crate::terms::{Kind, Literal, Primitive, Term};
 use crate::visit::{MutTermVisitor, MutTypeVisitor};
 use std::collections::{HashMap, VecDeque};
 use std::hash::Hash;
@@ -106,6 +106,7 @@ pub struct Context<TExtDialect: SystemRDialect + Clone + fmt::Debug + Default> {
     map: HashMap<String, Type<TExtDialect::TExtType>>,
     pub platform_bindings: PlatformBindings,
     _d: TExtDialect,
+    pub ext_state: TExtDialect::TExtDialectState,
 }
 
 impl<TExtDialect: SystemRDialect + Clone + fmt::Debug + Default> Default for Context<TExtDialect> {
@@ -115,6 +116,7 @@ impl<TExtDialect: SystemRDialect + Clone + fmt::Debug + Default> Default for Con
             map: Default::default(),
             platform_bindings: Default::default(),
             _d: Default::default(),
+            ext_state: Default::default(),
         }
     }
 }
@@ -309,9 +311,7 @@ impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug +
 
                 let height = self.stack.len();
 
-                let binds = crate::patterns::PatTyStack::<
-                    TExtDialect,
-                >::collect(&ty, pat);
+                let binds = crate::patterns::PatTyStack::<TExtDialect>::collect(&ty, pat);
                 for b in binds.into_iter().rev() {
                     self.push(b.clone());
                 }
@@ -430,10 +430,7 @@ impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug +
             }
         }
     }
-    pub fn type_check_ext(
-        &mut self,
-        t: &Term<TExtDialect>,
-    ) -> Result<Type<TExtDialect::TExtType>, Diagnostic> {
+    pub fn type_check_ext(&mut self, t: &Term<TExtDialect>) -> Result<Type<TExtDialect::TExtType>, Diagnostic> {
         panic!("Context::type_check_ext unimplemented");
     }
 }
@@ -472,30 +469,20 @@ impl<'ctx, TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq 
             Type::Universal(ty) => self.visit_universal(ty),
             Type::Existential(ty) => self.visit_existential(ty),
             Type::Rec(ty) => self.visit_rec(ty),
-            Type::Extended(_) => panic!("FIXME extended visitor unimplemented"),
+            Type::Extended(ty) => self.visit_ext(ty),
         }
     }
 }
 
-impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug + Default>
-    MutTermVisitor<TExtDialect> for Context<TExtDialect>
+impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug + Default> MutTermVisitor<TExtDialect>
+    for Context<TExtDialect>
 {
-    fn visit_abs(
-        &mut self,
-        sp: &mut Span,
-        ty: &mut Type<TExtDialect::TExtType>,
-        term: &mut Term<TExtDialect>,
-    ) {
+    fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect::TExtType>, term: &mut Term<TExtDialect>) {
         self.aliaser().visit(ty);
         self.visit(term);
     }
 
-    fn visit_tyapp(
-        &mut self,
-        sp: &mut Span,
-        term: &mut Term<TExtDialect>,
-        ty: &mut Type<TExtDialect::TExtType>,
-    ) {
+    fn visit_tyapp(&mut self, sp: &mut Span, term: &mut Term<TExtDialect>, ty: &mut Type<TExtDialect::TExtType>) {
         self.aliaser().visit(ty);
         self.visit(term);
     }
@@ -511,22 +498,12 @@ impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug +
         self.visit(term);
     }
 
-    fn visit_fold(
-        &mut self,
-        sp: &mut Span,
-        ty: &mut Type<TExtDialect::TExtType>,
-        tm: &mut Term<TExtDialect>,
-    ) {
+    fn visit_fold(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect::TExtType>, tm: &mut Term<TExtDialect>) {
         self.aliaser().visit(ty);
         self.visit(tm);
     }
 
-    fn visit_unfold(
-        &mut self,
-        sp: &mut Span,
-        ty: &mut Type<TExtDialect::TExtType>,
-        tm: &mut Term<TExtDialect>,
-    ) {
+    fn visit_unfold(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect::TExtType>, tm: &mut Term<TExtDialect>) {
         self.aliaser().visit(ty);
         self.visit(tm);
     }

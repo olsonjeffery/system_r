@@ -4,7 +4,7 @@ use cucumber::{gherkin::Step, given, then, when};
 
 use system_r::{
     bottom::{BottomKind, BottomPattern, BottomType},
-    terms::{Term, Literal, Kind},
+    terms::{Kind, Literal, Term},
     testing::{self, code_format, do_bottom_eval},
     types::Context,
     types::Type,

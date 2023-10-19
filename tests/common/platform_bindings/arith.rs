@@ -1,12 +1,7 @@
-use system_r::bottom::{BottomKind, BottomPattern, BottomType, BottomDialect};
+use system_r::bottom::{BottomDialect, BottomKind, BottomPattern, BottomType};
 use system_r::system_r_util::span::Span;
-use system_r::terms::{Term, Kind};
-use system_r::{
-    diagnostics::Diagnostic,
-    platform_bindings::WrappedContent,
-    terms::{Literal},
-    types::Type,
-};
+use system_r::terms::{Kind, Term};
+use system_r::{diagnostics::Diagnostic, platform_bindings::WrappedContent, terms::Literal, types::Type};
 
 pub fn pull_u32_from(args: &Vec<Term<BottomDialect>>, idx: usize, span: &Span) -> Result<u32, Diagnostic> {
     let arg_t_raw = match args.get(idx) {

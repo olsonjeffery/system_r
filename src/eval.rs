@@ -37,12 +37,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-use crate::bottom::{BottomExtension, BottomKind, BottomPattern, BottomType, BottomDialect};
+use crate::bottom::{BottomDialect, BottomExtension, BottomKind, BottomPattern, BottomType};
 use crate::diagnostics::Diagnostic;
 use crate::patterns::Pattern;
 use crate::platform_bindings::PlatformBindings;
 use crate::terms::visit::{Shift, Subst, TyTermSubst};
-use crate::terms::{Kind, Term, Literal, Primitive};
+use crate::terms::{Kind, Literal, Primitive, Term};
 use crate::types::{Context, Type};
 use crate::visit::MutTermVisitor;
 
@@ -75,7 +75,11 @@ impl<'ctx> Eval<'ctx> {
         }
     }
 
-    fn eval_primitive(&self, p: Primitive, term: Term<BottomDialect>) -> Result<Option<Term<BottomDialect>>, Diagnostic> {
+    fn eval_primitive(
+        &self,
+        p: Primitive,
+        term: Term<BottomDialect>,
+    ) -> Result<Option<Term<BottomDialect>>, Diagnostic> {
         fn map<F: Fn(u32) -> u32>(f: F, mut term: Term<BottomDialect>) -> Option<Term<BottomDialect>> {
             match &term.kind {
                 Kind::Lit(Literal::Nat(n)) => {
@@ -188,10 +192,7 @@ impl<'ctx> Eval<'ctx> {
                 } else {
                     let t_prime = self.small_step(*tm)?;
                     match t_prime {
-                        Some(t_prime) => Ok(Some(Term::new(
-                            Kind::Projection(Box::new(t_prime), idx),
-                            term.span,
-                        ))),
+                        Some(t_prime) => Ok(Some(Term::new(Kind::Projection(Box::new(t_prime), idx), term.span))),
                         None => Ok(None),
                     }
                 }
@@ -233,9 +234,7 @@ impl<'ctx> Eval<'ctx> {
                 if !Eval::normal_form(&expr) {
                     let t_prime = self.small_step(*expr)?;
                     match t_prime {
-                        Some(t_prime) => {
-                            return Ok(Some(Term::new(Kind::Case(Box::new(t_prime), arms), term.span)))
-                        }
+                        Some(t_prime) => return Ok(Some(Term::new(Kind::Case(Box::new(t_prime), arms), term.span))),
                         None => return Ok(None),
                     }
                 }
@@ -265,9 +264,7 @@ impl<'ctx> Eval<'ctx> {
                 if !Eval::normal_form(&tm) {
                     let t_prime = self.small_step(*tm)?;
                     match t_prime {
-                        Some(t_prime) => {
-                            return Ok(Some(Term::new(Kind::Unfold(ty, Box::new(t_prime)), term.span)))
-                        }
+                        Some(t_prime) => return Ok(Some(Term::new(Kind::Unfold(ty, Box::new(t_prime)), term.span))),
                         None => return Ok(None),
                     }
                 }
@@ -282,10 +279,7 @@ impl<'ctx> Eval<'ctx> {
                     let t_prime = self.small_step(*evidence)?;
                     match t_prime {
                         Some(t_prime) => {
-                            return Ok(Some(Term::new(
-                                Kind::Pack(wit, Box::new(t_prime), sig),
-                                term.span,
-                            )))
+                            return Ok(Some(Term::new(Kind::Pack(wit, Box::new(t_prime), sig), term.span)))
                         }
                         None => return Ok(None),
                     }

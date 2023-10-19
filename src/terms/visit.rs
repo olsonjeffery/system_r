@@ -57,9 +57,8 @@ impl Shift {
     }
 }
 
-impl<
-        TExtDialect: Clone + fmt::Debug + Default + SystemRDialect + PartialEq + PartialOrd,
-    > MutTermVisitor<TExtDialect> for Shift
+impl<TExtDialect: Clone + fmt::Debug + Default + SystemRDialect + PartialEq + PartialOrd> MutTermVisitor<TExtDialect>
+    for Shift
 {
     fn visit_var(&mut self, sp: &mut Span, var: &mut usize) {
         if *var >= self.cutoff {
@@ -87,12 +86,7 @@ impl<
         self.cutoff -= c;
     }
 
-    fn visit_case(
-        &mut self,
-        sp: &mut Span,
-        term: &mut Term<TExtDialect>,
-        arms: &mut Vec<Arm<TExtDialect>>,
-    ) {
+    fn visit_case(&mut self, sp: &mut Span, term: &mut Term<TExtDialect>, arms: &mut Vec<Arm<TExtDialect>>) {
         self.visit(term);
         for arm in arms {
             let c = PatternCount::<TExtDialect>::collect(&arm.pat);
@@ -102,12 +96,7 @@ impl<
         }
     }
 
-    fn visit_unpack(
-        &mut self,
-        _: &mut Span,
-        package: &mut Term<TExtDialect>,
-        term: &mut Term<TExtDialect>,
-    ) {
+    fn visit_unpack(&mut self, _: &mut Span, package: &mut Term<TExtDialect>, term: &mut Term<TExtDialect>) {
         self.visit(package);
         self.cutoff += 1;
         self.visit(term);
@@ -115,25 +104,19 @@ impl<
     }
 }
 
-pub struct Subst<
-    TExtDialect: Clone + fmt::Debug + Default + PartialEq + PartialOrd + SystemRDialect,
-> {
+pub struct Subst<TExtDialect: Clone + fmt::Debug + Default + PartialEq + PartialOrd + SystemRDialect> {
     cutoff: usize,
     term: Term<TExtDialect>,
 }
 
-impl<
-    TExtDialect: Clone + fmt::Debug + Default + PartialEq + PartialOrd + SystemRDialect,
-    > Subst<TExtDialect>
-{
+impl<TExtDialect: Clone + fmt::Debug + Default + PartialEq + PartialOrd + SystemRDialect> Subst<TExtDialect> {
     pub fn new(term: Term<TExtDialect>) -> Subst<TExtDialect> {
         Subst { cutoff: 0, term }
     }
 }
 
-impl<
-    TExtDialect: Clone + fmt::Debug + Default + PartialEq + PartialOrd + SystemRDialect,
-    > MutTermVisitor<TExtDialect> for Subst<TExtDialect>
+impl<TExtDialect: Clone + fmt::Debug + Default + PartialEq + PartialOrd + SystemRDialect> MutTermVisitor<TExtDialect>
+    for Subst<TExtDialect>
 {
     fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect::TExtType>, term: &mut Term<TExtDialect>) {
         self.cutoff += 1;
@@ -155,12 +138,7 @@ impl<
         self.cutoff -= c;
     }
 
-    fn visit_case(
-        &mut self,
-        sp: &mut Span,
-        term: &mut Term<TExtDialect>,
-        arms: &mut Vec<Arm<TExtDialect>>,
-    ) {
+    fn visit_case(&mut self, sp: &mut Span, term: &mut Term<TExtDialect>, arms: &mut Vec<Arm<TExtDialect>>) {
         self.visit(term);
         for arm in arms {
             let c = PatternCount::<TExtDialect>::collect(&arm.pat);
@@ -170,12 +148,7 @@ impl<
         }
     }
 
-    fn visit_unpack(
-        &mut self,
-        _: &mut Span,
-        package: &mut Term<TExtDialect>,
-        term: &mut Term<TExtDialect>,
-    ) {
+    fn visit_unpack(&mut self, _: &mut Span, package: &mut Term<TExtDialect>, term: &mut Term<TExtDialect>) {
         self.visit(package);
         self.cutoff += 1;
         self.visit(term);
@@ -216,9 +189,8 @@ impl<TExtType: Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash
     }
 }
 
-impl<
-    TExtDialect: Clone + fmt::Debug + Default + PartialEq + PartialOrd + SystemRDialect,
-    > MutTermVisitor<TExtDialect> for TyTermSubst<TExtDialect::TExtType>
+impl<TExtDialect: Clone + fmt::Debug + Default + PartialEq + PartialOrd + SystemRDialect> MutTermVisitor<TExtDialect>
+    for TyTermSubst<TExtDialect::TExtType>
 {
     fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect::TExtType>, term: &mut Term<TExtDialect>) {
         // self.cutoff += 1;
@@ -243,22 +215,12 @@ impl<
         self.visit(term);
     }
 
-    fn visit_unfold(
-        &mut self,
-        sp: &mut Span,
-        ty: &mut Type<TExtDialect::TExtType>,
-        term: &mut Term<TExtDialect>,
-    ) {
+    fn visit_unfold(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect::TExtType>, term: &mut Term<TExtDialect>) {
         self.visit_ty(ty);
         self.visit(term);
     }
 
-    fn visit_unpack(
-        &mut self,
-        _: &mut Span,
-        package: &mut Term<TExtDialect>,
-        term: &mut Term<TExtDialect>,
-    ) {
+    fn visit_unpack(&mut self, _: &mut Span, package: &mut Term<TExtDialect>, term: &mut Term<TExtDialect>) {
         self.visit(package);
         self.cutoff += 1;
         self.visit(term);
@@ -294,13 +256,13 @@ impl<
 ///
 /// Transform an [`Injection`] term of form: `Label tm of Rec(u.T)` into
 /// `fold [u.T] Label tm of [X->u.T] T`
-pub struct InjRewriter<
-    TExtDialect: Clone + fmt::Debug + Default + PartialEq + PartialOrd + SystemRDialect,
->(pub TExtDialect::TExtPat, pub TExtDialect::TExtKind);
+pub struct InjRewriter<TExtDialect: Clone + fmt::Debug + Default + PartialEq + PartialOrd + SystemRDialect>(
+    pub TExtDialect::TExtPat,
+    pub TExtDialect::TExtKind,
+);
 
-impl<
-    TExtDialect: Clone + fmt::Debug + Default + PartialEq + PartialOrd + SystemRDialect,
-    > MutTermVisitor<TExtDialect> for InjRewriter<TExtDialect>
+impl<TExtDialect: Clone + fmt::Debug + Default + PartialEq + PartialOrd + SystemRDialect> MutTermVisitor<TExtDialect>
+    for InjRewriter<TExtDialect>
 {
     fn visit(&mut self, term: &mut Term<TExtDialect>) {
         match &mut term.kind {

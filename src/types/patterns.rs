@@ -59,9 +59,7 @@ use std::collections::HashSet;
 
 /// Return true if `existing` covers `new`, i.e. if new is a useful pattern
 /// then `overlap` will return `false`
-fn overlap<
-    TExtDialect: SystemRDialect + Clone + fmt::Debug + PartialEq + PartialOrd + Default,
->(
+fn overlap<TExtDialect: SystemRDialect + Clone + fmt::Debug + PartialEq + PartialOrd + Default>(
     existing: &Pattern<TExtDialect>,
     new: &Pattern<TExtDialect>,
 ) -> bool {
@@ -89,7 +87,9 @@ pub struct Matrix<'pat, TExtDialect: SystemRDialect + Clone + fmt::Debug + Defau
     matrix: Vec<Vec<&'pat Pattern<TExtDialect>>>,
 }
 
-impl<'pat, TExtDialect: PartialOrd + PartialEq + SystemRDialect + Clone + fmt::Debug + Default> Matrix<'pat, TExtDialect> {
+impl<'pat, TExtDialect: PartialOrd + PartialEq + SystemRDialect + Clone + fmt::Debug + Default>
+    Matrix<'pat, TExtDialect>
+{
     /// Create a new [`Matrix`] for a given type
     pub fn new(expr_ty: Type<TExtDialect::TExtType>) -> Matrix<'pat, TExtDialect> {
         let len = match &expr_ty {
@@ -129,11 +129,7 @@ impl<'pat, TExtDialect: PartialOrd + PartialEq + SystemRDialect + Clone + fmt::D
                 let temp = [&con];
                 let mut ret = false;
                 for row in &self.matrix {
-                    if row
-                        .iter()
-                        .zip(&temp)
-                        .all(|(a, b)| overlap::<TExtDialect>(a, b))
-                    {
+                    if row.iter().zip(&temp).all(|(a, b)| overlap::<TExtDialect>(a, b)) {
                         ret = true;
                         break;
                     }
@@ -145,11 +141,7 @@ impl<'pat, TExtDialect: PartialOrd + PartialEq + SystemRDialect + Clone + fmt::D
                 // useful, then we do not have an exhaustive matrix
                 let filler = (0..self.len).map(|_| Pattern::Any).collect::<Vec<_>>();
                 for row in &self.matrix {
-                    if row
-                        .iter()
-                        .zip(filler.iter())
-                        .all(|(a, b)| overlap::<TExtDialect>(a, b))
-                    {
+                    if row.iter().zip(filler.iter()).all(|(a, b)| overlap::<TExtDialect>(a, b)) {
                         return true;
                     }
                 }
@@ -161,13 +153,12 @@ impl<'pat, TExtDialect: PartialOrd + PartialEq + SystemRDialect + Clone + fmt::D
                 // or just a wildcard
                 let tru = Pattern::Literal(Literal::Bool(true));
                 let fal = Pattern::Literal(Literal::Bool(false));
-                !(self.can_add_row::<>(vec![&tru])
-                    && self.can_add_row::<>(vec![&fal]))
+                !(self.can_add_row(vec![&tru]) && self.can_add_row(vec![&fal]))
             }
             Type::Unit => {
                 // Unit is a degenerate case
                 let unit = Pattern::Literal(Literal::Unit);
-                !self.can_add_row::<>(vec![&unit])
+                !self.can_add_row(vec![&unit])
             }
             _ => false,
         }
@@ -215,17 +206,17 @@ impl<'pat, TExtDialect: PartialOrd + PartialEq + SystemRDialect + Clone + fmt::D
         match pat {
             Pattern::Any | Pattern::Variable(_) => {
                 let filler = (0..self.len).map(|_| &Pattern::Any).collect::<Vec<_>>();
-                self.try_add_row::<>(filler)
+                self.try_add_row(filler)
             }
-            Pattern::Product(tuple) => self.try_add_row::<>(tuple.iter().collect()),
+            Pattern::Product(tuple) => self.try_add_row(tuple.iter().collect()),
             Pattern::Literal(lit) => {
                 if self.len == 1 {
-                    self.try_add_row::<>(vec![pat])
+                    self.try_add_row(vec![pat])
                 } else {
                     false
                 }
             }
-            Pattern::Constructor(label, inner) => self.try_add_row::<>(vec![pat]),
+            Pattern::Constructor(label, inner) => self.try_add_row(vec![pat]),
             v @ Pattern::Extended(_) => ext.pat_add_ext_pattern(&(*self), v),
         }
     }
@@ -270,10 +261,7 @@ impl<TExtDialect: SystemRDialect + Clone + PartialEq + PartialOrd + fmt::Debug +
             if self.pattern_type_eq(&arm.pat, &matrix.expr_ty, ext) {
                 let height = self.stack.len();
 
-                let binds = PatTyStack::<TExtDialect>::collect(
-                    &matrix.expr_ty,
-                    &arm.pat,
-                );
+                let binds = PatTyStack::<TExtDialect>::collect(&matrix.expr_ty, &arm.pat);
                 for b in binds.into_iter().rev() {
                     self.push(b.clone());
                 }
@@ -292,7 +280,7 @@ impl<TExtDialect: SystemRDialect + Clone + PartialEq + PartialOrd + fmt::Debug +
                 return Err(
                     Diagnostic::error(expr.span, format!("case binding has a type {:?}", &matrix.expr_ty)).message(
                         arm.span,
-                        format!("but this pattern cannot bind a value of type {:?}", &matrix.expr_ty),
+                        format!("but this pattern ({:?}) cannot bind a value of type {:?}", &arm.pat, &matrix.expr_ty),
                     ),
                 );
             }
@@ -302,7 +290,7 @@ impl<TExtDialect: SystemRDialect + Clone + PartialEq + PartialOrd + fmt::Debug +
             return Err(Diagnostic::error(expr.span, format!("incompatible arms! {:?}", set)));
         }
 
-        if matrix.exhaustive::<>() {
+        if matrix.exhaustive() {
             match set.into_iter().next() {
                 Some(s) => Ok(s),
                 None => Err(Diagnostic::error(
@@ -331,7 +319,7 @@ impl<TExtDialect: SystemRDialect + Clone + PartialEq + PartialOrd + fmt::Debug +
         &self,
         pat: &Pattern<TExtDialect>,
         ty: &Type<TExtDialect::TExtType>,
-        ext: &mut TExt,
+        ext: &TExt,
     ) -> bool {
         match pat {
             Pattern::Any => true,
@@ -362,9 +350,12 @@ impl<TExtDialect: SystemRDialect + Clone + PartialEq + PartialOrd + fmt::Debug +
                     }
                     false
                 }
-                _ => false,
+                v => {
+                    panic!("did not get a variant type, got {:?}", v);
+                    return false
+                },
             },
-            Pattern::Extended(v) => ext.pat_ext_pattern_type_eq(v, ty),
+            Pattern::Extended(v) => ext.pat_ext_pattern_type_eq(self, v, ty),
         }
     }
 }
@@ -465,7 +456,7 @@ mod test {
             assert!(matrix.add_pattern::<BottomExtension>(pat, &mut ext));
         }
         assert!(!matrix.add_pattern(&Any, &mut BottomExtension));
-        assert!(matrix.exhaustive::<>());
+        assert!(matrix.exhaustive());
     }
 
     #[test]
@@ -494,9 +485,9 @@ mod test {
         }
         let last = con!("C", Any);
 
-        assert!(!matrix.exhaustive::<>());
+        assert!(!matrix.exhaustive());
         assert!(matrix.add_pattern(&last, &mut BottomExtension));
-        assert!(matrix.exhaustive::<>());
+        assert!(matrix.exhaustive());
     }
 
     #[test]
@@ -512,6 +503,6 @@ mod test {
             assert!(matrix.add_pattern(p, &mut BottomExtension));
         }
         assert!(!matrix.add_pattern(&pats[1], &mut BottomExtension));
-        assert!(matrix.exhaustive::<>());
+        assert!(matrix.exhaustive());
     }
 }

@@ -16,7 +16,7 @@ use core::fmt;
 use std::collections::HashMap;
 use std::hash;
 
-use crate::bottom::{BottomKind, BottomPattern, BottomTokenKind, BottomType, BottomDialect};
+use crate::bottom::{BottomDialect, BottomKind, BottomPattern, BottomTokenKind, BottomType};
 use crate::extensions::{SystemRDialect, SystemRExtension};
 use crate::system_r_util::span::Span;
 
@@ -27,10 +27,7 @@ use crate::{
     types::{Context, Type},
 };
 
-pub type WrappedFn = fn(
-    input: Term<BottomDialect>,
-    span: &Span,
-) -> Result<Term<BottomDialect>, Diagnostic>;
+pub type WrappedFn = fn(input: Term<BottomDialect>, span: &Span) -> Result<Term<BottomDialect>, Diagnostic>;
 
 pub struct WrappedContent(pub WrappedFn, pub Type<BottomType>, pub Type<BottomType>);
 

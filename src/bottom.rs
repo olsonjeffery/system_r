@@ -18,7 +18,7 @@ use crate::{
     patterns::Pattern,
     syntax::{error::Error, lexer::ExtLexer /* lexer2::extlexer2 */},
     system_r_util::span::Span,
-    terms::{Kind, Term},
+    terms::{Kind, Term}, types::Context,
 };
 
 #[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
@@ -83,7 +83,7 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
         BottomTokenKind::Placeholder
     }
 
-    fn pat_ext_pattern_type_eq(&self, pat: &BottomPattern, ty: &crate::types::Type<BottomType>) -> bool {
+    fn pat_ext_pattern_type_eq(&self, ctx: &Context<BottomDialect>, pat: &BottomPattern, ty: &crate::types::Type<BottomType>) -> bool {
         false
     }
 
@@ -95,11 +95,7 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
         false
     }
 
-    fn pat_ext_matches(
-        &self,
-        pat: &BottomPattern,
-        term: &crate::terms::Term<BottomDialect>,
-    ) -> bool {
+    fn pat_ext_matches(&self, pat: &BottomPattern, term: &crate::terms::Term<BottomDialect>) -> bool {
         false
     }
 

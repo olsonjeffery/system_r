@@ -62,7 +62,9 @@ pub struct ExtLexer<'s, TExtDialect: SystemRDialect + Clone + fmt::Debug + Defau
     _pat: TExtDialect::TExtPat,
 }
 
-impl<'s, TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd> Default for ExtLexer<'s, TExtDialect> {
+impl<'s, TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd> Default
+    for ExtLexer<'s, TExtDialect>
+{
     fn default() -> Self {
         Self {
             input: "".chars().peekable(),
@@ -81,7 +83,9 @@ fn is_tag(x: char) -> bool {
     false
 }
 
-impl<'s, TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd> ExtLexer<'s, TExtDialect> {
+impl<'s, TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd>
+    ExtLexer<'s, TExtDialect>
+{
     pub fn new(input: Chars<'s>) -> ExtLexer<'s, TExtDialect> {
         ExtLexer {
             input: input.peekable(),
@@ -164,9 +168,7 @@ impl<'s, TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq 
         ExtToken::new(kind, span)
     }
 
-    fn extended_single<
-        TExt: Copy + Clone + SystemRExtension<TExtDialect>,
-    >(
+    fn extended_single<TExt: Copy + Clone + SystemRExtension<TExtDialect>>(
         &mut self,
         ext: &mut TExt,
     ) -> ExtToken<TExtDialect::TExtTokenKind> {
@@ -177,9 +179,7 @@ impl<'s, TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq 
     //TLE: Default + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern>,
 
     /// Lex a reserved keyword or an identifier
-    fn keyword<
-        TExt: Copy + Clone + SystemRExtension<TExtDialect>,
-    >(
+    fn keyword<TExt: Copy + Clone + SystemRExtension<TExtDialect>>(
         &mut self,
         ext: &mut TExt,
     ) -> ExtToken<TExtDialect::TExtTokenKind> {
@@ -242,9 +242,7 @@ impl<'s, TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq 
     }
 
     /// Return the next lexeme in the input as a [`Token`]
-    pub fn lex<
-        TExt: Copy + Clone + SystemRExtension<TExtDialect>,
-    >(
+    pub fn lex<TExt: Copy + Clone + SystemRExtension<TExtDialect>>(
         &mut self,
         ext: &mut TExt,
     ) -> ExtToken<TExtDialect::TExtTokenKind> {
@@ -285,10 +283,10 @@ impl<'s, TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq 
     }
 }
 
-impl<'s, TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd> ExtLexer<'s, TExtDialect> {
-    fn next<
-        TExt: fmt::Debug + Default + Copy + Clone + PartialEq + PartialOrd + SystemRExtension<TExtDialect>,
-    >(
+impl<'s, TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd>
+    ExtLexer<'s, TExtDialect>
+{
+    fn next<TExt: fmt::Debug + Default + Copy + Clone + PartialEq + PartialOrd + SystemRExtension<TExtDialect>>(
         &mut self,
         ext: &mut TExt,
     ) -> Option<ExtToken<TExtDialect::TExtTokenKind>> {

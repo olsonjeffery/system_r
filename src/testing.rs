@@ -58,7 +58,7 @@ pub fn code_format(src: &str, diag: Diagnostic) -> String {
 
 pub fn type_check_term<
     's,
-    TExtDialect: SystemRDialect + Clone +PartialEq + PartialOrd + fmt::Debug + Default,
+    TExtDialect: SystemRDialect + Clone + PartialEq + PartialOrd + fmt::Debug + Default,
     TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ctx: &mut types::Context<TExtDialect>,
@@ -113,7 +113,7 @@ pub fn parse_single_block(
     platform_bindings: &PlatformBindings,
     input: &str,
 ) -> Result<Term<BottomDialect>, Diagnostic> {
-    let mut ps = parser::new::<>(platform_bindings, input);
+    let mut ps = parser::new(platform_bindings, input);
     let mut ext = BottomExtension;
     return match parser::parse(&mut ps, &mut ext) {
         Ok(term) => Ok(term),

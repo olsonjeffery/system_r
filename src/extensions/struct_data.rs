@@ -15,13 +15,13 @@ limitations under the License.
 use std::{cell::RefCell, collections::HashMap, ops::Range, rc::Rc};
 
 use crate::{
-    bottom::{BottomExtension, BottomKind, BottomPattern, BottomTokenKind, BottomType, BottomDialect},
+    bottom::{BottomDialect, BottomExtension, BottomKind, BottomPattern, BottomTokenKind, BottomType},
     diagnostics::Diagnostic,
-    patterns::PatVarStack,
+    patterns::{PatVarStack, Pattern},
     platform_bindings::PlatformBindings,
     syntax::{
-        parser,
         error::Error,
+        parser,
         parser::{ErrorKind, ParserState},
         ExtTokenKind,
     },
@@ -65,11 +65,7 @@ pub enum StructDataKind {
     StructIdent(String),
     /// fields: struct identifier with leading $, type shape, struct scope body
     /// (in let-polymorphism style)
-    StructDataExpr(
-        String,
-        Box<Term<TypeAliasDialect>>,
-        Box<Term<TypeAliasDialect>>,
-    ),
+    StructDataExpr(String, Box<Term<TypeAliasDialect>>, Box<Term<TypeAliasDialect>>),
     Below(BottomKind),
 }
 
@@ -93,7 +89,7 @@ pub struct StructDataState {
     type_map: HashMap<String, (usize, Type<StructDataType>)>,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Default, PartialEq, PartialOrd, Eq)]
 pub struct TypeAliasDialect;
 
 impl SystemRDialect for TypeAliasDialect {
@@ -130,7 +126,7 @@ impl SystemRExtension<TypeAliasDialect> for StructDataExtension {
         panic!("called lex_ext_keyword with a data str that wasn't StructData; shouldn't happen");
     }
 
-    fn pat_ext_pattern_type_eq(&self, pat: &StructDataPattern, ty: &crate::types::Type<StructDataType>) -> bool {
+    fn pat_ext_pattern_type_eq(&self, ctx: &Context<TypeAliasDialect>, pat: &StructDataPattern, ty: &crate::types::Type<StructDataType>) -> bool {
         false
     }
 
@@ -142,11 +138,7 @@ impl SystemRExtension<TypeAliasDialect> for StructDataExtension {
         false
     }
 
-    fn pat_ext_matches(
-        &self,
-        pat: &StructDataPattern,
-        term: &crate::terms::Term<TypeAliasDialect>,
-    ) -> bool {
+    fn pat_ext_matches(&self, pat: &StructDataPattern, term: &crate::terms::Term<TypeAliasDialect>) -> bool {
         false
     }
 
@@ -161,7 +153,7 @@ impl SystemRExtension<TypeAliasDialect> for StructDataExtension {
         let sp = ps.span;
         parser::expect(ps, self, ExtTokenKind::Extended(StructDataTokenKind::StructData))?;
 
-        let struct_ident = parser::once(ps,|p| parser::atom(p, self), "missing struct identifier $Binding")?;
+        let struct_ident = parser::once(ps, |p| parser::atom(p, self), "missing struct identifier $Binding")?;
         let struct_ident = match struct_ident.kind {
             Kind::Extended(StructDataKind::StructIdent(s)) => s,
             e => {
@@ -262,21 +254,21 @@ impl SystemRExtension<TypeAliasDialect> for StructDataExtension {
 }
 
 pub fn has_holed_type_named(
-    ps: &mut ParserState<TypeAliasDialect>,
+    ps: &<TypeAliasDialect as SystemRDialect>::TExtDialectState,
     key: &str,
 ) -> Result<bool, Error<StructDataTokenKind>> {
     Ok(get_holed_type_from(ps, key).is_ok())
 }
 
 pub fn get_holed_type_from(
-    ps: &mut ParserState<TypeAliasDialect>,
+    ps: &StructDataState,
     key: &str,
 ) -> Result<(usize, Type<StructDataType>), Error<StructDataTokenKind>> {
-    match ps.ext_state.type_map.get(key) {
+    match ps.type_map.get(key) {
         Some(t) => Ok(t.clone()),
         None => Err(Error {
-            span: ps.span,
-            tok: ps.token.clone(),
+            span: Default::default(),
+            tok: Default::default(), // FIXME replace span/tok defaults and propagating it into extensions
             kind: ErrorKind::ExtendedError(format!("Tried to get holed type named '{:?}', found None", key)),
         }),
     }
@@ -301,8 +293,7 @@ pub fn set_holed_type_for(
 }
 
 pub fn reify_type<'s>(
-    ps: &mut ParserState<TypeAliasDialect>,
-    ext: &mut StructDataExtension,
+    ps: &StructDataState,
     type_decl_key: &str,
     applied_types: &Vec<Type<StructDataType>>,
 ) -> Result<Type<StructDataType>, Error<StructDataTokenKind>> {
@@ -310,8 +301,8 @@ pub fn reify_type<'s>(
 
     if applied_types.len() != tyabs_count {
         return Err(Error {
-            span: ps.span,
-            tok: ps.token.clone(),
+            span: Default::default(),
+            tok: Default::default(),
             kind: ErrorKind::ExtendedError(format!(
                 "Expected tyabs count in holed type of be {:?}, but was {:?}",
                 applied_types.len(),
@@ -382,7 +373,11 @@ pub fn get_holed_type_from_decl<'s>(
     let push_count = extract_tyabs_for_type_shape(ps, ext)?;
 
     // type def
-    let type_shape = parser::once(ps, |p| parser::ty_atom(p, &mut StructDataExtension), "abstraction body required")?;
+    let type_shape = parser::once(
+        ps,
+        |p| parser::ty_atom(p, &mut StructDataExtension),
+        "abstraction body required",
+    )?;
 
     // pop off the tyabs var, since they only apply for the purpose of defining
     // "type holes" in the type def
@@ -393,16 +388,8 @@ pub fn get_holed_type_from_decl<'s>(
     Ok((push_count, type_shape))
 }
 
-impl
-    SystemRTranslator<
-        TypeAliasDialect, BottomDialect
-    > for StructDataExtension
-{
-    fn resolve(
-        &self,
-        st: &mut StructDataState,
-        tm: Term<TypeAliasDialect>,
-    ) -> Result<Term<BottomDialect>, Diagnostic> {
+impl SystemRTranslator<TypeAliasDialect, BottomDialect> for StructDataExtension {
+    fn resolve(&self, st: &mut StructDataState, tm: Term<TypeAliasDialect>) -> Result<Term<BottomDialect>, Diagnostic> {
         Err(Diagnostic::error(tm.span, format!("BottomExtension::resolve() unimpl")))
     }
 }
