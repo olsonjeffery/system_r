@@ -25,7 +25,7 @@ use crate::{
         ExtToken,
     },
     terms::Term,
-    types::{Type, Context},
+    types::{Type, Context}, system_r_util::span::Span,
 };
 
 use self::struct_data::TypeAliasDialect;
@@ -56,18 +56,20 @@ pub trait SystemRExtension<TExtDialect: SystemRDialect + Default + fmt::Debug + 
         &mut self,
         ps: &mut ParserState<TExtDialect>,
     ) -> Result<Term<TExtDialect>, Error<TExtDialect::TExtTokenKind>>;
-    fn pat_ext_pattern_type_eq(&self, ctx: &Context<TExtDialect>, pat: &TExtDialect::TExtPat, ty: &Type<TExtDialect::TExtType>) -> bool;
+    fn parser_ty(
+        &mut self,
+        ps: &mut ParserState<TExtDialect>,
+    ) -> Result<Type<TExtDialect::TExtType>, Error<TExtDialect::TExtTokenKind>>;
+    fn parser_ty_bump_if(&mut self, ps: &mut ParserState<TExtDialect>) -> bool;
     fn pat_add_ext_pattern<'a>(
         &'a self,
         parent: &crate::types::patterns::Matrix<'a, TExtDialect>,
         ext_pattern: &Pattern<TExtDialect>,
     ) -> bool;
     fn pat_ext_matches(&self, pat: &TExtDialect::TExtPat, term: &Term<TExtDialect>) -> bool;
-    fn parser_ty(
-        &mut self,
-        ps: &mut ParserState<TExtDialect>,
-    ) -> Result<Type<TExtDialect::TExtType>, Error<TExtDialect::TExtTokenKind>>;
-    fn parser_ty_bump_if(&mut self, ps: &mut ParserState<TExtDialect>) -> bool;
+    fn pat_ext_pattern_type_eq(&self, ctx: &Context<TExtDialect>, pat: &TExtDialect::TExtPat, ty: &Type<TExtDialect::TExtType>) -> bool;
+    fn pat_ctor_eq_within(&self, ctx: &Context<TExtDialect>, label: &str, inner: &Pattern<TExtDialect>, target: &TExtDialect::TExtType) -> bool;
+    fn type_check_injection_to_ext(&mut self, ctx: &mut Context<TExtDialect>, label: &str, target: &TExtDialect::TExtType, tm: &Term<TExtDialect>) -> Result<Type<TExtDialect::TExtType>, Diagnostic>;
 }
 
 pub trait SystemRTranslator<

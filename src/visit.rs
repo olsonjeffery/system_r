@@ -191,7 +191,6 @@ pub trait MutTermVisitor<TExtDialect: SystemRDialect + Clone + Default + fmt::De
     }
 
     fn visit_ext(&mut self, sp: &mut Span, k: &mut TExtDialect::TExtKind) {
-        panic!("visit_ext unimpl; shouldn't be left this way lol..")
     }
 
     fn walk(&mut self, term: &mut Term<TExtDialect>) {

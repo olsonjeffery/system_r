@@ -27,7 +27,7 @@ use crate::{
     },
     terms::{Kind, Term},
     types::{visit::Subst, Context, Type},
-    visit::MutTypeVisitor,
+    visit::MutTypeVisitor, system_r_util::span::Span,
 };
 
 use super::{SystemRDialect, SystemRExtension, SystemRTranslator};
@@ -65,7 +65,7 @@ pub enum StructDataKind {
     StructIdent(String),
     /// fields: struct identifier with leading $, type shape, struct scope body
     /// (in let-polymorphism style)
-    StructDataExpr(String, Box<Term<TypeAliasDialect>>, Box<Term<TypeAliasDialect>>),
+    StructDataExpr(String, Box<(usize, Type<<TypeAliasDialect as SystemRDialect>::TExtType>)>, Box<Term<TypeAliasDialect>>),
     Below(BottomKind),
 }
 
@@ -170,7 +170,7 @@ impl SystemRExtension<TypeAliasDialect> for StructDataExtension {
         // this should be a "holed-out" type specification (it should have
         // entries for where generic types can be substituted-in)
         let type_shape = get_holed_type_from_decl(ps, self)?;
-        set_holed_type_for(ps, &struct_ident, type_shape)?;
+        set_holed_type_for(ps, &struct_ident, type_shape.clone())?;
 
         let len = ps.tmvar.len();
         parser::expect(ps, self, ExtTokenKind::In)?;
@@ -182,6 +182,7 @@ impl SystemRExtension<TypeAliasDialect> for StructDataExtension {
 
         // FIXME return the whole structure, move erasure
         // logic to resolve()
+        //Ok(Term {span: sp, kind: Kind::Extended(StructDataKind::StructDataExpr(struct_ident, Box::new(type_shape), Box::new(t2)))})
         Ok(t2)
     }
 
@@ -250,6 +251,71 @@ impl SystemRExtension<TypeAliasDialect> for StructDataExtension {
 
         let type_alias_app = Type::Extended(StructDataType::TypeAliasApp(type_decl_key, applied_types));
         Ok(type_alias_app)
+    }
+
+    fn pat_ctor_eq_within(&self, ctx: &Context<TypeAliasDialect>, ctor_label: &str, inner: &Pattern<TypeAliasDialect>, aliased_target: &<TypeAliasDialect as SystemRDialect>::TExtType) -> bool {
+        let StructDataType::TypeAliasApp(type_alias_label, inner_types) = aliased_target else {
+            return false;
+        };
+
+        let ps = &ctx.ext_state;
+        let dealiased = match reify_type(ps, type_alias_label, inner_types) {
+            Err(e) => return false,
+            Ok(t) => t,
+        };
+
+        // NOW it should be a variant
+        match dealiased {
+            Type::Variant(v) => {
+                for discriminant in v {
+                    if ctor_label == &discriminant.label && ctx.pattern_type_eq(inner, &discriminant.ty, self) {
+                        return true;
+                    }
+                }
+                return false;
+            },
+            v => return false
+        };
+    }
+
+    fn type_check_injection_to_ext(&mut self, ctx: &mut Context<TypeAliasDialect>, inj_label: &str, target: &<TypeAliasDialect as SystemRDialect>::TExtType, tm: &Term<TypeAliasDialect>) -> Result<Type<<TypeAliasDialect as SystemRDialect>::TExtType>, Diagnostic> {
+        let sp = tm.span.clone();
+        let StructDataType::TypeAliasApp(type_alias_label, inner_types) = target else {
+            return Err(Diagnostic::error(sp.clone(), format!("")));
+        };
+
+        let ps = &ctx.ext_state;
+        let dealiased = match reify_type(ps, type_alias_label, inner_types) {
+            Err(e) => return Err(Diagnostic::error(sp.clone(), format!("failed to reify type: {:?}", e))),
+            Ok(t) => t
+        };
+
+        // NOW it should be a variant
+        match dealiased {
+            Type::Variant(fields) => {
+                for f in fields.clone() {
+                    if inj_label == &f.label {
+                        let ty = ctx.type_check(tm, self)?;
+                        if ty == f.ty {
+                            return Ok(ty.clone());
+                        }
+                    }
+                }
+                return Err(Diagnostic::error(
+                    sp.clone(),
+                    format!(
+                        "constructor {} does not belong to the variant {:?}",
+                        inj_label,
+                        fields
+                            .iter()
+                            .map(|f| f.label.clone())
+                            .collect::<Vec<String>>()
+                            .join(" | ")
+                    ),
+                ))
+            },
+            v => return Err(Diagnostic::error(sp.clone(), format!("expected de-aliased type to be a Varient, was {:?}", v)))
+        };
     }
 }
 
@@ -368,7 +434,7 @@ pub fn extract_tyabs_for_type_shape<'s>(
 pub fn get_holed_type_from_decl<'s>(
     ps: &mut ParserState<'s, TypeAliasDialect>,
     ext: &mut StructDataExtension,
-) -> Result<(usize, Type<StructDataType>), Error<StructDataTokenKind>> {
+) -> Result<(usize, Type<<TypeAliasDialect as SystemRDialect>::TExtType>), Error<StructDataTokenKind>> {
     let sp = ps.span;
     let push_count = extract_tyabs_for_type_shape(ps, ext)?;
 

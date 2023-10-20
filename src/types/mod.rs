@@ -224,7 +224,7 @@ impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug +
                         }
                     }
                     _ => Err(Diagnostic::error(term.span, "app: Expected arrow type!")
-                        .message(t1.span, format!("operator has type {:?}", ty1))),
+                        .message(t1.span, format!("Kind::App tm1 {:?} tm2 {:?}", &t1, &t2))),
                 }
             }
             Kind::Fix(inner) => {
@@ -240,7 +240,7 @@ impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug +
                         }
                     }
                     _ => Err(Diagnostic::error(term.span, "Fix: Expected arrow type!")
-                        .message(inner.span, format!("operator has type {:?}", ty))),
+                        .message(inner.span, format!("Kind::Fix -> type_check operator has type {:?}", ty))),
                 }
             }
             Kind::Primitive(prim) => match prim {
@@ -275,6 +275,9 @@ impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug +
                                 .join(" | ")
                         ),
                     ))
+                }
+                Type::Extended(t) => {
+                    ext.type_check_injection_to_ext(self, label, t, &tm)
                 }
                 _ => Err(Diagnostic::error(
                     term.span,

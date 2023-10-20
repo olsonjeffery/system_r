@@ -16,7 +16,7 @@ use crate::{
     diagnostics::Diagnostic,
     extensions::{SystemRDialect, SystemRExtension},
     patterns::Pattern,
-    syntax::{error::Error, lexer::ExtLexer /* lexer2::extlexer2 */},
+    syntax::{error::Error, lexer::ExtLexer, parser::ParserState /* lexer2::extlexer2 */},
     system_r_util::span::Span,
     terms::{Kind, Term}, types::Context,
 };
@@ -130,5 +130,13 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
         ps: &mut crate::syntax::parser::ParserState<BottomDialect>,
     ) -> Result<crate::types::Type<BottomType>, Error<BottomTokenKind>> {
         panic!("calling parser_ty on BottomExtension; shouldn't happen");
+    }
+
+    fn pat_ctor_eq_within(&self, ctx: &Context<BottomDialect>, label: &str, inner: &Pattern<BottomDialect>, target: &<BottomDialect as SystemRDialect>::TExtType) -> bool {
+        false
+    }
+
+    fn type_check_injection_to_ext(&mut self, ctx: &mut Context<BottomDialect>, label: &str, target: &<BottomDialect as SystemRDialect>::TExtType, tm: &Term<BottomDialect>) -> Result<crate::types::Type<<BottomDialect as SystemRDialect>::TExtType>, Diagnostic> {
+        panic!("type_check_injection_to_ext for BottomDialect; should never be called")
     }
 }

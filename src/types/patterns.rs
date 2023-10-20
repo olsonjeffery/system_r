@@ -350,10 +350,10 @@ impl<TExtDialect: SystemRDialect + Clone + PartialEq + PartialOrd + fmt::Debug +
                     }
                     false
                 }
-                v => {
-                    panic!("did not get a variant type, got {:?}", v);
-                    return false
+                Type::Extended(ext_ty) => {
+                    ext.pat_ctor_eq_within(&self, label, inner, ext_ty)
                 },
+                _ => false
             },
             Pattern::Extended(v) => ext.pat_ext_pattern_type_eq(self, v, ty),
         }
