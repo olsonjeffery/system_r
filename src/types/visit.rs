@@ -37,7 +37,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 use super::Type;
-use crate::visit::MutTypeVisitor;
+use crate::{extensions::SystemRDialect, visit::MutTypeVisitor};
 use core::fmt;
 use std::{convert::TryFrom, hash};
 
@@ -52,8 +52,8 @@ impl Shift {
     }
 }
 
-impl<TExtType: Clone + Default + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash> MutTypeVisitor<TExtType>
-    for Shift
+impl<TExtDialect: SystemRDialect + Clone + Default + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash>
+    MutTypeVisitor<TExtDialect> for Shift
 {
     fn visit_var(&mut self, var: &mut usize) {
         if *var >= self.cutoff {
@@ -61,19 +61,19 @@ impl<TExtType: Clone + Default + fmt::Debug + PartialEq + PartialOrd + Eq + hash
         }
     }
 
-    fn visit_universal(&mut self, inner: &mut Type<TExtType>) {
+    fn visit_universal(&mut self, inner: &mut Type<TExtDialect>) {
         self.cutoff += 1;
         self.visit(inner);
         self.cutoff -= 1;
     }
 
-    fn visit_existential(&mut self, inner: &mut Type<TExtType>) {
+    fn visit_existential(&mut self, inner: &mut Type<TExtDialect>) {
         self.cutoff += 1;
         self.visit(inner);
         self.cutoff -= 1;
     }
 
-    fn visit_rec(&mut self, ty: &mut Type<TExtType>) {
+    fn visit_rec(&mut self, ty: &mut Type<TExtDialect>) {
         self.cutoff += 1;
         self.visit(ty);
         self.cutoff -= 1;
@@ -81,41 +81,45 @@ impl<TExtType: Clone + Default + fmt::Debug + PartialEq + PartialOrd + Eq + hash
 }
 
 /// Represents substituting the provided `Type` into
-/// TmVar(0) position in the `&mut Type<TExtType>` provided to
+/// TmVar(0) position in the `&mut Type<TExtDialect>` provided to
 /// `visit()`
-pub struct Subst<TExtType: Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash> {
+pub struct Subst<
+    TExtDialect: Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash,
+> {
     pub cutoff: usize,
-    pub ty: Type<TExtType>,
+    pub ty: Type<TExtDialect>,
 }
 
-impl<TExtType: Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash> Subst<TExtType> {
-    pub fn new(ty: Type<TExtType>) -> Subst<TExtType> {
+impl<TExtDialect: Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash>
+    Subst<TExtDialect>
+{
+    pub fn new(ty: Type<TExtDialect>) -> Subst<TExtDialect> {
         Subst { cutoff: 0, ty }
     }
 }
 
-impl<TExtType: Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash> MutTypeVisitor<TExtType>
-    for Subst<TExtType>
+impl<TExtDialect: Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash>
+    MutTypeVisitor<TExtDialect> for Subst<TExtDialect>
 {
-    fn visit_universal(&mut self, inner: &mut Type<TExtType>) {
+    fn visit_universal(&mut self, inner: &mut Type<TExtDialect>) {
         self.cutoff += 1;
         self.visit(inner);
         self.cutoff -= 1;
     }
 
-    fn visit_existential(&mut self, inner: &mut Type<TExtType>) {
+    fn visit_existential(&mut self, inner: &mut Type<TExtDialect>) {
         self.cutoff += 1;
         self.visit(inner);
         self.cutoff -= 1;
     }
 
-    fn visit_rec(&mut self, ty: &mut Type<TExtType>) {
+    fn visit_rec(&mut self, ty: &mut Type<TExtDialect>) {
         self.cutoff += 1;
         self.visit(ty);
         self.cutoff -= 1;
     }
 
-    fn visit(&mut self, ty: &mut Type<TExtType>) {
+    fn visit(&mut self, ty: &mut Type<TExtDialect>) {
         match ty {
             Type::Unit | Type::Bool | Type::Nat | Type::Tag(_) => {}
             Type::PlatformBinding(i, r) => {}

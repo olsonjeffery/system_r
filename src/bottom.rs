@@ -18,10 +18,11 @@ use crate::{
     patterns::Pattern,
     syntax::{error::Error, lexer::ExtLexer, parser::ParserState /* lexer2::extlexer2 */},
     system_r_util::span::Span,
-    terms::{Kind, Term}, types::Context,
+    terms::{Kind, Term},
+    types::Context,
 };
 
-#[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
+#[derive(Eq, Hash, Clone, Default, Debug, PartialEq, PartialOrd)]
 pub struct BottomDialect;
 
 impl SystemRDialect for BottomDialect {
@@ -83,7 +84,12 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
         BottomTokenKind::Placeholder
     }
 
-    fn pat_ext_pattern_type_eq(&self, ctx: &Context<BottomDialect>, pat: &BottomPattern, ty: &crate::types::Type<BottomType>) -> bool {
+    fn pat_ext_pattern_type_eq(
+        &self,
+        ctx: &Context<BottomDialect>,
+        pat: &BottomPattern,
+        ty: &crate::types::Type<BottomDialect>,
+    ) -> bool {
         false
     }
 
@@ -128,19 +134,38 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
     fn parser_ty(
         &mut self,
         ps: &mut crate::syntax::parser::ParserState<BottomDialect>,
-    ) -> Result<crate::types::Type<BottomType>, Error<BottomTokenKind>> {
+    ) -> Result<crate::types::Type<BottomDialect>, Error<BottomTokenKind>> {
         panic!("calling parser_ty on BottomExtension; shouldn't happen");
     }
 
-    fn pat_ctor_eq_within(&self, ctx: &Context<BottomDialect>, label: &str, inner: &Pattern<BottomDialect>, target: &<BottomDialect as SystemRDialect>::TExtType) -> bool {
+    fn pat_ctor_eq_within(
+        &self,
+        ctx: &Context<BottomDialect>,
+        label: &str,
+        inner: &Pattern<BottomDialect>,
+        target: &<BottomDialect as SystemRDialect>::TExtType,
+    ) -> bool {
         false
     }
 
-    fn type_check_injection_to_ext(&mut self, ctx: &mut Context<BottomDialect>, label: &str, target: &<BottomDialect as SystemRDialect>::TExtType, tm: &Term<BottomDialect>) -> Result<crate::types::Type<<BottomDialect as SystemRDialect>::TExtType>, Diagnostic> {
+    fn type_check_injection_to_ext(
+        &mut self,
+        ctx: &mut Context<BottomDialect>,
+        label: &str,
+        target: &<BottomDialect as SystemRDialect>::TExtType,
+        tm: &Term<BottomDialect>,
+    ) -> Result<crate::types::Type<BottomDialect>, Diagnostic> {
         panic!("type_check_injection_to_ext for BottomDialect; should never be called")
     }
 
-    fn type_check_application_of_ext(&mut self, ctx: &mut Context<BottomDialect>, t1: &Term<BottomDialect>, ty1: &crate::types::Type<<BottomDialect as SystemRDialect>::TExtType>, t2: &Term<BottomDialect>, ty2: &crate::types::Type<<BottomDialect as SystemRDialect>::TExtType>) -> Result<crate::types::Type<<BottomDialect as SystemRDialect>::TExtType>, Diagnostic> {
+    fn type_check_application_of_ext(
+        &mut self,
+        ctx: &mut Context<BottomDialect>,
+        t1: &Term<BottomDialect>,
+        ty1: &crate::types::Type<BottomDialect>,
+        t2: &Term<BottomDialect>,
+        ty2: &crate::types::Type<BottomDialect>,
+    ) -> Result<crate::types::Type<BottomDialect>, Diagnostic> {
         panic!("type_check_application_of_ext for BottomDialect; should never be called")
     }
 }

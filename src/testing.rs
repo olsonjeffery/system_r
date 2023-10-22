@@ -58,13 +58,13 @@ pub fn code_format(src: &str, diag: Diagnostic) -> String {
 
 pub fn type_check_term<
     's,
-    TExtDialect: SystemRDialect + Clone + PartialEq + PartialOrd + fmt::Debug + Default,
+    TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + PartialEq + PartialOrd + fmt::Debug + Default,
     TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ctx: &mut types::Context<TExtDialect>,
     term: &mut Term<TExtDialect>,
     ext: &mut TExt,
-) -> Result<Type<TExtDialect::TExtType>, Diagnostic> {
+) -> Result<Type<TExtDialect>, Diagnostic> {
     // Step 1
     let ty = ctx.type_check(term, ext)?;
     Ok(ty)
@@ -72,13 +72,13 @@ pub fn type_check_term<
 
 pub fn dealias_and_type_check_term<
     's,
-    TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug + Default,
+    TExtDialect: Eq + hash::Hash + SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug + Default,
     TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ctx: &mut types::Context<TExtDialect>,
     term: &mut Term<TExtDialect>,
     ext: &mut TExt,
-) -> Result<Type<TExtDialect::TExtType>, Diagnostic> {
+) -> Result<Type<TExtDialect>, Diagnostic> {
     // Step 0
     ctx.de_alias(term);
     InjRewriter(Default::default(), Default::default()).visit(term);
@@ -88,7 +88,7 @@ pub fn dealias_and_type_check_term<
 
 pub fn operate_parser_for<
     's,
-    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
     TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     input: &str,
@@ -154,7 +154,7 @@ pub fn type_check_and_eval_single_block(
     term: &mut Term<BottomDialect>,
     src: &str,
     fail_on_type_mismatch: bool,
-) -> Result<(Type<BottomType>, Term<BottomDialect>), Diagnostic> {
+) -> Result<(Type<BottomDialect>, Term<BottomDialect>), Diagnostic> {
     // Step 1
     let mut ext = BottomExtension;
     let pre_ty = do_type_check(ctx, term, &mut ext)?;
@@ -177,13 +177,13 @@ pub fn type_check_and_eval_single_block(
 
 pub fn do_type_check<
     's,
-    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
     TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ctx: &mut types::Context<TExtDialect>,
     term: &mut Term<TExtDialect>,
     ext: &mut TExt,
-) -> Result<Type<TExtDialect::TExtType>, Diagnostic> {
+) -> Result<Type<TExtDialect>, Diagnostic> {
     let tc_result = dealias_and_type_check_term(ctx, term, ext);
     let Some(pre_ty) = tc_result.clone().ok() else {
         let e = tc_result.err().unwrap();

@@ -59,6 +59,6 @@ pub enum OmniTerm {
 pub enum OmniType {
     #[default]
     Empty,
-    Bottom(Type<BottomType>),
-    StructData(Type<StructDataType>),
+    Bottom(Type<BottomDialect>),
+    StructData(Type<TypeAliasDialect>),
 }

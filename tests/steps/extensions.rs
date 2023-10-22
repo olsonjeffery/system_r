@@ -30,7 +30,7 @@ static StructData_CTX_NAME: &'static str = "StructData";
 
 pub fn parse_for_extension<
     's,
-    TExtDialect: SystemRDialect + fmt::Debug + Default + Clone + PartialEq + PartialOrd,
+    TExtDialect: hash::Hash + Eq + SystemRDialect + fmt::Debug + Default + Clone + PartialEq + PartialOrd,
     TLE: Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     input: &str,
@@ -42,13 +42,13 @@ pub fn parse_for_extension<
 
 pub fn type_check_for_extension<
     's,
-    TExtDialect: SystemRDialect + fmt::Debug + Default + Clone + PartialEq + PartialOrd + Eq,
+    TExtDialect: hash::Hash + Eq + SystemRDialect + fmt::Debug + Default + Clone + PartialEq + PartialOrd + Eq,
     TLE: Default + Copy + Clone + SystemRExtension<TExtDialect> + fmt::Debug,
 >(
     ctx: &mut Context<TExtDialect>,
     term: &mut Term<TExtDialect>,
     ext: &mut TLE,
-) -> Result<Type<TExtDialect::TExtType>, Diagnostic> {
+) -> Result<Type<TExtDialect>, Diagnostic> {
     testing::do_type_check::<TExtDialect, TLE>(ctx, term, ext)
 }
 

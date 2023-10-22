@@ -25,9 +25,10 @@ use crate::{
         parser::{ErrorKind, ParserState},
         ExtTokenKind,
     },
+    system_r_util::span::Span,
     terms::{Kind, Term},
     types::{visit::Subst, Context, Type},
-    visit::MutTypeVisitor, system_r_util::span::Span,
+    visit::MutTypeVisitor,
 };
 
 use super::{SystemRDialect, SystemRExtension, SystemRTranslator};
@@ -61,11 +62,15 @@ pub enum StructDataTokenKind {
 pub enum StructDataKind {
     #[default]
     Empty,
-    Declaration(Box<Type<StructDataType>>),
+    Declaration(Box<Type<TypeAliasDialect>>),
     StructIdent(String),
     /// fields: struct identifier with leading $, type shape, struct scope body
     /// (in let-polymorphism style)
-    StructDataExpr(String, Box<(usize, Type<<TypeAliasDialect as SystemRDialect>::TExtType>)>, Box<Term<TypeAliasDialect>>),
+    StructDataExpr(
+        String,
+        Box<(usize, Type<TypeAliasDialect>)>,
+        Box<Term<TypeAliasDialect>>,
+    ),
     Below(BottomKind),
 }
 
@@ -81,15 +86,15 @@ pub enum StructDataPattern {
 pub enum StructDataType {
     #[default]
     Empty,
-    TypeAliasApp(String, Vec<Type<StructDataType>>),
+    TypeAliasApp(String, Vec<Type<TypeAliasDialect>>),
 }
 
 #[derive(Clone, Default, Debug)]
 pub struct StructDataState {
-    type_map: HashMap<String, (usize, Type<StructDataType>)>,
+    type_map: HashMap<String, (usize, Type<TypeAliasDialect>)>,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, PartialOrd, Eq)]
+#[derive(Hash, Clone, Debug, Default, PartialEq, PartialOrd, Eq)]
 pub struct TypeAliasDialect;
 
 impl SystemRDialect for TypeAliasDialect {
@@ -126,7 +131,12 @@ impl SystemRExtension<TypeAliasDialect> for StructDataExtension {
         panic!("called lex_ext_keyword with a data str that wasn't StructData; shouldn't happen");
     }
 
-    fn pat_ext_pattern_type_eq(&self, ctx: &Context<TypeAliasDialect>, pat: &StructDataPattern, ty: &crate::types::Type<StructDataType>) -> bool {
+    fn pat_ext_pattern_type_eq(
+        &self,
+        ctx: &Context<TypeAliasDialect>,
+        pat: &StructDataPattern,
+        ty: &crate::types::Type<TypeAliasDialect>,
+    ) -> bool {
         false
     }
 
@@ -182,7 +192,9 @@ impl SystemRExtension<TypeAliasDialect> for StructDataExtension {
 
         // FIXME return the whole structure, move erasure
         // logic to resolve()
-        //Ok(Term {span: sp, kind: Kind::Extended(StructDataKind::StructDataExpr(struct_ident, Box::new(type_shape), Box::new(t2)))})
+        //Ok(Term {span: sp, kind:
+        // Kind::Extended(StructDataKind::StructDataExpr(struct_ident,
+        // Box::new(type_shape), Box::new(t2)))})
         Ok(t2)
     }
 
@@ -231,7 +243,7 @@ impl SystemRExtension<TypeAliasDialect> for StructDataExtension {
     fn parser_ty(
         &mut self,
         ps: &mut ParserState<TypeAliasDialect>,
-    ) -> Result<Type<StructDataType>, Error<StructDataTokenKind>> {
+    ) -> Result<Type<TypeAliasDialect>, Error<StructDataTokenKind>> {
         let binding = ps.token.kind.clone();
 
         let ExtTokenKind::Extended(StructDataTokenKind::TypeBindingVar(type_decl_key)) = binding else {
@@ -253,7 +265,13 @@ impl SystemRExtension<TypeAliasDialect> for StructDataExtension {
         Ok(type_alias_app)
     }
 
-    fn pat_ctor_eq_within(&self, ctx: &Context<TypeAliasDialect>, ctor_label: &str, inner: &Pattern<TypeAliasDialect>, aliased_target: &<TypeAliasDialect as SystemRDialect>::TExtType) -> bool {
+    fn pat_ctor_eq_within(
+        &self,
+        ctx: &Context<TypeAliasDialect>,
+        ctor_label: &str,
+        inner: &Pattern<TypeAliasDialect>,
+        aliased_target: &<TypeAliasDialect as SystemRDialect>::TExtType,
+    ) -> bool {
         let StructDataType::TypeAliasApp(type_alias_label, inner_types) = aliased_target else {
             return false;
         };
@@ -273,12 +291,18 @@ impl SystemRExtension<TypeAliasDialect> for StructDataExtension {
                     }
                 }
                 return false;
-            },
-            v => return false
+            }
+            v => return false,
         };
     }
 
-    fn type_check_injection_to_ext(&mut self, ctx: &mut Context<TypeAliasDialect>, inj_label: &str, target: &<TypeAliasDialect as SystemRDialect>::TExtType, tm: &Term<TypeAliasDialect>) -> Result<Type<<TypeAliasDialect as SystemRDialect>::TExtType>, Diagnostic> {
+    fn type_check_injection_to_ext(
+        &mut self,
+        ctx: &mut Context<TypeAliasDialect>,
+        inj_label: &str,
+        target: &<TypeAliasDialect as SystemRDialect>::TExtType,
+        tm: &Term<TypeAliasDialect>,
+    ) -> Result<Type<TypeAliasDialect>, Diagnostic> {
         let sp = tm.span.clone();
         let StructDataType::TypeAliasApp(type_alias_label, inner_types) = target else {
             return Err(Diagnostic::error(sp.clone(), format!("")));
@@ -287,7 +311,7 @@ impl SystemRExtension<TypeAliasDialect> for StructDataExtension {
         let ps = &ctx.ext_state;
         let dealiased = match reify_type(ps, type_alias_label, inner_types) {
             Err(e) => return Err(Diagnostic::error(sp.clone(), format!("failed to reify type: {:?}", e))),
-            Ok(t) => t
+            Ok(t) => t,
         };
 
         // NOW it should be a variant
@@ -312,13 +336,25 @@ impl SystemRExtension<TypeAliasDialect> for StructDataExtension {
                             .collect::<Vec<String>>()
                             .join(" | ")
                     ),
+                ));
+            }
+            v => {
+                return Err(Diagnostic::error(
+                    sp.clone(),
+                    format!("expected de-aliased type to be a Varient, was {:?}", v),
                 ))
-            },
-            v => return Err(Diagnostic::error(sp.clone(), format!("expected de-aliased type to be a Varient, was {:?}", v)))
+            }
         };
     }
 
-    fn type_check_application_of_ext(&mut self, ctx: &mut Context<TypeAliasDialect>, t1: &Term<TypeAliasDialect>, ty1: &Type<<TypeAliasDialect as SystemRDialect>::TExtType>, t2: &Term<TypeAliasDialect>, ty2: &Type<<TypeAliasDialect as SystemRDialect>::TExtType>) -> Result<Type<<TypeAliasDialect as SystemRDialect>::TExtType>, Diagnostic> {
+    fn type_check_application_of_ext(
+        &mut self,
+        ctx: &mut Context<TypeAliasDialect>,
+        t1: &Term<TypeAliasDialect>,
+        ty1: &Type<TypeAliasDialect>,
+        t2: &Term<TypeAliasDialect>,
+        ty2: &Type<TypeAliasDialect>,
+    ) -> Result<Type<TypeAliasDialect>, Diagnostic> {
         panic!("type_check_application_of_ext for TypeAliasDialect unimpl")
     }
 }
@@ -333,7 +369,7 @@ pub fn has_holed_type_named(
 pub fn get_holed_type_from(
     ps: &StructDataState,
     key: &str,
-) -> Result<(usize, Type<StructDataType>), Error<StructDataTokenKind>> {
+) -> Result<(usize, Type<TypeAliasDialect>), Error<StructDataTokenKind>> {
     match ps.type_map.get(key) {
         Some(t) => Ok(t.clone()),
         None => Err(Error {
@@ -347,7 +383,7 @@ pub fn get_holed_type_from(
 pub fn set_holed_type_for(
     ps: &mut ParserState<TypeAliasDialect>,
     key: &str,
-    ty: (usize, Type<StructDataType>),
+    ty: (usize, Type<TypeAliasDialect>),
 ) -> Result<(), Error<StructDataTokenKind>> {
     match ps.ext_state.type_map.contains_key(key) {
         false => {
@@ -365,8 +401,8 @@ pub fn set_holed_type_for(
 pub fn reify_type<'s>(
     ps: &StructDataState,
     type_decl_key: &str,
-    applied_types: &Vec<Type<StructDataType>>,
-) -> Result<Type<StructDataType>, Error<StructDataTokenKind>> {
+    applied_types: &Vec<Type<TypeAliasDialect>>,
+) -> Result<Type<TypeAliasDialect>, Error<StructDataTokenKind>> {
     let (tyabs_count, mut holed_type) = get_holed_type_from(ps, type_decl_key)?;
 
     if applied_types.len() != tyabs_count {
@@ -397,7 +433,7 @@ pub fn reify_type<'s>(
 pub fn pulls_types_from_tyapp(
     ps: &mut ParserState<TypeAliasDialect>,
     ext: &mut StructDataExtension,
-) -> Result<Vec<Type<StructDataType>>, Error<StructDataTokenKind>> {
+) -> Result<Vec<Type<TypeAliasDialect>>, Error<StructDataTokenKind>> {
     parser::expect(ps, ext, ExtTokenKind::LSquare)?;
     parser::expect(ps, ext, ExtTokenKind::Of)?;
 
@@ -431,14 +467,14 @@ pub fn extract_tyabs_for_type_shape<'s>(
     parser::expect(ps, ext, ExtTokenKind::Lambda)?;
     let tyvar = parser::uppercase_id(ps, ext)?;
     let index = ps.tyvar.push(tyvar);
-    let tyabs: Box<Type<StructDataType>> = Box::new(Type::Var(index));
+    let tyabs: Box<Type<TypeAliasDialect>> = Box::new(Type::Var(index));
     Ok(1) // FIXME do dynamic tyabs extraction and return the count
 }
 
 pub fn get_holed_type_from_decl<'s>(
     ps: &mut ParserState<'s, TypeAliasDialect>,
     ext: &mut StructDataExtension,
-) -> Result<(usize, Type<<TypeAliasDialect as SystemRDialect>::TExtType>), Error<StructDataTokenKind>> {
+) -> Result<(usize, Type<TypeAliasDialect>), Error<StructDataTokenKind>> {
     let sp = ps.span;
     let push_count = extract_tyabs_for_type_shape(ps, ext)?;
 

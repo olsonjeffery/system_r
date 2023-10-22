@@ -347,7 +347,7 @@ fn term_subst(mut s: Term<BottomDialect>, t: &mut Term<BottomDialect>) {
     Shift::new(-1).visit(t);
 }
 
-fn type_subst(s: Type<BottomType>, t: &mut Term<BottomDialect>) {
+fn type_subst(s: Type<BottomDialect>, t: &mut Term<BottomDialect>) {
     TyTermSubst::new(s).visit(t);
     Shift::new(-1).visit(t);
 }

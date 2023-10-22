@@ -29,7 +29,7 @@ use crate::{
 
 pub type WrappedFn = fn(input: Term<BottomDialect>, span: &Span) -> Result<Term<BottomDialect>, Diagnostic>;
 
-pub struct WrappedContent(pub WrappedFn, pub Type<BottomType>, pub Type<BottomType>);
+pub struct WrappedContent(pub WrappedFn, pub Type<BottomDialect>, pub Type<BottomDialect>);
 
 impl Clone for WrappedContent {
     fn clone(&self) -> Self {
@@ -88,9 +88,11 @@ impl<'a> PlatformBindings {
     }
 }
 
-fn resolve_pb_type<TExtType: Clone + Default + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash>(
-    ty_in: Type<BottomType>,
-) -> Result<Type<TExtType>, Diagnostic> {
+fn resolve_pb_type<
+    TExtDialect: Eq + SystemRDialect + Clone + Default + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
+>(
+    ty_in: Type<BottomDialect>,
+) -> Result<Type<TExtDialect>, Diagnostic> {
     match ty_in {
         Type::Extended(v) => Err(Diagnostic::error(
             Default::default(),
@@ -122,7 +124,7 @@ fn resolve_pb_type<TExtType: Clone + Default + fmt::Debug + PartialEq + PartialO
         Type::Variant(v) => {
             let mut result = Vec::new();
             for i in v {
-                let variant: Variant<TExtType> = Variant {
+                let variant: Variant<TExtDialect> = Variant {
                     label: i.label,
                     ty: resolve_pb_type(i.ty)?,
                 };
@@ -134,12 +136,14 @@ fn resolve_pb_type<TExtType: Clone + Default + fmt::Debug + PartialEq + PartialO
     }
 }
 
-impl<TExtDialect: SystemRDialect + Clone + fmt::Debug + Default> Context<TExtDialect> {
+impl<TExtDialect: Eq + hash::Hash + PartialEq + PartialOrd + SystemRDialect + Clone + fmt::Debug + Default>
+    Context<TExtDialect>
+{
     pub(crate) fn type_check_platform_binding(
         &mut self,
         idx: &usize,
         span: &Span,
-    ) -> Result<Type<TExtDialect::TExtType>, Diagnostic> {
+    ) -> Result<Type<TExtDialect>, Diagnostic> {
         match self.platform_bindings.get(*idx) {
             Some(wc) => {
                 let args_resolved = resolve_pb_type(wc.1.clone())?;

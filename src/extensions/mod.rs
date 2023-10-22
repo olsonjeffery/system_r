@@ -24,8 +24,9 @@ use crate::{
         parser::ParserState,
         ExtToken,
     },
+    system_r_util::span::Span,
     terms::Term,
-    types::{Type, Context}, system_r_util::span::Span,
+    types::{Context, Type},
 };
 
 use self::struct_data::TypeAliasDialect;
@@ -40,7 +41,10 @@ pub trait SystemRDialect {
     type TExtDialectState: fmt::Debug + Default + Clone;
 }
 
-pub trait SystemRExtension<TExtDialect: SystemRDialect + Default + fmt::Debug + Clone + PartialEq + PartialOrd> {
+pub trait SystemRExtension<
+    TExtDialect: hash::Hash + Eq + SystemRDialect + Default + fmt::Debug + Clone + PartialEq + PartialOrd,
+>
+{
     fn lex_is_ext_single(&self, x: char) -> bool;
     fn lex_is_extended_single_pred(&self, x: char) -> bool;
     fn lex_is_ext_keyword(&self, data: &str) -> bool;
@@ -59,7 +63,7 @@ pub trait SystemRExtension<TExtDialect: SystemRDialect + Default + fmt::Debug + 
     fn parser_ty(
         &mut self,
         ps: &mut ParserState<TExtDialect>,
-    ) -> Result<Type<TExtDialect::TExtType>, Error<TExtDialect::TExtTokenKind>>;
+    ) -> Result<Type<TExtDialect>, Error<TExtDialect::TExtTokenKind>>;
     fn parser_ty_bump_if(&mut self, ps: &mut ParserState<TExtDialect>) -> bool;
     fn pat_add_ext_pattern<'a>(
         &'a self,
@@ -67,15 +71,39 @@ pub trait SystemRExtension<TExtDialect: SystemRDialect + Default + fmt::Debug + 
         ext_pattern: &Pattern<TExtDialect>,
     ) -> bool;
     fn pat_ext_matches(&self, pat: &TExtDialect::TExtPat, term: &Term<TExtDialect>) -> bool;
-    fn pat_ext_pattern_type_eq(&self, ctx: &Context<TExtDialect>, pat: &TExtDialect::TExtPat, ty: &Type<TExtDialect::TExtType>) -> bool;
-    fn pat_ctor_eq_within(&self, ctx: &Context<TExtDialect>, label: &str, inner: &Pattern<TExtDialect>, target: &TExtDialect::TExtType) -> bool;
-    fn type_check_injection_to_ext(&mut self, ctx: &mut Context<TExtDialect>, label: &str, target: &TExtDialect::TExtType, tm: &Term<TExtDialect>) -> Result<Type<TExtDialect::TExtType>, Diagnostic>;
-    fn type_check_application_of_ext(&mut self, ctx: &mut Context<TExtDialect>, t1: &Term<TExtDialect>, ty1: &Type<TExtDialect::TExtType>, t2: &Term<TExtDialect>, ty2: &Type<TExtDialect::TExtType>) -> Result<Type<TExtDialect::TExtType>, Diagnostic>;
+    fn pat_ext_pattern_type_eq(
+        &self,
+        ctx: &Context<TExtDialect>,
+        pat: &TExtDialect::TExtPat,
+        ty: &Type<TExtDialect>,
+    ) -> bool;
+    fn pat_ctor_eq_within(
+        &self,
+        ctx: &Context<TExtDialect>,
+        label: &str,
+        inner: &Pattern<TExtDialect>,
+        target: &TExtDialect::TExtType,
+    ) -> bool;
+    fn type_check_injection_to_ext(
+        &mut self,
+        ctx: &mut Context<TExtDialect>,
+        label: &str,
+        target: &TExtDialect::TExtType,
+        tm: &Term<TExtDialect>,
+    ) -> Result<Type<TExtDialect>, Diagnostic>;
+    fn type_check_application_of_ext(
+        &mut self,
+        ctx: &mut Context<TExtDialect>,
+        t1: &Term<TExtDialect>,
+        ty1: &Type<TExtDialect>,
+        t2: &Term<TExtDialect>,
+        ty2: &Type<TExtDialect>,
+    ) -> Result<Type<TExtDialect>, Diagnostic>;
 }
 
 pub trait SystemRTranslator<
-    InDialect: SystemRDialect + Clone + PartialEq + PartialOrd + fmt::Debug + Default,
-    OutDialect: SystemRDialect + Clone + PartialEq + PartialOrd + fmt::Debug + Default,
+    InDialect: Eq + SystemRDialect + Clone + PartialEq + PartialOrd + fmt::Debug + Default,
+    OutDialect: Eq + SystemRDialect + Clone + PartialEq + PartialOrd + fmt::Debug + Default,
 >
 {
     fn resolve(

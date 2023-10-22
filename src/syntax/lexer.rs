@@ -54,7 +54,7 @@ use std::{char, hash};
 pub type Lexer<'s> = ExtLexer<'s, BottomDialect>;
 
 #[derive(Clone, Debug)]
-pub struct ExtLexer<'s, TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd> {
+pub struct ExtLexer<'s, TExtDialect: Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd> {
     input: Peekable<Chars<'s>>,
     current: Location,
     _token: TExtDialect::TExtTokenKind,
@@ -62,7 +62,7 @@ pub struct ExtLexer<'s, TExtDialect: SystemRDialect + Clone + fmt::Debug + Defau
     _pat: TExtDialect::TExtPat,
 }
 
-impl<'s, TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd> Default
+impl<'s, TExtDialect: Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd> Default
     for ExtLexer<'s, TExtDialect>
 {
     fn default() -> Self {
@@ -83,7 +83,7 @@ fn is_tag(x: char) -> bool {
     false
 }
 
-impl<'s, TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd>
+impl<'s, TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd>
     ExtLexer<'s, TExtDialect>
 {
     pub fn new(input: Chars<'s>) -> ExtLexer<'s, TExtDialect> {
@@ -283,7 +283,7 @@ impl<'s, TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq 
     }
 }
 
-impl<'s, TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd>
+impl<'s, TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd>
     ExtLexer<'s, TExtDialect>
 {
     fn next<TExt: fmt::Debug + Default + Copy + Clone + PartialEq + PartialOrd + SystemRExtension<TExtDialect>>(

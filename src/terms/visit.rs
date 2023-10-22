@@ -57,8 +57,8 @@ impl Shift {
     }
 }
 
-impl<TExtDialect: Clone + fmt::Debug + Default + SystemRDialect + PartialEq + PartialOrd> MutTermVisitor<TExtDialect>
-    for Shift
+impl<TExtDialect: hash::Hash + Eq + Clone + fmt::Debug + Default + SystemRDialect + PartialEq + PartialOrd>
+    MutTermVisitor<TExtDialect> for Shift
 {
     fn visit_var(&mut self, sp: &mut Span, var: &mut usize) {
         if *var >= self.cutoff {
@@ -66,7 +66,7 @@ impl<TExtDialect: Clone + fmt::Debug + Default + SystemRDialect + PartialEq + Pa
         }
     }
 
-    fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect::TExtType>, term: &mut Term<TExtDialect>) {
+    fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect>, term: &mut Term<TExtDialect>) {
         self.cutoff += 1;
         self.visit(term);
         self.cutoff -= 1;
@@ -104,21 +104,24 @@ impl<TExtDialect: Clone + fmt::Debug + Default + SystemRDialect + PartialEq + Pa
     }
 }
 
-pub struct Subst<TExtDialect: Clone + fmt::Debug + Default + PartialEq + PartialOrd + SystemRDialect> {
+pub struct Subst<TExtDialect: hash::Hash + Eq + Clone + fmt::Debug + Default + PartialEq + PartialOrd + SystemRDialect>
+{
     cutoff: usize,
     term: Term<TExtDialect>,
 }
 
-impl<TExtDialect: Clone + fmt::Debug + Default + PartialEq + PartialOrd + SystemRDialect> Subst<TExtDialect> {
+impl<TExtDialect: hash::Hash + Eq + Clone + fmt::Debug + Default + PartialEq + PartialOrd + SystemRDialect>
+    Subst<TExtDialect>
+{
     pub fn new(term: Term<TExtDialect>) -> Subst<TExtDialect> {
         Subst { cutoff: 0, term }
     }
 }
 
-impl<TExtDialect: Clone + fmt::Debug + Default + PartialEq + PartialOrd + SystemRDialect> MutTermVisitor<TExtDialect>
-    for Subst<TExtDialect>
+impl<TExtDialect: hash::Hash + Eq + Clone + fmt::Debug + Default + PartialEq + PartialOrd + SystemRDialect>
+    MutTermVisitor<TExtDialect> for Subst<TExtDialect>
 {
-    fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect::TExtType>, term: &mut Term<TExtDialect>) {
+    fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect>, term: &mut Term<TExtDialect>) {
         self.cutoff += 1;
         self.visit(term);
         self.cutoff -= 1;
@@ -167,20 +170,24 @@ impl<TExtDialect: Clone + fmt::Debug + Default + PartialEq + PartialOrd + System
     }
 }
 
-pub struct TyTermSubst<TExtType: Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash> {
+pub struct TyTermSubst<
+    TExtDialect: SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash,
+> {
     cutoff: usize,
-    ty: Type<TExtType>,
+    ty: Type<TExtDialect>,
 }
 
-impl<TExtType: Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash> TyTermSubst<TExtType> {
-    pub fn new(ty: Type<TExtType>) -> TyTermSubst<TExtType> {
+impl<TExtDialect: SystemRDialect + Eq + Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash>
+    TyTermSubst<TExtDialect>
+{
+    pub fn new(ty: Type<TExtDialect>) -> TyTermSubst<TExtDialect> {
         use crate::types::visit::*;
         let mut ty = ty;
         Shift::new(1).visit(&mut ty);
         TyTermSubst { cutoff: 0, ty }
     }
 
-    fn visit_ty(&mut self, ty: &mut Type<TExtType>) {
+    fn visit_ty(&mut self, ty: &mut Type<TExtDialect>) {
         let mut s = crate::types::visit::Subst {
             cutoff: self.cutoff,
             ty: self.ty.clone(),
@@ -189,17 +196,17 @@ impl<TExtType: Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash
     }
 }
 
-impl<TExtDialect: Clone + fmt::Debug + Default + PartialEq + PartialOrd + SystemRDialect> MutTermVisitor<TExtDialect>
-    for TyTermSubst<TExtDialect::TExtType>
+impl<TExtDialect: hash::Hash + Eq + Clone + fmt::Debug + Default + PartialEq + PartialOrd + SystemRDialect>
+    MutTermVisitor<TExtDialect> for TyTermSubst<TExtDialect>
 {
-    fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect::TExtType>, term: &mut Term<TExtDialect>) {
+    fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect>, term: &mut Term<TExtDialect>) {
         // self.cutoff += 1;
         self.visit_ty(ty);
         self.visit(term);
         // self.cutoff -= 1;
     }
 
-    fn visit_tyapp(&mut self, sp: &mut Span, term: &mut Term<TExtDialect>, ty: &mut Type<TExtDialect::TExtType>) {
+    fn visit_tyapp(&mut self, sp: &mut Span, term: &mut Term<TExtDialect>, ty: &mut Type<TExtDialect>) {
         self.visit_ty(ty);
         self.visit(term);
     }
@@ -210,12 +217,12 @@ impl<TExtDialect: Clone + fmt::Debug + Default + PartialEq + PartialOrd + System
         self.cutoff -= 1;
     }
 
-    fn visit_fold(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect::TExtType>, term: &mut Term<TExtDialect>) {
+    fn visit_fold(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect>, term: &mut Term<TExtDialect>) {
         self.visit_ty(ty);
         self.visit(term);
     }
 
-    fn visit_unfold(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect::TExtType>, term: &mut Term<TExtDialect>) {
+    fn visit_unfold(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect>, term: &mut Term<TExtDialect>) {
         self.visit_ty(ty);
         self.visit(term);
     }
@@ -230,9 +237,9 @@ impl<TExtDialect: Clone + fmt::Debug + Default + PartialEq + PartialOrd + System
     fn visit_pack(
         &mut self,
         _: &mut Span,
-        wit: &mut Type<TExtDialect::TExtType>,
+        wit: &mut Type<TExtDialect>,
         body: &mut Term<TExtDialect>,
-        sig: &mut Type<TExtDialect::TExtType>,
+        sig: &mut Type<TExtDialect>,
     ) {
         self.visit_ty(wit);
         self.visit(body);
@@ -244,7 +251,7 @@ impl<TExtDialect: Clone + fmt::Debug + Default + PartialEq + PartialOrd + System
         sp: &mut Span,
         label: &mut String,
         term: &mut Term<TExtDialect>,
-        ty: &mut Type<TExtDialect::TExtType>,
+        ty: &mut Type<TExtDialect>,
     ) {
         self.visit_ty(ty);
         self.visit(term);
@@ -256,13 +263,13 @@ impl<TExtDialect: Clone + fmt::Debug + Default + PartialEq + PartialOrd + System
 ///
 /// Transform an [`Injection`] term of form: `Label tm of Rec(u.T)` into
 /// `fold [u.T] Label tm of [X->u.T] T`
-pub struct InjRewriter<TExtDialect: Clone + fmt::Debug + Default + PartialEq + PartialOrd + SystemRDialect>(
+pub struct InjRewriter<TExtDialect: Eq + Clone + fmt::Debug + Default + PartialEq + PartialOrd + SystemRDialect>(
     pub TExtDialect::TExtPat,
     pub TExtDialect::TExtKind,
 );
 
-impl<TExtDialect: Clone + fmt::Debug + Default + PartialEq + PartialOrd + SystemRDialect> MutTermVisitor<TExtDialect>
-    for InjRewriter<TExtDialect>
+impl<TExtDialect: hash::Hash + Eq + Clone + fmt::Debug + Default + PartialEq + PartialOrd + SystemRDialect>
+    MutTermVisitor<TExtDialect> for InjRewriter<TExtDialect>
 {
     fn visit(&mut self, term: &mut Term<TExtDialect>) {
         match &mut term.kind {

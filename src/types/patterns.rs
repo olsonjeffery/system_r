@@ -59,7 +59,7 @@ use std::collections::HashSet;
 
 /// Return true if `existing` covers `new`, i.e. if new is a useful pattern
 /// then `overlap` will return `false`
-fn overlap<TExtDialect: SystemRDialect + Clone + fmt::Debug + PartialEq + PartialOrd + Default>(
+fn overlap<TExtDialect: Eq + SystemRDialect + Clone + fmt::Debug + PartialEq + PartialOrd + Default>(
     existing: &Pattern<TExtDialect>,
     new: &Pattern<TExtDialect>,
 ) -> bool {
@@ -81,17 +81,20 @@ fn overlap<TExtDialect: SystemRDialect + Clone + fmt::Debug + PartialEq + Partia
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Default)]
-pub struct Matrix<'pat, TExtDialect: SystemRDialect + Clone + fmt::Debug + Default> {
-    pub expr_ty: Type<TExtDialect::TExtType>,
+pub struct Matrix<
+    'pat,
+    TExtDialect: PartialEq + PartialOrd + hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default,
+> {
+    pub expr_ty: Type<TExtDialect>,
     len: usize,
     matrix: Vec<Vec<&'pat Pattern<TExtDialect>>>,
 }
 
-impl<'pat, TExtDialect: PartialOrd + PartialEq + SystemRDialect + Clone + fmt::Debug + Default>
+impl<'pat, TExtDialect: Eq + hash::Hash + PartialOrd + PartialEq + SystemRDialect + Clone + fmt::Debug + Default>
     Matrix<'pat, TExtDialect>
 {
     /// Create a new [`Matrix`] for a given type
-    pub fn new(expr_ty: Type<TExtDialect::TExtType>) -> Matrix<'pat, TExtDialect> {
+    pub fn new(expr_ty: Type<TExtDialect>) -> Matrix<'pat, TExtDialect> {
         let len = match &expr_ty {
             Type::Product(p) => p.len(),
             _ => 1,
@@ -222,7 +225,9 @@ impl<'pat, TExtDialect: PartialOrd + PartialEq + SystemRDialect + Clone + fmt::D
     }
 }
 
-impl<TExtDialect: SystemRDialect + Clone + PartialEq + PartialOrd + fmt::Debug + Default> Context<TExtDialect> {
+impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + PartialEq + PartialOrd + fmt::Debug + Default>
+    Context<TExtDialect>
+{
     /// Type check a case expression, returning the Type of the arms, assuming
     /// that the case expression is exhaustive and well-typed
     ///
@@ -252,7 +257,7 @@ impl<TExtDialect: SystemRDialect + Clone + PartialEq + PartialOrd + fmt::Debug +
         expr: &Term<TExtDialect>,
         arms: &[Arm<TExtDialect>],
         ext: &mut TExt,
-    ) -> Result<Type<TExtDialect::TExtType>, Diagnostic> {
+    ) -> Result<Type<TExtDialect>, Diagnostic> {
         let ty = self.type_check(expr, ext)?;
         let mut matrix = patterns::Matrix::<TExtDialect>::new(ty);
 
@@ -280,7 +285,10 @@ impl<TExtDialect: SystemRDialect + Clone + PartialEq + PartialOrd + fmt::Debug +
                 return Err(
                     Diagnostic::error(expr.span, format!("case binding has a type {:?}", &matrix.expr_ty)).message(
                         arm.span,
-                        format!("but this pattern ({:?}) cannot bind a value of type {:?}", &arm.pat, &matrix.expr_ty),
+                        format!(
+                            "but this pattern ({:?}) cannot bind a value of type {:?}",
+                            &arm.pat, &matrix.expr_ty
+                        ),
                     ),
                 );
             }
@@ -318,7 +326,7 @@ impl<TExtDialect: SystemRDialect + Clone + PartialEq + PartialOrd + fmt::Debug +
     pub(crate) fn pattern_type_eq<TExt: Clone + Default + fmt::Debug + SystemRExtension<TExtDialect>>(
         &self,
         pat: &Pattern<TExtDialect>,
-        ty: &Type<TExtDialect::TExtType>,
+        ty: &Type<TExtDialect>,
         ext: &TExt,
     ) -> bool {
         match pat {
@@ -350,10 +358,8 @@ impl<TExtDialect: SystemRDialect + Clone + PartialEq + PartialOrd + fmt::Debug +
                     }
                     false
                 }
-                Type::Extended(ext_ty) => {
-                    ext.pat_ctor_eq_within(&self, label, inner, ext_ty)
-                },
-                _ => false
+                Type::Extended(ext_ty) => ext.pat_ctor_eq_within(&self, label, inner, ext_ty),
+                _ => false,
             },
             Pattern::Extended(v) => ext.pat_ext_pattern_type_eq(self, v, ty),
         }
