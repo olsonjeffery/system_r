@@ -39,7 +39,7 @@ limitations under the License.
 use super::debruijn::DeBruijnIndexer;
 use super::error::Error;
 use super::lexer::ExtLexer;
-use super::{ExtToken, ExtTokenKind};
+use super::{Token, ExtTokenKind};
 use crate::bottom::{BottomDialect, BottomExtension};
 use crate::extensions::{SystemRDialect, SystemRExtension};
 
@@ -63,7 +63,7 @@ pub struct ParserState<
     pub diagnostic: Diagnostic<'s>,
     pub lexer: ExtLexer<'s, TExtDialect>,
     pub span: Span,
-    pub token: ExtToken<TExtDialect::TExtTokenKind>,
+    pub token: Token<TExtDialect::TExtTokenKind>,
     pub platform_bindings: PlatformBindings,
     pub ext_state: TExtDialect::TExtDialectState,
     pub ty: TExtDialect::TExtType,
@@ -115,7 +115,7 @@ pub fn ext_new<
         diagnostic: Diagnostic::new(input),
         lexer: ExtLexer::new(input.chars()),
         span: Span::default(),
-        token: ExtToken::dummy(),
+        token: Token::dummy(),
         platform_bindings: platform_bindings.clone(),
         ext_state: Default::default(),
         ty: Default::default(),

@@ -371,11 +371,11 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
             }
             // See src/types/patterns.rs for exhaustiveness and typechecking
             // of case expressions
-            Kind::Case(expr, arms) => self.type_check_case(&expr, &arms, ext),
+            Kind::Case(expr, arms) => self.type_check_case(&expr, arms, ext),
 
             Kind::Unfold(rec, tm) => match rec.as_ref() {
                 Type::Rec(inner) => {
-                    let ty_ = self.type_check(&tm, ext)?;
+                    let ty_ = self.type_check(tm, ext)?;
                     if ty_ == *rec.clone() {
                         let s = subst(*rec.clone(), *inner.clone());
                         Ok(s)
@@ -394,7 +394,7 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
 
             Kind::Fold(rec, tm) => match rec.as_ref() {
                 Type::Rec(inner) => {
-                    let ty_ = self.type_check(&tm, ext)?;
+                    let ty_ = self.type_check(tm, ext)?;
                     let s = subst(*rec.clone(), *inner.clone());
                     if ty_ == s {
                         Ok(*rec.clone())
@@ -413,7 +413,7 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
             Kind::Pack(witness, evidence, signature) => {
                 if let Type::Existential(exists) = signature.as_ref() {
                     let sig_prime = subst(*witness.clone(), *exists.clone());
-                    let evidence_ty = self.type_check(&evidence, ext)?;
+                    let evidence_ty = self.type_check(evidence, ext)?;
                     if evidence_ty == sig_prime {
                         Ok(*signature.clone())
                     } else {
@@ -430,10 +430,10 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
                 }
             }
             Kind::Unpack(package, body) => {
-                let p_ty = self.type_check(&package, ext)?;
+                let p_ty = self.type_check(package, ext)?;
                 if let Type::Existential(xst) = p_ty {
                     self.push(*xst);
-                    let body_ty = self.type_check(&body, ext)?;
+                    let body_ty = self.type_check(body, ext)?;
                     self.pop();
                     Ok(body_ty)
                 } else {

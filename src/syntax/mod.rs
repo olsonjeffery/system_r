@@ -98,20 +98,20 @@ pub enum ExtTokenKind<TExtTokenKind: PartialEq> {
 }
 
 #[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
-pub struct ExtToken<TExtTokenKind: Sized + Clone + Default + PartialEq> {
+pub struct Token<TExtTokenKind: Sized + Clone + Default + PartialEq> {
     pub kind: ExtTokenKind<TExtTokenKind>,
     pub span: Span,
 }
 
-impl<TExtTokenKind: Default + PartialEq + Sized + Clone> ExtToken<TExtTokenKind> {
-    pub const fn dummy() -> ExtToken<TExtTokenKind> {
-        ExtToken {
+impl<TExtTokenKind: Default + PartialEq + Sized + Clone> Token<TExtTokenKind> {
+    pub const fn dummy() -> Token<TExtTokenKind> {
+        Token {
             kind: ExtTokenKind::Dummy,
             span: Span::zero(),
         }
     }
 
-    pub const fn new(kind: ExtTokenKind<TExtTokenKind>, span: Span) -> ExtToken<TExtTokenKind> {
-        ExtToken { kind, span }
+    pub const fn new(kind: ExtTokenKind<TExtTokenKind>, span: Span) -> Token<TExtTokenKind> {
+        Token { kind, span }
     }
 }

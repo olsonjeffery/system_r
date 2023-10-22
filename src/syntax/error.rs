@@ -40,12 +40,12 @@ use core::fmt;
 
 use crate::system_r_util::span::Span;
 
-use super::{parser::ErrorKind, ExtToken};
+use super::{parser::ErrorKind, Token};
 
 #[derive(Clone)]
 pub struct Error<TExtTokenKind: PartialEq + Default + Sized + Clone> {
     pub span: Span,
-    pub tok: ExtToken<TExtTokenKind>,
+    pub tok: Token<TExtTokenKind>,
     pub kind: ErrorKind<TExtTokenKind>,
 }
 

@@ -36,7 +36,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-use super::{ExtToken, ExtTokenKind};
+use super::{Token, ExtTokenKind};
 use crate::bottom::BottomDialect;
 use crate::extensions::SystemRDialect;
 use crate::extensions::SystemRExtension;
@@ -149,28 +149,28 @@ impl<'s, TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + De
     }
 
     /// Lex a natural number
-    fn number(&mut self) -> ExtToken<TExtDialect::TExtTokenKind> {
+    fn number(&mut self) -> Token<TExtDialect::TExtTokenKind> {
         // Since we peeked at least one numeric char, we should always
         // have a string containing at least 1 single digit, as such
         // it is safe to call unwrap() on str::parse<u32>
         let (data, span) = self.consume_while(char::is_numeric);
         let n = data.parse::<u32>().unwrap();
-        ExtToken::new(ExtTokenKind::Nat(n), span)
+        Token::new(ExtTokenKind::Nat(n), span)
     }
 
-    fn tag(&mut self) -> ExtToken<TExtDialect::TExtTokenKind> {
+    fn tag(&mut self) -> Token<TExtDialect::TExtTokenKind> {
         let (data, span) = self.consume_while(|ch| is_tag(ch) || ch.is_ascii_alphanumeric());
         let kind = ExtTokenKind::Tag(data);
-        ExtToken::new(kind, span)
+        Token::new(kind, span)
     }
 
     fn extended_single<TExt: Copy + Clone + SystemRExtension<TExtDialect>>(
         &mut self,
         ext: &mut TExt,
-    ) -> ExtToken<TExtDialect::TExtTokenKind> {
+    ) -> Token<TExtDialect::TExtTokenKind> {
         let (data, span) = self.consume_while(|ch| ext.lex_is_extended_single_pred(ch));
         let kind = ext.lex_extended_single(&data);
-        ExtToken::new(ExtTokenKind::Extended(kind), span)
+        Token::new(ExtTokenKind::Extended(kind), span)
     }
     //TLE: Default + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern>,
 
@@ -178,7 +178,7 @@ impl<'s, TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + De
     fn keyword<TExt: Copy + Clone + SystemRExtension<TExtDialect>>(
         &mut self,
         ext: &mut TExt,
-    ) -> ExtToken<TExtDialect::TExtTokenKind> {
+    ) -> Token<TExtDialect::TExtTokenKind> {
         let (data, span) = self.consume_while(|ch| ch.is_ascii_alphanumeric());
         let kind = match data.as_ref() {
             data if ext.lex_is_ext_keyword(data) => ExtTokenKind::Extended(ext.lex_ext_keyword(data)),
@@ -218,7 +218,7 @@ impl<'s, TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + De
                 }
             }
         };
-        ExtToken::new(kind, span)
+        Token::new(kind, span)
     }
 
     /// Consume the next input character, expecting to match `ch`.
@@ -228,24 +228,24 @@ impl<'s, TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + De
         &mut self,
         ch: char,
         kind: ExtTokenKind<TExtDialect::TExtTokenKind>,
-    ) -> ExtToken<TExtDialect::TExtTokenKind> {
+    ) -> Token<TExtDialect::TExtTokenKind> {
         let loc = self.current;
         // Lexer::eat() should only be called internally after calling peek()
         // so we know that it's safe to unwrap the result of Lexer::consume()
         let n = self.consume().unwrap();
         let kind = if n == ch { kind } else { ExtTokenKind::Invalid(n) };
-        ExtToken::new(kind, Span::new(loc, self.current))
+        Token::new(kind, Span::new(loc, self.current))
     }
 
     /// Return the next lexeme in the input as a [`Token`]
     pub fn lex<TExt: Copy + Clone + SystemRExtension<TExtDialect>>(
         &mut self,
         ext: &mut TExt,
-    ) -> ExtToken<TExtDialect::TExtTokenKind> {
+    ) -> Token<TExtDialect::TExtTokenKind> {
         self.consume_delimiter();
         let next = match self.peek() {
             Some(ch) => ch,
-            None => return ExtToken::new(ExtTokenKind::Eof, Span::new(self.current, self.current)),
+            None => return Token::new(ExtTokenKind::Eof, Span::new(self.current, self.current)),
         };
         match next {
             x if ext.lex_is_ext_single(x) => self.extended_single(ext),
@@ -288,9 +288,9 @@ impl<'s, TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + De
     fn next<TExt: fmt::Debug + Default + Copy + Clone + PartialEq + PartialOrd + SystemRExtension<TExtDialect>>(
         &mut self,
         ext: &mut TExt,
-    ) -> Option<ExtToken<TExtDialect::TExtTokenKind>> {
+    ) -> Option<Token<TExtDialect::TExtTokenKind>> {
         match self.lex(ext) {
-            ExtToken {
+            Token {
                 kind: ExtTokenKind::Eof,
                 ..
             } => None,
