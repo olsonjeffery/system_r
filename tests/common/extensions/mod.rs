@@ -1,7 +1,7 @@
 use system_r::{
     bottom::{BottomDialect, BottomKind, BottomPattern, BottomState, BottomTokenKind, BottomType},
-    extensions::struct_data::{
-        StructDataContext, StructDataKind, StructDataPattern, StructDataState, StructDataTokenKind, StructDataType,
+    extensions::type_alias::{
+        TypeAliasContext, TypeAliasKind, TypeAliasPattern, TypeAliasDialectState, TypeAliasTokenKind, TypeAliasType,
         TypeAliasDialect,
     },
     platform_bindings::PlatformBindings,
@@ -15,7 +15,7 @@ pub enum OmniContext {
     #[default]
     Empty,
     Bottom(Context<BottomDialect>),
-    StructData(StructDataContext),
+    TypeAlias(TypeAliasContext),
 }
 
 #[allow(dead_code)]
@@ -24,7 +24,7 @@ pub enum OmniState {
     #[default]
     Empty,
     Bottom(BottomState),
-    StructData(StructDataState),
+    TypeAlias(TypeAliasDialectState),
 }
 
 impl OmniContext {
@@ -32,7 +32,7 @@ impl OmniContext {
         match self {
             OmniContext::Empty => todo!(),
             OmniContext::Bottom(ctx) => ctx.platform_bindings = pb,
-            OmniContext::StructData(_) => todo!(),
+            OmniContext::TypeAlias(_) => todo!(),
         }
     }
 }
@@ -43,7 +43,7 @@ pub enum OmniKind {
     Empty,
     #[allow(dead_code)]
     Bottom(BottomKind),
-    StructData(Kind<TypeAliasDialect>),
+    TypeAlias(Kind<TypeAliasDialect>),
 }
 
 #[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
@@ -52,7 +52,7 @@ pub enum OmniTerm {
     Empty,
     #[allow(dead_code)]
     Bottom(Term<BottomDialect>),
-    StructData(Term<TypeAliasDialect>),
+    TypeAlias(Term<TypeAliasDialect>),
 }
 
 #[derive(Clone, Default, Debug, PartialEq, PartialOrd, Eq, Hash)]
@@ -60,5 +60,5 @@ pub enum OmniType {
     #[default]
     Empty,
     Bottom(Type<BottomDialect>),
-    StructData(Type<TypeAliasDialect>),
+    TypeAlias(Type<TypeAliasDialect>),
 }

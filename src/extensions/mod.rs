@@ -29,9 +29,9 @@ use crate::{
     types::{Context, Type},
 };
 
-use self::struct_data::TypeAliasDialect;
+use self::type_alias::TypeAliasDialect;
 
-pub mod struct_data;
+pub mod type_alias;
 
 pub trait SystemRDialect {
     type TExtTokenKind: fmt::Debug + PartialEq + PartialOrd + Default + Clone;

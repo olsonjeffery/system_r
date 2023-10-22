@@ -9,7 +9,7 @@ use system_r::{
     bottom::BottomExtension,
     diagnostics::Diagnostic,
     extensions::{
-        struct_data::{StructDataContext, StructDataExtension, StructDataState, TypeAliasDialect},
+        type_alias::{TypeAliasContext, TypeAliasExtension, TypeAliasDialectState, TypeAliasDialect},
         SystemRDialect, SystemRExtension, SystemRTranslator,
     },
     syntax::parser::{self, ParserState},
@@ -26,7 +26,7 @@ use crate::common::{
 
 use super::system_r::given_a_new_context;
 
-static StructData_CTX_NAME: &'static str = "StructData";
+static TypeAlias_CTX_NAME: &'static str = "TypeAlias";
 
 pub fn parse_for_extension<
     's,
@@ -52,8 +52,8 @@ pub fn type_check_for_extension<
     testing::do_type_check::<TExtDialect, TLE>(ctx, term, ext)
 }
 
-pub fn add_type_alias_ext_state_to_context<'s>(world: &mut SpecsWorld, st: StructDataState) {
-    let Some(OmniContext::StructData(ctx)) = world.contexts.get_mut(StructData_CTX_NAME) else {
+pub fn add_type_alias_ext_state_to_context<'s>(world: &mut SpecsWorld, st: TypeAliasDialectState) {
+    let Some(OmniContext::TypeAlias(ctx)) = world.contexts.get_mut(TypeAlias_CTX_NAME) else {
         panic!("expected type alias context, didn't get it!");
     };
     ctx.ext_state = st;
@@ -61,10 +61,10 @@ pub fn add_type_alias_ext_state_to_context<'s>(world: &mut SpecsWorld, st: Struc
 
 #[given(regex = r#"^a system_r toolchain extended for TypeAlias"#)]
 #[given(regex = r#"^a new TypeAlias context"#)]
-fn given_a_new_StructData_context(world: &mut common::SpecsWorld) {
+fn given_a_new_TypeAlias_context(world: &mut common::SpecsWorld) {
     world.contexts.insert(
-        StructData_CTX_NAME.to_owned(),
-        OmniContext::StructData(StructDataContext::default()),
+        TypeAlias_CTX_NAME.to_owned(),
+        OmniContext::TypeAlias(TypeAliasContext::default()),
     );
 }
 
@@ -74,9 +74,9 @@ fn then_the_last_ext_should_parse_successfully(world: &mut common::SpecsWorld) {
 }
 
 #[when("TypeAlias parses the code")]
-fn when_it_is_processed_for_StructData(world: &mut common::SpecsWorld) {
+fn when_it_is_processed_for_TypeAlias(world: &mut common::SpecsWorld) {
     let input = world.code_snippet.clone();
-    let mut ext = StructDataExtension;
+    let mut ext = TypeAliasExtension;
     let pb = world.platform_bindings.clone();
 
     let mut ps = parser::ext_new(&pb, &input, &mut ext);
@@ -84,12 +84,12 @@ fn when_it_is_processed_for_StructData(world: &mut common::SpecsWorld) {
     let res = parse_for_extension(&input, &mut ps, &mut ext);
     let term = match res {
         Ok(term) => {
-            let k = OmniKind::StructData(term.clone().kind);
-            let t = OmniTerm::StructData(term.clone());
+            let k = OmniKind::TypeAlias(term.clone().kind);
+            let t = OmniTerm::TypeAlias(term.clone());
             world.last_ext_parse_success = if k == OmniKind::Empty { false } else { true };
             world.last_ext_parse_kind = k;
             world.last_ext_parse_term = t;
-            world.last_ext_state = OmniState::StructData(ps.to_ext_state());
+            world.last_ext_state = OmniState::TypeAlias(ps.to_ext_state());
             term
         }
         Err(e) => {
@@ -102,17 +102,17 @@ fn when_it_is_processed_for_StructData(world: &mut common::SpecsWorld) {
 
 #[when("TypeAlias type checks the code")]
 fn when_type_alias_type_checks_the_code(world: &mut SpecsWorld) {
-    let OmniTerm::StructData(mut term) = world.last_ext_parse_term.clone() else {
+    let OmniTerm::TypeAlias(mut term) = world.last_ext_parse_term.clone() else {
         panic!("expected last ext parse term to be from TypeAliasDialect, wasn't!");
     };
-    let OmniState::StructData(st) = world.take_last_ext_state() else {
+    let OmniState::TypeAlias(st) = world.take_last_ext_state() else {
         panic!("expect last ext state to be from TypeAliasDialect, wasn't!");
     };
     add_type_alias_ext_state_to_context(world, st);
-    let Some(OmniContext::StructData(ctx)) = world.contexts.get_mut(StructData_CTX_NAME) else {
+    let Some(OmniContext::TypeAlias(ctx)) = world.contexts.get_mut(TypeAlias_CTX_NAME) else {
         panic!("expected to get a TypeAlias context, didn't!");
     };
-    match type_check_for_extension(ctx, &mut term, &mut StructDataExtension) {
+    match type_check_for_extension(ctx, &mut term, &mut TypeAliasExtension) {
         Err(e) => panic!("{:?}", e),
         _ => {}
     }
@@ -121,16 +121,16 @@ fn when_type_alias_type_checks_the_code(world: &mut SpecsWorld) {
 #[when("TypeAlias-dialect is resolved into bottom-dialect system_r")]
 pub fn when_it_is_converted_to_bottom_dialect(world: &mut SpecsWorld) {
     let tm = match world.last_ext_parse_term.clone() {
-        OmniTerm::StructData(t) => t,
+        OmniTerm::TypeAlias(t) => t,
         _ => panic!("expected struct data!"),
     };
 
     let mut ps = match &world.last_ext_state {
-        OmniState::StructData(ps) => ps.clone(),
-        _ => panic!("expected OmniState::StructData"),
+        OmniState::TypeAlias(ps) => ps.clone(),
+        _ => panic!("expected OmniState::TypeAlias"),
     };
 
-    let bottom_tm = match StructDataExtension.resolve(&mut ps, tm) {
+    let bottom_tm = match TypeAliasExtension.resolve(&mut ps, tm) {
         Ok(tm) => tm,
         Err(d) => {
             world.last_parse_success = false;
