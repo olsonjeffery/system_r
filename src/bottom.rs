@@ -16,9 +16,8 @@ use crate::{
     diagnostics::Diagnostic,
     extensions::{SystemRDialect, SystemRExtension},
     patterns::Pattern,
-    syntax::{error::Error, lexer::ExtLexer, parser::ParserState /* lexer2::extlexer2 */},
-    system_r_util::span::Span,
-    terms::{Kind, Term},
+    syntax::error::Error,
+    terms::Term,
     types::Context,
 };
 

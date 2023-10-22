@@ -1,4 +1,4 @@
-use system_r::bottom::{BottomDialect, BottomKind, BottomPattern, BottomType};
+use system_r::bottom::BottomDialect;
 use system_r::system_r_util::span::Span;
 use system_r::terms::{Kind, Term};
 use system_r::{diagnostics::Diagnostic, platform_bindings::WrappedContent, terms::Literal, types::Type};

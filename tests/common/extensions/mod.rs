@@ -1,13 +1,9 @@
 use system_r::{
-    bottom::{BottomDialect, BottomKind, BottomPattern, BottomState, BottomTokenKind, BottomType},
-    extensions::type_alias::{
-        TypeAliasContext, TypeAliasKind, TypeAliasPattern, TypeAliasDialectState, TypeAliasTokenKind, TypeAliasType,
-        TypeAliasDialect,
-    },
+    bottom::{BottomDialect, BottomKind, BottomState},
+    extensions::type_alias::{TypeAliasContext, TypeAliasDialect, TypeAliasDialectState},
     platform_bindings::PlatformBindings,
-    syntax::parser::ParserState,
     terms::{Kind, Term},
-    types::{Context, Type},
+    types::Context,
 };
 
 #[derive(Clone, Default, Debug)]
@@ -59,6 +55,6 @@ pub enum OmniTerm {
 pub enum OmniType {
     #[default]
     Empty,
-    Bottom(Type<BottomDialect>),
-    TypeAlias(Type<TypeAliasDialect>),
+    //Bottom(Type<BottomDialect>),
+    //TypeAlias(Type<TypeAliasDialect>),
 }

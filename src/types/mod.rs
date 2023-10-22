@@ -40,13 +40,11 @@ limitations under the License.
 //! parametric polymorphism
 pub mod patterns;
 pub mod visit;
-use crate::bottom::{BottomDialect, BottomExtension, BottomKind, BottomPattern, BottomTokenKind, BottomType};
 use crate::diagnostics::*;
 use crate::extensions::{SystemRDialect, SystemRExtension};
 use crate::platform_bindings::PlatformBindings;
 use crate::system_r_util::span::Span;
 use crate::terms::{Kind, Literal, Primitive, Term};
-use crate::testing::code_format;
 use crate::visit::{MutTermVisitor, MutTypeVisitor};
 use std::collections::{HashMap, VecDeque};
 use std::hash::Hash;

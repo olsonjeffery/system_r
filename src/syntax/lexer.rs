@@ -39,15 +39,10 @@ limitations under the License.
 use super::{ExtToken, ExtTokenKind};
 use crate::bottom::BottomDialect;
 use crate::extensions::SystemRDialect;
+use crate::extensions::SystemRExtension;
 use crate::system_r_util::span::{Location, Span};
-use crate::{
-    bottom::{BottomExtension, BottomPattern, BottomTokenKind},
-    extensions::SystemRExtension,
-};
 use core::fmt;
-use std::cell::RefCell;
 use std::iter::Peekable;
-use std::rc::Rc;
 use std::str::Chars;
 use std::{char, hash};
 
@@ -100,6 +95,7 @@ impl<'s, TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + De
         }
     }
 
+    #[allow(dead_code)]
     fn rest(&mut self) -> String {
         let rest = self.input.clone().take(usize::MAX).collect();
         println!("remaining content in lexer buffer: {}", rest);
@@ -286,6 +282,9 @@ impl<'s, TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + De
 impl<'s, TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd>
     ExtLexer<'s, TExtDialect>
 {
+    /// FIXME Choosing to keep this, because if/when a move
+    /// to a flat AST occurs, this will be handy
+    #[allow(dead_code)]
     fn next<TExt: fmt::Debug + Default + Copy + Clone + PartialEq + PartialOrd + SystemRExtension<TExtDialect>>(
         &mut self,
         ext: &mut TExt,
@@ -302,7 +301,7 @@ impl<'s, TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + De
 
 #[cfg(test)]
 mod test {
-    use crate::bottom::{BottomDialect, BottomExtension, BottomKind, BottomTokenKind};
+    use crate::bottom::{BottomDialect, BottomExtension, BottomTokenKind};
 
     use super::*;
     use ExtTokenKind::*;

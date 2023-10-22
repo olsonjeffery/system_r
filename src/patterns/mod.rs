@@ -40,7 +40,6 @@ limitations under the License.
 use core::fmt;
 use std::hash;
 
-use crate::bottom::BottomPattern;
 use crate::extensions::{SystemRDialect, SystemRExtension};
 use crate::system_r_util::span::Span;
 use crate::terms::{Kind, Literal, Term};
@@ -204,7 +203,7 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Defaul
 #[cfg(test)]
 mod test {
 
-    use crate::bottom::{BottomDialect, BottomKind, BottomType};
+    use crate::bottom::BottomDialect;
 
     use super::*;
     #[test]

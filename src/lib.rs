@@ -37,7 +37,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 #![feature(generators, generator_trait)]
-#![feature(return_position_impl_trait_in_trait)]
 #![allow(unused_variables, unused_macros)]
 #[macro_use]
 pub mod macros;

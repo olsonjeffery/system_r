@@ -368,7 +368,7 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + PartialEq + Partial
 
 #[cfg(test)]
 mod test {
-    use crate::bottom::BottomState;
+    use crate::bottom::BottomExtension;
 
     use super::*;
     use Pattern::*;

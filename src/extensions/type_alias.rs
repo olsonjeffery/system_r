@@ -12,12 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-use std::{cell::RefCell, collections::HashMap, ops::Range, rc::Rc};
+use std::collections::HashMap;
 
 use crate::{
-    bottom::{BottomDialect, BottomExtension, BottomKind, BottomPattern, BottomTokenKind, BottomType},
+    bottom::{BottomDialect, BottomKind, BottomPattern, BottomTokenKind},
     diagnostics::Diagnostic,
-    patterns::{PatVarStack, Pattern},
+    patterns::Pattern,
     platform_bindings::PlatformBindings,
     syntax::{
         error::Error,
@@ -25,7 +25,6 @@ use crate::{
         parser::{ErrorKind, ParserState},
         ExtTokenKind,
     },
-    system_r_util::span::Span,
     terms::{Kind, Term},
     types::{visit::Subst, Context, Type},
     visit::MutTypeVisitor,
@@ -38,11 +37,7 @@ pub struct TypeAliasExtension;
 
 pub type TypeAliasContext = Context<TypeAliasDialect>;
 
-pub fn new<'s>(
-    platform_bindings: &'s PlatformBindings,
-    input: &'s str,
-    ty_let: Rc<RefCell<TypeAliasExtension>>,
-) -> ParserState<'s, TypeAliasDialect> {
+pub fn new<'s>(platform_bindings: &'s PlatformBindings, input: &'s str) -> ParserState<'s, TypeAliasDialect> {
     parser::ext_new::<TypeAliasDialect, TypeAliasExtension>(platform_bindings, input, &mut TypeAliasExtension)
 }
 
@@ -494,7 +489,11 @@ pub fn get_holed_type_from_decl<'s>(
 }
 
 impl SystemRTranslator<TypeAliasDialect, BottomDialect> for TypeAliasExtension {
-    fn resolve(&self, st: &mut TypeAliasDialectState, tm: Term<TypeAliasDialect>) -> Result<Term<BottomDialect>, Diagnostic> {
+    fn resolve(
+        &self,
+        st: &mut TypeAliasDialectState,
+        tm: Term<TypeAliasDialect>,
+    ) -> Result<Term<BottomDialect>, Diagnostic> {
         Err(Diagnostic::error(tm.span, format!("BottomExtension::resolve() unimpl")))
     }
 }

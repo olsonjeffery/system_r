@@ -37,12 +37,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 //! Representation lambda calculus terms
-use crate::bottom::{BottomDialect, BottomKind, BottomPattern, BottomType};
 use crate::extensions::SystemRDialect;
 use crate::patterns::Pattern;
 use crate::system_r_util::span::Span;
 use crate::types::Type;
-use std::{fmt, hash};
+use std::fmt;
 pub mod visit;
 
 #[derive(Clone, Default, PartialEq, PartialOrd)]

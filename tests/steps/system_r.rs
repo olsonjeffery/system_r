@@ -3,7 +3,6 @@ extern crate cucumber;
 use cucumber::{gherkin::Step, given, then, when};
 
 use system_r::{
-    bottom::{BottomKind, BottomPattern, BottomType},
     terms::{Kind, Literal, Term},
     testing::{self, code_format, do_bottom_eval},
     types::Context,

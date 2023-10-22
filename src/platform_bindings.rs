@@ -16,8 +16,8 @@ use core::fmt;
 use std::collections::HashMap;
 use std::hash;
 
-use crate::bottom::{BottomDialect, BottomKind, BottomPattern, BottomTokenKind, BottomType};
-use crate::extensions::{SystemRDialect, SystemRExtension};
+use crate::bottom::BottomDialect;
+use crate::extensions::SystemRDialect;
 use crate::system_r_util::span::Span;
 
 use crate::terms::Term;

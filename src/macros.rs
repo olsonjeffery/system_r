@@ -38,16 +38,11 @@ limitations under the License.
 */
 //! Macros to make writing tests easier
 
-use crate::{
-    bottom::{BottomKind, BottomPattern, BottomType},
-    terms::Term,
-};
-
 /// Boolean term
 macro_rules! lit {
     ($x:expr) => {
-        Term::<BottomDialect>::new(
-            crate::terms::Kind::<BottomDialect>::Lit(crate::terms::Literal::Bool($x)),
+        Term::<crate::bottom::BottomDialect>::new(
+            crate::terms::Kind::<crate::bottom::BottomDialect>::Lit(crate::terms::Literal::Bool($x)),
             crate::system_r_util::span::Span::dummy(),
         )
     };
@@ -56,8 +51,8 @@ macro_rules! lit {
 /// Integer term
 macro_rules! nat {
     ($x:expr) => {
-        crate::terms::Term::<BottomDialect>::new(
-            crate::terms::Kind::<BottomDialect>::Lit(crate::terms::Literal::Nat($x)),
+        crate::terms::Term::<crate::bottom::BottomDialect>::new(
+            crate::terms::Kind::<crate::bottom::BottomDialect>::Lit(crate::terms::Literal::Nat($x)),
             crate::system_r_util::span::Span::dummy(),
         )
     };
@@ -125,8 +120,12 @@ macro_rules! prim {
 
 macro_rules! inj {
     ($label:expr, $t:expr, $ty:expr) => {
-        crate::terms::Term::<BottomDialect>::new(
-            crate::terms::Kind::<BottomDialect>::Injection($label.to_string(), Box::new($t), Box::new($ty)),
+        crate::terms::Term::<crate::bottom::BottomDialect>::new(
+            crate::terms::Kind::<crate::bottom::BottomDialect>::Injection(
+                $label.to_string(),
+                Box::new($t),
+                Box::new($ty),
+            ),
             crate::system_r_util::span::Span::dummy(),
         )
     };
@@ -134,7 +133,7 @@ macro_rules! inj {
 
 /// Product term
 macro_rules! tuple {
-    ($($ex:expr),+) => { crate::terms::Term::<BottomDialect>::new(crate::terms::Kind::<BottomDialect>::Product(vec![$($ex),+]),
+    ($($ex:expr),+) => { crate::terms::Term::<crate::bottom::BottomDialect>::new(crate::terms::Kind::<crate::bottom::BottomDialect>::Product(vec![$($ex),+]),
     crate::system_r_util::span::Span::dummy()) }
 }
 

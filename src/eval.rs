@@ -37,7 +37,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-use crate::bottom::{BottomDialect, BottomExtension, BottomKind, BottomPattern, BottomType};
+use crate::bottom::{BottomDialect, BottomExtension};
 use crate::diagnostics::Diagnostic;
 use crate::patterns::Pattern;
 use crate::platform_bindings::PlatformBindings;

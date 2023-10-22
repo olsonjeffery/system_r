@@ -18,18 +18,10 @@ use std::hash;
 use crate::{
     diagnostics::Diagnostic,
     patterns::Pattern,
-    syntax::{
-        error::Error,
-        lexer::{ExtLexer, Lexer},
-        parser::ParserState,
-        ExtToken,
-    },
-    system_r_util::span::Span,
+    syntax::{error::Error, parser::ParserState},
     terms::Term,
     types::{Context, Type},
 };
-
-use self::type_alias::TypeAliasDialect;
 
 pub mod type_alias;
 

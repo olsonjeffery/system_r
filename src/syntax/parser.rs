@@ -40,9 +40,7 @@ use super::debruijn::DeBruijnIndexer;
 use super::error::Error;
 use super::lexer::ExtLexer;
 use super::{ExtToken, ExtTokenKind};
-use crate::bottom::{
-    BottomDialect, BottomExtension, BottomKind, BottomPattern, BottomState, BottomTokenKind, BottomType,
-};
+use crate::bottom::{BottomDialect, BottomExtension};
 use crate::extensions::{SystemRDialect, SystemRExtension};
 
 use crate::system_r_util::diagnostic::Diagnostic;

@@ -17,11 +17,11 @@ use crate::system_r_util::span::Span;
 use core::fmt;
 use std::hash;
 
-use crate::bottom::{BottomDialect, BottomState, BottomTokenKind, BottomType};
+use crate::bottom::BottomDialect;
 use crate::extensions::{SystemRDialect, SystemRExtension};
 
 use crate::{
-    bottom::{BottomExtension, BottomKind, BottomPattern},
+    bottom::BottomExtension,
     diagnostics::Diagnostic,
     eval,
     platform_bindings::PlatformBindings,
