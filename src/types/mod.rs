@@ -46,6 +46,7 @@ use crate::extensions::{SystemRDialect, SystemRExtension};
 use crate::platform_bindings::PlatformBindings;
 use crate::system_r_util::span::Span;
 use crate::terms::{Kind, Literal, Primitive, Term};
+use crate::testing::code_format;
 use crate::visit::{MutTermVisitor, MutTypeVisitor};
 use std::collections::{HashMap, VecDeque};
 use std::hash::Hash;
@@ -223,8 +224,12 @@ impl<TExtDialect: SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug +
                             Err(d)
                         }
                     }
-                    _ => Err(Diagnostic::error(term.span, "app: Expected arrow type!")
-                        .message(t1.span, format!("Kind::App tm1 {:?} tm2 {:?}", &t1, &t2))),
+                    Type::Extended(t) => {
+                        //panic!("Got extended type as part of Kind::App term: '{:?}' ty1: {:?} ty2: {:?} sp: {:?}", term, ty1, ty2, term.span)
+                        ext.type_check_application_of_ext(self, t1, &ty1, t2, &ty2)
+                    }
+                    _ => Err(Diagnostic::error(term.span, "App: Expected arrow type!")
+                        .message(t1.span, format!("Kind::App ty1 {:?} ty2 {:?}", &ty1, &ty2))),
                 }
             }
             Kind::Fix(inner) => {

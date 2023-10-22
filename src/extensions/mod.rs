@@ -70,6 +70,7 @@ pub trait SystemRExtension<TExtDialect: SystemRDialect + Default + fmt::Debug + 
     fn pat_ext_pattern_type_eq(&self, ctx: &Context<TExtDialect>, pat: &TExtDialect::TExtPat, ty: &Type<TExtDialect::TExtType>) -> bool;
     fn pat_ctor_eq_within(&self, ctx: &Context<TExtDialect>, label: &str, inner: &Pattern<TExtDialect>, target: &TExtDialect::TExtType) -> bool;
     fn type_check_injection_to_ext(&mut self, ctx: &mut Context<TExtDialect>, label: &str, target: &TExtDialect::TExtType, tm: &Term<TExtDialect>) -> Result<Type<TExtDialect::TExtType>, Diagnostic>;
+    fn type_check_application_of_ext(&mut self, ctx: &mut Context<TExtDialect>, t1: &Term<TExtDialect>, ty1: &Type<TExtDialect::TExtType>, t2: &Term<TExtDialect>, ty2: &Type<TExtDialect::TExtType>) -> Result<Type<TExtDialect::TExtType>, Diagnostic>;
 }
 
 pub trait SystemRTranslator<

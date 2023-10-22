@@ -139,4 +139,8 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
     fn type_check_injection_to_ext(&mut self, ctx: &mut Context<BottomDialect>, label: &str, target: &<BottomDialect as SystemRDialect>::TExtType, tm: &Term<BottomDialect>) -> Result<crate::types::Type<<BottomDialect as SystemRDialect>::TExtType>, Diagnostic> {
         panic!("type_check_injection_to_ext for BottomDialect; should never be called")
     }
+
+    fn type_check_application_of_ext(&mut self, ctx: &mut Context<BottomDialect>, t1: &Term<BottomDialect>, ty1: &crate::types::Type<<BottomDialect as SystemRDialect>::TExtType>, t2: &Term<BottomDialect>, ty2: &crate::types::Type<<BottomDialect as SystemRDialect>::TExtType>) -> Result<crate::types::Type<<BottomDialect as SystemRDialect>::TExtType>, Diagnostic> {
+        panic!("type_check_application_of_ext for BottomDialect; should never be called")
+    }
 }

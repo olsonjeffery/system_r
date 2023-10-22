@@ -317,6 +317,10 @@ impl SystemRExtension<TypeAliasDialect> for StructDataExtension {
             v => return Err(Diagnostic::error(sp.clone(), format!("expected de-aliased type to be a Varient, was {:?}", v)))
         };
     }
+
+    fn type_check_application_of_ext(&mut self, ctx: &mut Context<TypeAliasDialect>, t1: &Term<TypeAliasDialect>, ty1: &Type<<TypeAliasDialect as SystemRDialect>::TExtType>, t2: &Term<TypeAliasDialect>, ty2: &Type<<TypeAliasDialect as SystemRDialect>::TExtType>) -> Result<Type<<TypeAliasDialect as SystemRDialect>::TExtType>, Diagnostic> {
+        panic!("type_check_application_of_ext for TypeAliasDialect unimpl")
+    }
 }
 
 pub fn has_holed_type_named(

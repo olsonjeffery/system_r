@@ -19,8 +19,7 @@ Feature: Extension of system_r
 
         Given a system_r toolchain extended for TypeAlias
         And a code block:
-        """
-type $Option = \V {None | Some V} in
+        """type $Option = \V {None | Some V} in
 let tripler = \X (\c: $Option[of X]. \x: X->(X, X, X). 
 	case c of 
 		| None => None of $Option[of (X, X, X)]
