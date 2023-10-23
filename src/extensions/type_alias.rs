@@ -316,6 +316,9 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
                     if inj_label == &f.label {
                         let ty = ctx.type_check(tm, self)?;
                         if ty == f.ty {
+                            if ty != Type::Unit {
+                                panic!("found match in reified type: {:?}", ty);
+                            }
                             return Ok(ty.clone());
                         }
                     }
@@ -356,7 +359,24 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
                 format!("Expected to convert ext_ty1 to TypeAliasApp, instead was {:?}", ty1),
             ));
         };
-        panic!("type_check_application_of_ext got label {:?} ty2 {:?}", label, ty2);
+
+        let Type::Arrow(arg_ty, ret_ty) = ty2.clone() else {
+            return Err(Diagnostic::error(
+                t2.span,
+                format!("Expected to convert ty2 to Type::Arrow, instead was {:?}", ty2),
+            ));
+        };
+
+        let reified_ext_ty = match reify_type(&ctx.ext_state, &label, &inner_types) {
+            Ok(t) => t,
+            Err(e) => {
+                return Err(Diagnostic::error(
+                    t1.span,
+                    format!("Expected to reify ty1 to its TypeAlias repr, instead got error: {:?}", e),
+                ));
+            }
+        };
+        panic!("type_check_application_of_ext got label {:?} reified type: {:?} arg_ty {:?} ret_ty {:?} is reified type == arg_ty? {:?}", label, reified_ext_ty, arg_ty, ret_ty, reified_ext_ty == *arg_ty);
     }
 }
 

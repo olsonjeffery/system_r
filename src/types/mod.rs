@@ -231,8 +231,6 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
                         }
                     }
                     Type::Extended(t) => {
-                        //panic!("Got extended type as part of Kind::App term: '{:?}' ty1: {:?} ty2:
-                        // {:?} sp: {:?}", term, ty1, ty2, term.span)
                         ext.type_check_application_of_ext(self, t1, &ty1, t2, &ty2)
                     }
                     _ => Err(Diagnostic::error(term.span, "App: Expected arrow type!")
