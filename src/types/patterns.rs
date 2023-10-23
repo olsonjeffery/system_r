@@ -271,7 +271,19 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + PartialEq + Partial
                     self.push(b.clone());
                 }
 
+                if let Kind::Injection(label, _, _) = arm.term.kind.clone() {
+                    if label != "None".to_owned() {
+                        let t0 = self.stack.get(0).clone().unwrap();
+                        let t1= self.stack.get(1).clone().unwrap();
+                        panic!("our friend! arm.term.kind: {:?} arm.term.span: {:?} t0: {:?} t1: {:?}", arm.term.kind, arm.term.span.clone(), t0, t1);
+                    }
+                }
                 let arm_ty = self.type_check(&arm.term, ext)?;
+                if let Kind::Injection(label, _, _) = arm.term.kind.clone() {
+                    if label != "None".to_owned() {
+                        panic!("after our friend! {:?}", arm.term.kind);
+                    }
+                }
 
                 while self.stack.len() > height {
                     self.pop();

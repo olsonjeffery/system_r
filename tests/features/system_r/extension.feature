@@ -2,8 +2,8 @@
 Feature: Extension of system_r
     @wip
     Scenario: TypeAlias happy path
-        # Add structural type/data-shape capture with the StructData
-        # keyword, all StructData alias application with $TypeName[Of V]
+        # Add structural type/data-shape capture with the `type`
+        # keyword, all TypeAlias application with $TypeName[Of V]
         # where V is a TyAbs in the StructData value
         # StructData $TypeAlias = \V. \K {Left V | Right K} in body
         #
@@ -23,7 +23,7 @@ Feature: Extension of system_r
 let tripler = \X (\c: $Option[of X]. \x: X->(X, X, X). 
 	case c of 
 		| None => None of $Option[of (X, X, X)]
-		| Some val => Some x val of $Option[of (X, X, X)] ) in
+		| Some(val) => Some x val of $Option[of (X, X, X)] ) in
 let Some(res) = tripler [Nat] (Some 7 of $Option[of Nat]) (\x: Nat. (x, x, x)) in
 res ;
         """

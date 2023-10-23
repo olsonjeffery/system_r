@@ -101,7 +101,7 @@ pub enum TypeErrorKind<TExtDialect: Eq + SystemRDialect + Default + Clone + fmt:
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Context<TExtDialect: Eq + PartialEq + PartialOrd + SystemRDialect + Clone + fmt::Debug + Default> {
-    stack: VecDeque<Type<TExtDialect>>,
+    pub stack: VecDeque<Type<TExtDialect>>,
     map: HashMap<String, Type<TExtDialect>>,
     pub platform_bindings: PlatformBindings,
     _d: TExtDialect,
@@ -231,7 +231,8 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
                         }
                     }
                     Type::Extended(t) => {
-                        ext.type_check_application_of_ext(self, t1, &ty1, t2, &ty2)
+                        panic!("type_check on Kind::App value with an extended in t1; term: {:?} span: {:?}", term, term.span.clone());
+                        //ext.type_check_application_of_ext(self, t1, &ty1, t2, &ty2)
                     }
                     _ => Err(Diagnostic::error(term.span, "App: Expected arrow type!")
                         .message(t1.span, format!("Kind::App ty1 {:?} ty2 {:?}", &ty1, &ty2))),
@@ -288,7 +289,10 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
                         ),
                     ))
                 }
-                Type::Extended(t) => ext.type_check_injection_to_ext(self, label, t, &tm),
+                Type::Extended(t) => {
+                    ext.type_check_injection_to_ext(self, label, t, &tm)
+                },
+
                 _ => Err(Diagnostic::error(
                     term.span,
                     format!("Cannot injection {} into non-variant type {:?}", label, ty),

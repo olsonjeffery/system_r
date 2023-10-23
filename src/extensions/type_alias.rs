@@ -25,7 +25,7 @@ use crate::{
         parser::{ErrorKind, ParserState},
         ExtTokenKind,
     },
-    terms::{Kind, Term},
+    terms::{Kind, Term, Literal},
     types::{visit::Subst, Context, Type},
     visit::MutTypeVisitor,
 };
@@ -314,11 +314,13 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
             Type::Variant(fields) => {
                 for f in fields.clone() {
                     if inj_label == &f.label {
+                        if tm.kind != Kind::Lit(Literal::Unit) {
+                            let t0 = ctx.stack.get(0).unwrap().clone();
+                            let t1= ctx.stack.get(1).unwrap().clone();
+                            panic!("what is it???? {:?} t0 {:?} t1 {:?}", tm, t0, t1);
+                        }
                         let ty = ctx.type_check(tm, self)?;
                         if ty == f.ty {
-                            if ty != Type::Unit {
-                                panic!("found match in reified type: {:?}", ty);
-                            }
                             return Ok(ty.clone());
                         }
                     }
