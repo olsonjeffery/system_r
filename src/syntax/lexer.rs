@@ -36,7 +36,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-use super::{Token, ExtTokenKind};
+use super::{ExtTokenKind, Token};
 use crate::bottom::BottomDialect;
 use crate::extensions::SystemRDialect;
 use crate::extensions::SystemRExtension;
@@ -224,11 +224,7 @@ impl<'s, TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + De
     /// Consume the next input character, expecting to match `ch`.
     /// Return a [`ExtTokenKind::Invalid`] if the next character does not match,
     /// or the argument `kind` if it does
-    fn eat(
-        &mut self,
-        ch: char,
-        kind: ExtTokenKind<TExtDialect::TExtTokenKind>,
-    ) -> Token<TExtDialect::TExtTokenKind> {
+    fn eat(&mut self, ch: char, kind: ExtTokenKind<TExtDialect::TExtTokenKind>) -> Token<TExtDialect::TExtTokenKind> {
         let loc = self.current;
         // Lexer::eat() should only be called internally after calling peek()
         // so we know that it's safe to unwrap the result of Lexer::consume()

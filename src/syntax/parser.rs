@@ -39,7 +39,7 @@ limitations under the License.
 use super::debruijn::DeBruijnIndexer;
 use super::error::Error;
 use super::lexer::ExtLexer;
-use super::{Token, ExtTokenKind};
+use super::{ExtTokenKind, Token};
 use crate::bottom::{BottomDialect, BottomExtension};
 use crate::extensions::{SystemRDialect, SystemRExtension};
 

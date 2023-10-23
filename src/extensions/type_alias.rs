@@ -345,14 +345,16 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
     fn type_check_application_of_ext(
         &mut self,
         ctx: &mut Context<TypeAliasDialect>,
-        ext_t1: &Term<TypeAliasDialect>,
-        ext_ty1: &Type<TypeAliasDialect>,
+        t1: &Term<TypeAliasDialect>,
+        ty1: &Type<TypeAliasDialect>,
         t2: &Term<TypeAliasDialect>,
         ty2: &Type<TypeAliasDialect>,
     ) -> Result<Type<TypeAliasDialect>, Diagnostic> {
-        let Type::Extended(TypeAliasType::TypeAliasApp(label, inner_types)) = ext_ty1.clone() else {
-            return Err(Diagnostic::error(ext_t1.span,
-                format!("Expected to convert ext_ty1 to TypeAliasApp, instead was {:?}", ext_ty1)))
+        let Type::Extended(TypeAliasType::TypeAliasApp(label, inner_types)) = ty1.clone() else {
+            return Err(Diagnostic::error(
+                t1.span,
+                format!("Expected to convert ext_ty1 to TypeAliasApp, instead was {:?}", ty1),
+            ));
         };
         panic!("type_check_application_of_ext got label {:?} ty2 {:?}", label, ty2);
     }
