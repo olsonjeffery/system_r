@@ -315,9 +315,9 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
                 for f in fields.clone() {
                     if inj_label == &f.label {
                         if tm.kind != Kind::Lit(Literal::Unit) {
-                            let t0 = ctx.stack.get(0).unwrap().clone();
-                            let t1= ctx.stack.get(1).unwrap().clone();
-                            panic!("what is it???? {:?} t0 {:?} t1 {:?}", tm, t0, t1);
+                            // let t0 = ctx.stack.get(0).unwrap().clone();
+                            // let t1= ctx.stack.get(1).unwrap().clone();
+                            // panic!("what is it???? {:?} t0 {:?} t1 {:?}", tm, t0, t1);
                         }
                         let ty = ctx.type_check(tm, self)?;
                         if ty == f.ty {
@@ -355,17 +355,12 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         t2: &Term<TypeAliasDialect>,
         ty2: &Type<TypeAliasDialect>,
     ) -> Result<Type<TypeAliasDialect>, Diagnostic> {
+        panic!("this shouldn't exist");
+        /*
         let Type::Extended(TypeAliasType::TypeAliasApp(label, inner_types)) = ty1.clone() else {
             return Err(Diagnostic::error(
                 t1.span,
                 format!("Expected to convert ext_ty1 to TypeAliasApp, instead was {:?}", ty1),
-            ));
-        };
-
-        let Type::Arrow(arg_ty, ret_ty) = ty2.clone() else {
-            return Err(Diagnostic::error(
-                t2.span,
-                format!("Expected to convert ty2 to Type::Arrow, instead was {:?}", ty2),
             ));
         };
 
@@ -378,7 +373,9 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
                 ));
             }
         };
-        panic!("type_check_application_of_ext got label {:?} reified type: {:?} arg_ty {:?} ret_ty {:?} is reified type == arg_ty? {:?}", label, reified_ext_ty, arg_ty, ret_ty, reified_ext_ty == *arg_ty);
+        // FIXME this is gonna go away 
+        panic!("type_check_application_of_ext got label {:?} reified type: {:?} ty2: {:?}", label, reified_ext_ty, ty2);
+        */
     }
 }
 

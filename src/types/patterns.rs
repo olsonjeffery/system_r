@@ -266,24 +266,12 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + PartialEq + Partial
             if self.pattern_type_eq(&arm.pat, &matrix.expr_ty, ext) {
                 let height = self.stack.len();
 
-                let binds = PatTyStack::<TExtDialect>::collect(&matrix.expr_ty, &arm.pat);
+                let binds = PatTyStack::<TExtDialect>::collect::<TExt>(&matrix.expr_ty, &arm.pat, ext);
                 for b in binds.into_iter().rev() {
                     self.push(b.clone());
                 }
 
-                if let Kind::Injection(label, _, _) = arm.term.kind.clone() {
-                    if label != "None".to_owned() {
-                        let t0 = self.stack.get(0).clone().unwrap();
-                        let t1= self.stack.get(1).clone().unwrap();
-                        panic!("our friend! arm.term.kind: {:?} arm.term.span: {:?} t0: {:?} t1: {:?}", arm.term.kind, arm.term.span.clone(), t0, t1);
-                    }
-                }
                 let arm_ty = self.type_check(&arm.term, ext)?;
-                if let Kind::Injection(label, _, _) = arm.term.kind.clone() {
-                    if label != "None".to_owned() {
-                        panic!("after our friend! {:?}", arm.term.kind);
-                    }
-                }
 
                 while self.stack.len() > height {
                     self.pop();

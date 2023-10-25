@@ -71,17 +71,21 @@ pub struct PatVarStack<TExtDialect: Eq + SystemRDialect + Default + fmt::Debug +
 impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Default + fmt::Debug + Clone + PartialEq + PartialOrd>
     PatVarStack<TExtDialect>
 {
-    pub fn collect(pat: &Pattern<TExtDialect>) -> Vec<String> {
+    pub fn collect<
+        TExt: SystemRExtension<TExtDialect> + Clone + fmt::Debug + Default,
+    >(pat: &Pattern<TExtDialect>, ext: &mut TExt) -> Vec<String> {
         let mut p = Self::default();
-        p.visit_pattern(pat);
+        p.visit_pattern(pat, ext);
         p.inner
     }
 }
 
-impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Default + fmt::Debug + Clone + PartialEq + PartialOrd>
-    PatternVisitor<TExtDialect> for PatVarStack<TExtDialect>
+impl<
+    TExtDialect: hash::Hash + Eq + SystemRDialect + Default + fmt::Debug + Clone + PartialEq + PartialOrd,
+    TExt: SystemRExtension<TExtDialect> + Clone + fmt::Debug + Default,
+> PatternVisitor<TExtDialect, TExt> for PatVarStack<TExtDialect>
 {
-    fn visit_variable(&mut self, var: &str) {
+    fn visit_variable(&mut self, var: &str, ext: &mut TExt) {
         self.inner.push(var.to_owned());
     }
 }
@@ -95,17 +99,20 @@ pub struct PatternCount<
 impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + Default + fmt::Debug + PartialEq + PartialOrd>
     PatternCount<TExtDialect>
 {
-    pub fn collect(pat: &Pattern<TExtDialect>) -> usize {
+    pub fn collect<
+        TExt: SystemRExtension<TExtDialect> + Clone + fmt::Debug + Default,
+    >(pat: &Pattern<TExtDialect>, ext: &mut TExt) -> usize {
         let mut p = PatternCount(0, Default::default(), Default::default());
-        p.visit_pattern(pat);
+        p.visit_pattern(pat, ext);
         p.0
     }
 }
 
-impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + Default + fmt::Debug + PartialEq + PartialOrd>
-    PatternVisitor<TExtDialect> for PatternCount<TExtDialect>
+impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+        TExt: SystemRExtension<TExtDialect> + Clone + fmt::Debug + Default,
+> PatternVisitor<TExtDialect, TExt> for PatternCount<TExtDialect>
 {
-    fn visit_variable(&mut self, var: &str) {
+    fn visit_variable(&mut self, var: &str, ext: &mut TExt) {
         self.0 += 1;
     }
 }
@@ -154,48 +161,60 @@ pub struct PatTyStack<'ty, TExtDialect: Eq + SystemRDialect + Clone + Default + 
 impl<'ty, TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + Default + fmt::Debug + PartialEq + PartialOrd>
     PatTyStack<'ty, TExtDialect>
 {
-    pub fn collect(ty: &'ty Type<TExtDialect>, pat: &Pattern<TExtDialect>) -> Vec<&'ty Type<TExtDialect>> {
+    pub fn collect<
+        TExt: SystemRExtension<TExtDialect> + Clone + fmt::Debug + Default
+    >(ty: &'ty Type<TExtDialect>, pat: &Pattern<TExtDialect>, ext: &mut TExt) -> Vec<&'ty Type<TExtDialect>> {
         let mut p = PatTyStack {
             ty,
             inner: Vec::with_capacity(16),
         };
-        p.visit_pattern(pat);
+        p.visit_pattern(pat, ext);
         p.inner
     }
 }
 
-impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd>
-    PatternVisitor<TExtDialect> for PatTyStack<'_, TExtDialect>
+impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: SystemRExtension<TExtDialect> + fmt::Debug + Default + Clone,
+    >
+    PatternVisitor<TExtDialect, TExt> for PatTyStack<'_, TExtDialect>
 {
-    fn visit_product(&mut self, pats: &Vec<Pattern<TExtDialect>>) {
+    fn visit_product(&mut self, pats: &Vec<Pattern<TExtDialect>>, ext: &mut TExt) {
         if let Type::Product(tys) = self.ty {
             let ty = self.ty;
             for (ty, pat) in tys.iter().zip(pats.iter()) {
                 self.ty = ty;
-                self.visit_pattern(pat);
+                self.visit_pattern(pat, ext);
             }
             self.ty = ty;
         }
     }
 
-    fn visit_constructor(&mut self, label: &str, pat: &Pattern<TExtDialect>) {
-        if let Type::Variant(vs) = self.ty {
-            let ty = self.ty;
-            self.ty = variant_field::<TExtDialect>(vs, label, Span::zero()).unwrap();
-            self.visit_pattern(pat);
-            self.ty = ty;
+    fn visit_constructor(&mut self, label: &str, pat: &Pattern<TExtDialect>, ext: &mut TExt) {
+        match self.ty {
+            Type::Variant(vs) => {
+                let ty = self.ty;
+                self.ty = variant_field::<TExtDialect>(vs, label, Span::zero()).unwrap();
+                self.visit_pattern(pat, ext);
+                self.ty = ty;
+            },
+            Type::Extended(v) => {
+                panic!("have extended content in visit_constructor, need ext handler");
+            }
+            _ => { }
         }
+        // FIXME need to handle where this is Type::Extended; at which point
+        // the extension needs to re-create the above logic (including variant_field())
     }
 
-    fn visit_ext(&mut self, p: &TExtDialect::TExtPat) {}
+    fn visit_ext(&mut self, p: &TExtDialect::TExtPat, ext: &mut TExt) {}
 
-    fn visit_pattern(&mut self, pattern: &Pattern<TExtDialect>) {
+    fn visit_pattern(&mut self, pattern: &Pattern<TExtDialect>, ext: &mut TExt) {
         match pattern {
             Pattern::Any | Pattern::Literal(_) => {}
             Pattern::Variable(_) => self.inner.push(self.ty),
-            Pattern::Constructor(label, pat) => self.visit_constructor(label, pat),
-            Pattern::Product(pats) => self.visit_product(pats),
-            Pattern::Extended(p) => self.visit_ext(p),
+            Pattern::Constructor(label, pat) => self.visit_constructor(label, pat, ext),
+            Pattern::Product(pats) => self.visit_product(pats, ext),
+            Pattern::Extended(p) => self.visit_ext(p, ext),
         }
     }
 }
@@ -203,25 +222,25 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Defaul
 #[cfg(test)]
 mod test {
 
-    use crate::bottom::BottomDialect;
+    use crate::bottom::{BottomDialect, BottomExtension};
 
     use super::*;
     #[test]
     fn pattern_count() {
         let mut pat: Pattern<BottomDialect> = Pattern::Variable(String::new());
-        assert_eq!(PatternCount::<BottomDialect>::collect(&mut pat), 1);
+        assert_eq!(PatternCount::<BottomDialect>::collect(&mut pat, &mut BottomExtension), 1);
     }
 
     #[test]
     fn pattern_ty_stack() {
         let mut pat: Pattern<BottomDialect> = Pattern::Variable(String::new());
         let ty = Type::Nat;
-        assert_eq!(PatTyStack::<BottomDialect>::collect(&ty, &mut pat), vec![&ty]);
+        assert_eq!(PatTyStack::<BottomDialect>::collect(&ty, &mut pat, &mut BottomExtension), vec![&ty]);
     }
 
     #[test]
     fn pattern_var_stack() {
         let mut pat: Pattern<BottomDialect> = Pattern::Variable("x".into());
-        assert_eq!(PatVarStack::<BottomDialect>::collect(&mut pat), vec![String::from("x")]);
+        assert_eq!(PatVarStack::<BottomDialect>::collect(&mut pat, &mut BottomExtension), vec![String::from("x")]);
     }
 }

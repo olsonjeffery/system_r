@@ -225,7 +225,7 @@ pub fn bump_if<
 /// returns an Ok(()) unit result
 pub fn expect<
     TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
@@ -253,7 +253,7 @@ pub fn kind<
 
 pub fn ty_variant<
     TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
@@ -269,7 +269,7 @@ pub fn ty_variant<
 
 pub fn ty_app<
     TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
@@ -284,7 +284,7 @@ pub fn ty_app<
 
 pub fn ty_atom<
     TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
@@ -347,7 +347,7 @@ pub fn ty_atom<
 
 pub fn ty_tuple<
     TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
@@ -370,7 +370,7 @@ pub fn ty_tuple<
 
 pub fn ty<
     TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
@@ -412,7 +412,7 @@ pub fn ty<
 
 pub fn tyabs<
     TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExt: Default + fmt::Debug + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
@@ -426,7 +426,7 @@ pub fn tyabs<
 
 pub fn tmabs<
     TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExt: Default + fmt::Debug + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
@@ -445,7 +445,7 @@ pub fn tmabs<
 
 pub fn fold<
     TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExt: Default + fmt::Debug + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
@@ -459,7 +459,7 @@ pub fn fold<
 
 pub fn unfold<
     TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
@@ -473,7 +473,7 @@ pub fn unfold<
 
 pub fn fix<
     TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
@@ -486,7 +486,7 @@ pub fn fix<
 
 pub fn letexpr<
     TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
@@ -499,7 +499,7 @@ pub fn letexpr<
 
     let t1 = once(ps, |p| parse(p, ext), "let binder required")?;
     let len = ps.tmvar.len();
-    for var in PatVarStack::<TExtDialect>::collect(&pat).into_iter().rev() {
+    for var in PatVarStack::<TExtDialect>::collect(&pat, ext).into_iter().rev() {
         ps.tmvar.push(var);
     }
     expect(ps, ext, ExtTokenKind::In)?;
@@ -515,7 +515,7 @@ pub fn letexpr<
 
 pub fn lambda<
     TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
@@ -534,7 +534,7 @@ pub fn lambda<
 
 pub fn paren<
     TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
@@ -556,7 +556,7 @@ pub fn paren<
 
 pub fn uppercase_id<
     TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
@@ -573,7 +573,7 @@ pub fn uppercase_id<
 
 pub fn lowercase_id<
     TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
@@ -590,7 +590,7 @@ pub fn lowercase_id<
 
 pub fn literal<
     TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
@@ -608,7 +608,7 @@ pub fn literal<
 
 pub fn primitive<
     TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
@@ -627,7 +627,7 @@ pub fn primitive<
 /// making sure that the stack is balanced afterwards
 pub fn pat_atom<
     TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
@@ -680,7 +680,7 @@ pub fn pat_atom<
 
 pub fn pattern<
     TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
@@ -706,7 +706,7 @@ pub fn pattern<
 
 pub fn case_arm<
     TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExt: fmt::Debug + Default + fmt::Debug + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
@@ -725,7 +725,7 @@ pub fn case_arm<
 
     let pat = once(ps, |p| pattern(p, ext), "missing pattern")?;
 
-    for var in PatVarStack::<TExtDialect>::collect(&pat).into_iter().rev() {
+    for var in PatVarStack::<TExtDialect>::collect(&pat, ext).into_iter().rev() {
         ps.tmvar.push(var);
     }
 
@@ -753,7 +753,7 @@ pub fn case_arm<
 
 pub fn case<
     TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExt: fmt::Debug + Default + fmt::Debug + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
@@ -774,7 +774,7 @@ pub fn case<
 
 pub fn injection<
     TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
@@ -796,7 +796,7 @@ pub fn injection<
 
 pub fn pack<
     TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
@@ -817,7 +817,7 @@ pub fn pack<
 
 pub fn unpack<
     TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
@@ -841,7 +841,7 @@ pub fn unpack<
 
 pub fn atom<
     TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
@@ -886,7 +886,7 @@ pub fn atom<
 /// projection = atom
 pub fn projection<
     TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
@@ -913,7 +913,7 @@ pub fn projection<
 /// application' = atom application' | empty
 pub fn application<
     TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
@@ -946,7 +946,7 @@ pub fn application<
 
 pub fn ext_atom<
     TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
@@ -962,7 +962,7 @@ pub fn ext_atom<
 
 pub fn ext_parse<
     TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
@@ -978,7 +978,7 @@ pub fn ext_parse<
 
 pub fn parse<
     TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,

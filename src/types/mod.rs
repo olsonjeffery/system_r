@@ -231,7 +231,7 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
                         }
                     }
                     Type::Extended(t) => {
-                        panic!("type_check on Kind::App value with an extended in t1; term: {:?} span: {:?}", term, term.span.clone());
+                        panic!("SHOULDNT HAPPEN; type_check on Kind::App value with an extended in t1; term: {:?} span: {:?}", term, term.span.clone());
                         //ext.type_check_application_of_ext(self, t1, &ty1, t2, &ty2)
                     }
                     _ => Err(Diagnostic::error(term.span, "App: Expected arrow type!")
@@ -328,7 +328,7 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
 
                 let height = self.stack.len();
 
-                let binds = crate::patterns::PatTyStack::<TExtDialect>::collect(&ty, pat);
+                let binds = crate::patterns::PatTyStack::<TExtDialect>::collect(&ty, pat, ext);
                 for b in binds.into_iter().rev() {
                     self.push(b.clone());
                 }
