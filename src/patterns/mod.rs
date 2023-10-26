@@ -198,12 +198,10 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Defaul
                 self.ty = ty;
             },
             Type::Extended(v) => {
-                panic!("have extended content in visit_constructor, need ext handler");
+                ext.pat_visit_constructor_of_ext(label, pat, self, v);
             }
             _ => { }
         }
-        // FIXME need to handle where this is Type::Extended; at which point
-        // the extension needs to re-create the above logic (including variant_field())
     }
 
     fn visit_ext(&mut self, p: &TExtDialect::TExtPat, ext: &mut TExt) {}

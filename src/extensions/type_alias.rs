@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-use std::collections::HashMap;
+use std::{collections::HashMap};
 
 use crate::{
     bottom::{BottomDialect, BottomKind, BottomPattern, BottomTokenKind},
@@ -27,7 +27,7 @@ use crate::{
     },
     terms::{Kind, Term, Literal},
     types::{visit::Subst, Context, Type},
-    visit::MutTypeVisitor,
+    visit::{MutTypeVisitor},
 };
 
 use super::{SystemRDialect, SystemRExtension, SystemRTranslator};
@@ -377,7 +377,28 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         panic!("type_check_application_of_ext got label {:?} reified type: {:?} ty2: {:?}", label, reified_ext_ty, ty2);
         */
     }
+
+    fn pat_visit_constructor_of_ext(
+        &mut self,
+        label: &str,
+        pat: &Pattern<TypeAliasDialect>,
+        pts: &mut crate::patterns::PatTyStack<TypeAliasDialect>,
+        ext_ty: &<TypeAliasDialect as SystemRDialect>::TExtType
+    ) {
+        // handle where this is Type::Extended; at which point
+        // the extension needs to re-create the above logic (including variant_field())
+        panic!("pat_visit_constructor_of_ext unimpl")
+        /*
+        let ty = pts.ty;
+
+        // set pts.ty = reified.. need ext_state
+
+        pts.visit_constructor(label, pat, self);
+        pts.ty = ty;
+        */
+    }
 }
+
 
 pub fn has_holed_type_named(
     ps: &<TypeAliasDialect as SystemRDialect>::TExtDialectState,

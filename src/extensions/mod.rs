@@ -17,7 +17,7 @@ use std::hash;
 
 use crate::{
     diagnostics::Diagnostic,
-    patterns::Pattern,
+    patterns::{Pattern, PatTyStack},
     syntax::{error::Error, parser::ParserState},
     terms::Term,
     types::{Context, Type},
@@ -91,6 +91,13 @@ pub trait SystemRExtension<
         t2: &Term<TExtDialect>,
         ty2: &Type<TExtDialect>,
     ) -> Result<Type<TExtDialect>, Diagnostic>;
+    fn pat_visit_constructor_of_ext(
+        &mut self,
+        label: &str,
+        pat: &Pattern<TExtDialect>,
+        pts: &mut PatTyStack<TExtDialect>,
+        ext_ty: &TExtDialect::TExtType
+    );
 }
 
 pub trait SystemRTranslator<

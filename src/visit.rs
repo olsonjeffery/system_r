@@ -169,11 +169,11 @@ pub trait MutTermVisitor<
         self.visit(term, ext);
     }
 
-    fn visit_fold(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect>, term: &mut Term<TExtDialect>) {
-        self.visit(term);
+    fn visit_fold(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect>, term: &mut Term<TExtDialect>, ext: &mut TExt) {
+        self.visit(term, ext);
     }
-    fn visit_unfold(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect>, term: &mut Term<TExtDialect>) {
-        self.visit(term);
+    fn visit_unfold(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect>, term: &mut Term<TExtDialect>, ext: &mut TExt) {
+        self.visit(term, ext);
     }
 
     fn visit_pack(
@@ -182,44 +182,45 @@ pub trait MutTermVisitor<
         witness: &mut Type<TExtDialect>,
         evidence: &mut Term<TExtDialect>,
         signature: &mut Type<TExtDialect>,
+ ext: &mut TExt,
     ) {
-        self.visit(evidence);
+        self.visit(evidence, ext);
     }
 
-    fn visit_unpack(&mut self, sp: &mut Span, package: &mut Term<TExtDialect>, term: &mut Term<TExtDialect>) {
-        self.visit(package);
-        self.visit(term);
+    fn visit_unpack(&mut self, sp: &mut Span, package: &mut Term<TExtDialect>, term: &mut Term<TExtDialect>, ext: &mut TExt) {
+        self.visit(package, ext);
+        self.visit(term, ext);
     }
 
-    fn visit(&mut self, term: &mut Term<TExtDialect>) {
-        self.walk(term);
+    fn visit(&mut self, term: &mut Term<TExtDialect>, ext: &mut TExt) {
+        self.walk(term, ext);
     }
 
-    fn visit_ext(&mut self, sp: &mut Span, k: &mut TExtDialect::TExtKind) {}
+    fn visit_ext(&mut self, sp: &mut Span, k: &mut TExtDialect::TExtKind, ext: &mut TExt) {}
 
-    fn walk(&mut self, term: &mut Term<TExtDialect>) {
+    fn walk(&mut self, term: &mut Term<TExtDialect>, ext: &mut TExt) {
         let sp = &mut term.span;
         match &mut term.kind {
-            Kind::Extended(k) => self.visit_ext(sp, k),
-            Kind::Lit(l) => self.visit_lit(sp, l),
-            Kind::Var(v) => self.visit_var(sp, v),
-            Kind::PlatformBinding(v) => self.visit_pb(sp, v),
-            Kind::Abs(ty, term) => self.visit_abs(sp, ty, term),
-            Kind::App(t1, t2) => self.visit_app(sp, t1, t2),
+            Kind::Extended(k) => self.visit_ext(sp, k, ext),
+            Kind::Lit(l) => self.visit_lit(sp, l, ext),
+            Kind::Var(v) => self.visit_var(sp, v, ext),
+            Kind::PlatformBinding(v) => self.visit_pb(sp, v, ext),
+            Kind::Abs(ty, term) => self.visit_abs(sp, ty, term, ext),
+            Kind::App(t1, t2) => self.visit_app(sp, t1, t2, ext),
             // Do we need a separate branch?
-            Kind::Fix(term) => self.visit(term),
-            Kind::Primitive(p) => self.visit_primitive(sp, p),
-            Kind::Injection(label, tm, ty) => self.visit_injection(sp, label, tm, ty),
-            Kind::Projection(term, idx) => self.visit_projection(sp, term, idx),
-            Kind::Product(terms) => self.visit_product(sp, terms),
-            Kind::Case(term, arms) => self.visit_case(sp, term, arms),
-            Kind::Let(pat, t1, t2) => self.visit_let(sp, pat, t1, t2),
-            Kind::TyAbs(term) => self.visit_tyabs(sp, term),
-            Kind::TyApp(term, ty) => self.visit_tyapp(sp, term, ty),
-            Kind::Fold(ty, term) => self.visit_fold(sp, ty, term),
-            Kind::Unfold(ty, term) => self.visit_unfold(sp, ty, term),
-            Kind::Pack(wit, term, sig) => self.visit_pack(sp, wit, term, sig),
-            Kind::Unpack(package, term) => self.visit_unpack(sp, package, term),
+            Kind::Fix(term) => self.visit(term, ext),
+            Kind::Primitive(p) => self.visit_primitive(sp, p, ext),
+            Kind::Injection(label, tm, ty) => self.visit_injection(sp, label, tm, ty, ext),
+            Kind::Projection(term, idx) => self.visit_projection(sp, term, idx, ext),
+            Kind::Product(terms) => self.visit_product(sp, terms, ext),
+            Kind::Case(term, arms) => self.visit_case(sp, term, arms, ext),
+            Kind::Let(pat, t1, t2) => self.visit_let(sp, pat, t1, t2, ext),
+            Kind::TyAbs(term) => self.visit_tyabs(sp, term, ext),
+            Kind::TyApp(term, ty) => self.visit_tyapp(sp, term, ty, ext),
+            Kind::Fold(ty, term) => self.visit_fold(sp, ty, term, ext),
+            Kind::Unfold(ty, term) => self.visit_unfold(sp, ty, term, ext),
+            Kind::Pack(wit, term, sig) => self.visit_pack(sp, wit, term, sig, ext),
+            Kind::Unpack(package, term) => self.visit_unpack(sp, package, term, ext),
         }
     }
 }
@@ -234,12 +235,12 @@ pub trait PatternVisitor<
     fn visit_variable(&mut self, var: &str, ext: &mut TExt) {}
     fn visit_product(&mut self, pats: &Vec<Pattern<TExtDialect>>, ext: &mut TExt) {
         for p in pats {
-            self.visit_pattern(p);
+            self.visit_pattern(p, ext);
         }
     }
 
     fn visit_constructor(&mut self, label: &str, pat: &Pattern<TExtDialect>, ext: &mut TExt) {
-        self.visit_pattern(pat);
+        self.visit_pattern(pat, ext);
     }
 
     fn visit_pattern(&mut self, pattern: &Pattern<TExtDialect>, ext: &mut TExt) {

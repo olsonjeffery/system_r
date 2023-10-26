@@ -342,14 +342,16 @@ impl<'ctx> Eval<'ctx> {
 }
 
 fn term_subst(mut s: Term<BottomDialect>, t: &mut Term<BottomDialect>) {
-    Shift::new(1).visit(&mut s);
-    Subst::new(s).visit(t);
-    Shift::new(-1).visit(t);
+    let mut ext = BottomExtension;
+    Shift::new(1).visit(&mut s, &mut ext);
+    Subst::new(s).visit(t, &mut ext);
+    Shift::new(-1).visit(t, &mut ext);
 }
 
 fn type_subst(s: Type<BottomDialect>, t: &mut Term<BottomDialect>) {
-    TyTermSubst::new(s).visit(t);
-    Shift::new(-1).visit(t);
+    let mut ext = BottomExtension;
+    TyTermSubst::new(s).visit(t, &mut ext);
+    Shift::new(-1).visit(t, &mut ext);
 }
 
 #[cfg(test)]

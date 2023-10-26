@@ -28,7 +28,7 @@ static TYPE_ALIAS_CTX_NAME: &'static str = "TypeAlias";
 pub fn parse_for_extension<
     's,
     TExtDialect: hash::Hash + Eq + SystemRDialect + fmt::Debug + Default + Clone + PartialEq + PartialOrd,
-    TLE: Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TLE: Default + fmt::Debug + Copy + Clone + SystemRExtension<TExtDialect>,
 >(
     input: &str,
     ps: &mut ParserState<'s, TExtDialect>,

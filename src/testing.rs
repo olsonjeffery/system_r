@@ -80,8 +80,8 @@ pub fn dealias_and_type_check_term<
     ext: &mut TExt,
 ) -> Result<Type<TExtDialect>, Diagnostic> {
     // Step 0
-    ctx.de_alias(term);
-    InjRewriter(Default::default(), Default::default()).visit(term);
+    ctx.de_alias(term, ext);
+    InjRewriter(Default::default(), Default::default()).visit(term, ext);
 
     type_check_term(ctx, term, ext)
 }
@@ -89,7 +89,7 @@ pub fn dealias_and_type_check_term<
 pub fn operate_parser_for<
     's,
     TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExt: Default + Copy + fmt::Debug + Clone + SystemRExtension<TExtDialect>,
 >(
     input: &str,
     ps: &mut ParserState<'s, TExtDialect>,

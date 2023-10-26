@@ -145,8 +145,10 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
         Aliaser { map: &self.map }
     }
 
-    pub fn de_alias(&mut self, term: &mut Term<TExtDialect>) {
-        crate::visit::MutTermVisitor::visit(self, term)
+    pub fn de_alias<
+        TExt: SystemRExtension<TExtDialect> + fmt::Debug + Default + Clone,
+    >(&mut self, term: &mut Term<TExtDialect>, ext: &mut TExt) {
+        crate::visit::MutTermVisitor::visit(self, term, ext)
     }
 }
 
@@ -491,17 +493,18 @@ impl<'ctx, TExtDialect: SystemRDialect + Default + Clone + fmt::Debug + PartialE
     }
 }
 
-impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug + Default>
-    MutTermVisitor<TExtDialect> for Context<TExtDialect>
+impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug + Default,
+    TExt: SystemRExtension<TExtDialect> + fmt::Debug + Default + Clone,
+> MutTermVisitor<TExtDialect, TExt> for Context<TExtDialect>
 {
-    fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect>, term: &mut Term<TExtDialect>) {
+    fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect>, term: &mut Term<TExtDialect>, ext: &mut TExt) {
         self.aliaser().visit(ty);
-        self.visit(term);
+        self.visit(term, ext);
     }
 
-    fn visit_tyapp(&mut self, sp: &mut Span, term: &mut Term<TExtDialect>, ty: &mut Type<TExtDialect>) {
+    fn visit_tyapp(&mut self, sp: &mut Span, term: &mut Term<TExtDialect>, ty: &mut Type<TExtDialect>, ext: &mut TExt) {
         self.aliaser().visit(ty);
-        self.visit(term);
+        self.visit(term, ext);
     }
 
     fn visit_injection(
@@ -510,19 +513,20 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
         label: &mut String,
         term: &mut Term<TExtDialect>,
         ty: &mut Type<TExtDialect>,
+ ext: &mut TExt,
     ) {
         self.aliaser().visit(ty);
-        self.visit(term);
+        self.visit(term, ext);
     }
 
-    fn visit_fold(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect>, tm: &mut Term<TExtDialect>) {
+    fn visit_fold(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect>, tm: &mut Term<TExtDialect>, ext: &mut TExt) {
         self.aliaser().visit(ty);
-        self.visit(tm);
+        self.visit(tm, ext);
     }
 
-    fn visit_unfold(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect>, tm: &mut Term<TExtDialect>) {
+    fn visit_unfold(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect>, tm: &mut Term<TExtDialect>, ext: &mut TExt) {
         self.aliaser().visit(ty);
-        self.visit(tm);
+        self.visit(tm, ext);
     }
 }
 

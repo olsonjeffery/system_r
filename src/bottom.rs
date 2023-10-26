@@ -167,4 +167,12 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
     ) -> Result<crate::types::Type<BottomDialect>, Diagnostic> {
         panic!("type_check_application_of_ext for BottomDialect; should never be called")
     }
+
+    fn pat_visit_constructor_of_ext(
+        &mut self,
+        label: &str,
+        pat: &Pattern<BottomDialect>,
+        pts: &mut crate::patterns::PatTyStack<BottomDialect>,
+        ext_ty: &<BottomDialect as SystemRDialect>::TExtType
+    ) { }
 }
