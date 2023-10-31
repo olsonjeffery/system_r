@@ -37,7 +37,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-use crate::bottom::{BottomDialect, BottomExtension};
+use crate::bottom::{BottomDialect, BottomExtension, BottomState};
 use crate::diagnostics::Diagnostic;
 use crate::patterns::Pattern;
 use crate::platform_bindings::PlatformBindings;
@@ -343,15 +343,17 @@ impl<'ctx> Eval<'ctx> {
 
 fn term_subst(mut s: Term<BottomDialect>, t: &mut Term<BottomDialect>) {
     let mut ext = BottomExtension;
-    Shift::new(1).visit(&mut s, &mut ext);
-    Subst::new(s).visit(t, &mut ext);
-    Shift::new(-1).visit(t, &mut ext);
+    let mut state = BottomState;
+    Shift::new(1).visit(&mut s, &mut ext, &mut state);
+    Subst::new(s).visit(t, &mut ext, &mut state);
+    Shift::new(-1).visit(t, &mut ext, &mut state);
 }
 
 fn type_subst(s: Type<BottomDialect>, t: &mut Term<BottomDialect>) {
     let mut ext = BottomExtension;
-    TyTermSubst::new(s).visit(t, &mut ext);
-    Shift::new(-1).visit(t, &mut ext);
+    let mut state = BottomState;
+    TyTermSubst::new(s).visit(t, &mut ext, &mut state);
+    Shift::new(-1).visit(t, &mut ext, &mut state);
 }
 
 #[cfg(test)]

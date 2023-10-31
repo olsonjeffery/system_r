@@ -170,9 +170,18 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
 
     fn pat_visit_constructor_of_ext(
         &mut self,
+        ext_state: &mut BottomState,
+        pts: &mut crate::patterns::PatTyStack<BottomDialect>,
         label: &str,
         pat: &Pattern<BottomDialect>,
-        pts: &mut crate::patterns::PatTyStack<BottomDialect>,
         ext_ty: &<BottomDialect as SystemRDialect>::TExtType
     ) { }
+
+    fn exhaustive_for_ext(
+        &self,
+        matrix: &crate::types::patterns::Matrix<BottomDialect>,
+        ext_state: &<BottomDialect as SystemRDialect>::TExtDialectState,
+    ) -> bool {
+       false 
+    }
 }

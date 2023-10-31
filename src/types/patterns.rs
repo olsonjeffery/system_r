@@ -59,7 +59,7 @@ use std::collections::HashSet;
 
 /// Return true if `existing` covers `new`, i.e. if new is a useful pattern
 /// then `overlap` will return `false`
-fn overlap<TExtDialect: Eq + SystemRDialect + Clone + fmt::Debug + PartialEq + PartialOrd + Default>(
+pub fn overlap<TExtDialect: Eq + SystemRDialect + Clone + fmt::Debug + PartialEq + PartialOrd + Default>(
     existing: &Pattern<TExtDialect>,
     new: &Pattern<TExtDialect>,
 ) -> bool {
@@ -87,7 +87,7 @@ pub struct Matrix<
 > {
     pub expr_ty: Type<TExtDialect>,
     len: usize,
-    matrix: Vec<Vec<&'pat Pattern<TExtDialect>>>,
+    pub inner_matrix: Vec<Vec<&'pat Pattern<TExtDialect>>>,
 }
 
 impl<'pat, TExtDialect: Eq + hash::Hash + PartialOrd + PartialEq + SystemRDialect + Clone + fmt::Debug + Default>
@@ -103,7 +103,7 @@ impl<'pat, TExtDialect: Eq + hash::Hash + PartialOrd + PartialEq + SystemRDialec
         Matrix {
             expr_ty,
             len,
-            matrix: Vec::new(),
+            inner_matrix: Vec::new(),
         }
     }
 
@@ -122,7 +122,9 @@ impl<'pat, TExtDialect: Eq + hash::Hash + PartialOrd + PartialEq + SystemRDialec
     /// For a sum type, a dummy constructor of pattern `Const_i _` is generated
     /// for all `i` of the possible constructors of the type. If none of the
     /// dummy constructors are useful, then the current patterns are exhaustive
-    pub fn exhaustive(&self) -> bool {
+    pub fn exhaustive<
+        TExt: SystemRExtension<TExtDialect> + Clone + Default + fmt::Debug,
+    >(&self, ext: &TExt, ext_state: &TExtDialect::TExtDialectState) -> bool {
         match &self.expr_ty {
             Type::Variant(v) => v.iter().all(|variant| {
                 // For all constructors in the sum type, generate a constructor
@@ -131,7 +133,7 @@ impl<'pat, TExtDialect: Eq + hash::Hash + PartialOrd + PartialEq + SystemRDialec
                 let con = Pattern::Constructor(variant.label.clone(), Box::new(Pattern::Any));
                 let temp = [&con];
                 let mut ret = false;
-                for row in &self.matrix {
+                for row in &self.inner_matrix {
                     if row.iter().zip(&temp).all(|(a, b)| overlap::<TExtDialect>(a, b)) {
                         ret = true;
                         break;
@@ -143,7 +145,7 @@ impl<'pat, TExtDialect: Eq + hash::Hash + PartialOrd + PartialEq + SystemRDialec
                 // Generate a tuple of wildcard patterns. If the pattern is
                 // useful, then we do not have an exhaustive matrix
                 let filler = (0..self.len).map(|_| Pattern::Any).collect::<Vec<_>>();
-                for row in &self.matrix {
+                for row in &self.inner_matrix {
                     if row.iter().zip(filler.iter()).all(|(a, b)| overlap::<TExtDialect>(a, b)) {
                         return true;
                     }
@@ -163,6 +165,9 @@ impl<'pat, TExtDialect: Eq + hash::Hash + PartialOrd + PartialEq + SystemRDialec
                 let unit = Pattern::Literal(Literal::Unit);
                 !self.can_add_row(vec![&unit])
             }
+            Type::Extended(_) => {
+                ext.exhaustive_for_ext(self, ext_state)
+            }
             _ => false,
         }
     }
@@ -170,7 +175,7 @@ impl<'pat, TExtDialect: Eq + hash::Hash + PartialOrd + PartialEq + SystemRDialec
     /// Return true if a new pattern row is reachable
     fn can_add_row(&self, new_row: Vec<&'pat Pattern<TExtDialect>>) -> bool {
         assert_eq!(self.len, new_row.len());
-        for row in &self.matrix {
+        for row in &self.inner_matrix {
             if row
                 .iter()
                 .zip(new_row.iter())
@@ -184,7 +189,7 @@ impl<'pat, TExtDialect: Eq + hash::Hash + PartialOrd + PartialEq + SystemRDialec
 
     fn try_add_row(&mut self, new_row: Vec<&'pat Pattern<TExtDialect>>) -> bool {
         assert_eq!(self.len, new_row.len());
-        for row in &self.matrix {
+        for row in &self.inner_matrix {
             if row
                 .iter()
                 .zip(new_row.iter())
@@ -193,7 +198,7 @@ impl<'pat, TExtDialect: Eq + hash::Hash + PartialOrd + PartialEq + SystemRDialec
                 return false;
             }
         }
-        self.matrix.push(new_row);
+        self.inner_matrix.push(new_row);
         true
     }
 
@@ -204,7 +209,7 @@ impl<'pat, TExtDialect: Eq + hash::Hash + PartialOrd + PartialEq + SystemRDialec
     pub fn add_pattern<TExt: Clone + fmt::Debug + Default + SystemRExtension<TExtDialect>>(
         &mut self,
         pat: &'pat Pattern<TExtDialect>,
-        ext: &mut TExt,
+        ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState,
     ) -> bool {
         match pat {
             Pattern::Any | Pattern::Variable(_) => {
@@ -256,7 +261,7 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + PartialEq + Partial
         &mut self,
         expr: &Term<TExtDialect>,
         arms: &[Arm<TExtDialect>],
-        ext: &mut TExt,
+        ext: &mut TExt
     ) -> Result<Type<TExtDialect>, Diagnostic> {
         let ty = self.type_check(expr, ext)?;
         let mut matrix = patterns::Matrix::<TExtDialect>::new(ty);
@@ -266,19 +271,27 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + PartialEq + Partial
             if self.pattern_type_eq(&arm.pat, &matrix.expr_ty, ext) {
                 let height = self.stack.len();
 
-                let binds = PatTyStack::<TExtDialect>::collect::<TExt>(&matrix.expr_ty, &arm.pat, ext);
+                let binds = PatTyStack::<TExtDialect>::collect::<TExt>(&matrix.expr_ty, &arm.pat, ext, &mut self.ext_state);
                 for b in binds.into_iter().rev() {
                     self.push(b.clone());
                 }
 
                 let arm_ty = self.type_check(&arm.term, ext)?;
+                match arm.term.clone().kind {
+                    Kind::Injection(label, _, _) => {
+                        if label == "Some" {
+                            //panic!("got Some Arm {:?}, derived ty:::: {:?}", arm, arm_ty);
+                        }
+                    },
+                    _ => {}
+                }
 
                 while self.stack.len() > height {
                     self.pop();
                 }
 
                 set.insert(arm_ty);
-                if !matrix.add_pattern(&arm.pat, ext) {
+                if !matrix.add_pattern(&arm.pat, ext, &mut self.ext_state) {
                     return Err(Diagnostic::error(arm.span, "unreachable pattern!"));
                 }
             } else {
@@ -295,10 +308,10 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + PartialEq + Partial
         }
 
         if set.len() != 1 {
-            return Err(Diagnostic::error(expr.span, format!("incompatible arms! {:?}", set)));
+            return Err(Diagnostic::error(expr.span, format!("incompatible arms! {:?} expr: {:?}", set, expr)));
         }
 
-        if matrix.exhaustive() {
+        if matrix.exhaustive(ext, &self.ext_state) {
             match set.into_iter().next() {
                 Some(s) => Ok(s),
                 None => Err(Diagnostic::error(
@@ -327,7 +340,7 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + PartialEq + Partial
         &self,
         pat: &Pattern<TExtDialect>,
         ty: &Type<TExtDialect>,
-        ext: &TExt,
+        ext: &TExt
     ) -> bool {
         match pat {
             Pattern::Any => true,
@@ -368,7 +381,7 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + PartialEq + Partial
 
 #[cfg(test)]
 mod test {
-    use crate::bottom::BottomExtension;
+    use crate::bottom::{BottomExtension, BottomState};
 
     use super::*;
     use Pattern::*;
@@ -457,12 +470,13 @@ mod test {
         ];
         let ty = Type::Product(vec![Type::Nat, Type::Nat]);
         let mut ext = BottomExtension;
+        let mut state = BottomState;
         let mut matrix = Matrix::new(ty);
         for pat in &pats {
-            assert!(matrix.add_pattern::<BottomExtension>(pat, &mut ext));
+            assert!(matrix.add_pattern::<BottomExtension>(pat, &mut ext, &mut state));
         }
-        assert!(!matrix.add_pattern(&Any, &mut BottomExtension));
-        assert!(matrix.exhaustive());
+        assert!(!matrix.add_pattern(&Any, &mut BottomExtension, &mut state));
+        assert!(matrix.exhaustive(&ext, &state));
     }
 
     #[test]
@@ -483,17 +497,19 @@ mod test {
         ];
 
         let ctx = Context::default();
-        assert!(pats.iter().all(|p| ctx.pattern_type_eq(p, &ty, &mut BottomExtension)));
+        let mut ext = BottomExtension;
+        let mut state = BottomState;
+        assert!(pats.iter().all(|p| ctx.pattern_type_eq(p, &ty, &mut ext)));
         let mut matrix = Matrix::new(ty);
 
         for p in &pats {
-            assert!(matrix.add_pattern(p, &mut BottomExtension));
+            assert!(matrix.add_pattern(p, &mut BottomExtension, &mut state));
         }
         let last = con!("C", Any);
 
-        assert!(!matrix.exhaustive());
-        assert!(matrix.add_pattern(&last, &mut BottomExtension));
-        assert!(matrix.exhaustive());
+        assert!(!matrix.exhaustive(&ext, &state));
+        assert!(matrix.add_pattern(&last, &mut BottomExtension, &mut state));
+        assert!(matrix.exhaustive(&ext, &state));
     }
 
     #[test]
@@ -502,13 +518,15 @@ mod test {
 
         let ty = Type::Bool;
         let ctx = Context::default();
+        let mut state = BottomState;
+        let ext = BottomExtension;
         assert!(pats.iter().all(|p| ctx.pattern_type_eq(p, &ty, &mut BottomExtension)));
 
         let mut matrix = Matrix::new(ty);
         for p in &pats {
-            assert!(matrix.add_pattern(p, &mut BottomExtension));
+            assert!(matrix.add_pattern(p, &mut BottomExtension, &mut state));
         }
-        assert!(!matrix.add_pattern(&pats[1], &mut BottomExtension));
-        assert!(matrix.exhaustive());
+        assert!(!matrix.add_pattern(&pats[1], &mut BottomExtension, &mut state));
+        assert!(matrix.exhaustive(&ext, &state));
     }
 }

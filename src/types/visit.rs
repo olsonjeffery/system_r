@@ -119,6 +119,10 @@ impl<TExtDialect: Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq
         self.cutoff -= 1;
     }
 
+    fn visit_ext(&mut self, ty: &mut TExtDialect::TExtType) {
+        // FIXME add ext, call into; in TAD, would do work of reifying, then visiting
+    }
+
     fn visit(&mut self, ty: &mut Type<TExtDialect>) {
         match ty {
             Type::Unit | Type::Bool | Type::Nat | Type::Tag(_) => {}
@@ -135,7 +139,7 @@ impl<TExtDialect: Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq
             Type::Universal(ty) => self.visit_universal(ty),
             Type::Existential(ty) => self.visit_existential(ty),
             Type::Rec(ty) => self.visit_rec(ty),
-            Type::Extended(v) => panic!("handle extended in MutTypeVisitor {:?}", v),
+            Type::Extended(v) => self.visit_ext(v),
         }
     }
 }

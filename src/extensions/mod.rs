@@ -20,7 +20,7 @@ use crate::{
     patterns::{Pattern, PatTyStack},
     syntax::{error::Error, parser::ParserState},
     terms::Term,
-    types::{Context, Type},
+    types::{Context, Type, patterns::Matrix},
 };
 
 pub mod type_alias;
@@ -93,11 +93,17 @@ pub trait SystemRExtension<
     ) -> Result<Type<TExtDialect>, Diagnostic>;
     fn pat_visit_constructor_of_ext(
         &mut self,
+        ext_state: &mut TExtDialect::TExtDialectState,
+        pts: &mut PatTyStack<TExtDialect>,
         label: &str,
         pat: &Pattern<TExtDialect>,
-        pts: &mut PatTyStack<TExtDialect>,
         ext_ty: &TExtDialect::TExtType
     );
+    fn exhaustive_for_ext(
+        &self,
+        matrix: &Matrix<TExtDialect>,
+        ext_state: &TExtDialect::TExtDialectState,
+    ) -> bool;
 }
 
 pub trait SystemRTranslator<

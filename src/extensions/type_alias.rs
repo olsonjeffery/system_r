@@ -26,8 +26,8 @@ use crate::{
         ExtTokenKind,
     },
     terms::{Kind, Term, Literal},
-    types::{visit::Subst, Context, Type},
-    visit::{MutTypeVisitor},
+    types::{visit::Subst, Context, Type, patterns::overlap},
+    visit::{MutTypeVisitor, PatternVisitor},
 };
 
 use super::{SystemRDialect, SystemRExtension, SystemRTranslator};
@@ -310,18 +310,13 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         };
 
         // NOW it should be a variant
-        match dealiased {
+        match dealiased.clone() {
             Type::Variant(fields) => {
                 for f in fields.clone() {
                     if inj_label == &f.label {
-                        if tm.kind != Kind::Lit(Literal::Unit) {
-                            // let t0 = ctx.stack.get(0).unwrap().clone();
-                            // let t1= ctx.stack.get(1).unwrap().clone();
-                            // panic!("what is it???? {:?} t0 {:?} t1 {:?}", tm, t0, t1);
-                        }
                         let ty = ctx.type_check(tm, self)?;
                         if ty == f.ty {
-                            return Ok(ty.clone());
+                            return Ok(dealiased);
                         }
                     }
                 }
@@ -380,22 +375,64 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
 
     fn pat_visit_constructor_of_ext(
         &mut self,
+        ext_state: &mut TypeAliasDialectState,
+        pts: &mut crate::patterns::PatTyStack<TypeAliasDialect>,
         label: &str,
         pat: &Pattern<TypeAliasDialect>,
-        pts: &mut crate::patterns::PatTyStack<TypeAliasDialect>,
         ext_ty: &<TypeAliasDialect as SystemRDialect>::TExtType
     ) {
         // handle where this is Type::Extended; at which point
         // the extension needs to re-create the above logic (including variant_field())
-        panic!("pat_visit_constructor_of_ext unimpl")
-        /*
-        let ty = pts.ty;
+        let ty = pts.ty.clone();
 
-        // set pts.ty = reified.. need ext_state
 
-        pts.visit_constructor(label, pat, self);
+        let TypeAliasType::TypeAliasApp(ext_label, applied_types) = ext_ty else {
+            return;
+        };
+        let reified_type = match reify_type(ext_state, ext_label, applied_types) {
+            Ok(t) => t,
+            Err(e) => {
+                panic!("reifiy failed {:?}", e);
+            },
+        };
+        pts.ty = reified_type.clone();
+
+        //panic!("before re-entry into visitor, label {:?} pat {:?}, reified: {:?}", label, pat, reified_type);
+        pts.visit_constructor(label, pat, self, ext_state);
+
         pts.ty = ty;
-        */
+    }
+
+    fn exhaustive_for_ext(
+        &self,
+        matrix: &crate::types::patterns::Matrix<TypeAliasDialect>,
+        ext_state: &<TypeAliasDialect as SystemRDialect>::TExtDialectState,
+    ) -> bool {
+        let Type::Extended(TypeAliasType::TypeAliasApp(type_decl_key, applied_types)) = matrix.expr_ty.clone() else {
+            return false;
+        };
+        let reified = match reify_type(ext_state, &type_decl_key, &applied_types) {
+            Ok(t) => t,
+            _ => return false
+        };
+        match reified {
+            Type::Variant(v) => v.iter().all(|variant| {
+                // For all constructors in the sum type, generate a constructor
+                // pattern that will match all possible inhabitants of that
+                // constructor
+                let con = Pattern::Constructor(variant.label.clone(), Box::new(Pattern::Any));
+                let temp = [&con];
+                let mut ret = false;
+                for row in &matrix.inner_matrix {
+                    if row.iter().zip(&temp).all(|(a, b)| overlap::<TypeAliasDialect>(a, b)) {
+                        ret = true;
+                        break;
+                    }
+                }
+                ret
+            }),
+            _ => return false
+        }
     }
 }
 
@@ -440,11 +477,11 @@ pub fn set_holed_type_for(
 }
 
 pub fn reify_type<'s>(
-    ps: &TypeAliasDialectState,
+    ext_state: &TypeAliasDialectState,
     type_decl_key: &str,
     applied_types: &Vec<Type<TypeAliasDialect>>,
 ) -> Result<Type<TypeAliasDialect>, Error<TypeAliasTokenKind>> {
-    let (tyabs_count, mut holed_type) = get_holed_type_from(ps, type_decl_key)?;
+    let (tyabs_count, mut holed_type) = get_holed_type_from(ext_state, type_decl_key)?;
 
     if applied_types.len() != tyabs_count {
         return Err(Error {
