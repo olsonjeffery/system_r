@@ -18,7 +18,7 @@ use crate::{
     patterns::Pattern,
     syntax::error::Error,
     terms::Term,
-    types::Context,
+    types::{Context, Type},
 };
 
 #[derive(Eq, Hash, Clone, Default, Debug, PartialEq, PartialOrd)]
@@ -139,7 +139,7 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
 
     fn pat_ctor_eq_within(
         &self,
-        ctx: &Context<BottomDialect>,
+        ctx: &mut Context<BottomDialect>,
         label: &str,
         inner: &Pattern<BottomDialect>,
         target: &<BottomDialect as SystemRDialect>::TExtType,
@@ -178,10 +178,38 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
     ) { }
 
     fn exhaustive_for_ext(
-        &self,
+        &mut self,
         matrix: &crate::types::patterns::Matrix<BottomDialect>,
-        ext_state: &<BottomDialect as SystemRDialect>::TExtDialectState,
+        ext_state: &mut <BottomDialect as SystemRDialect>::TExtDialectState,
     ) -> bool {
        false 
     }
+
+    fn ty_subst_visit_ext(
+        &mut self,
+        subst_visitor: &mut crate::types::visit::Subst<BottomDialect>,
+        ty: &mut Type<BottomDialect>,
+        ext_state: &mut <BottomDialect as SystemRDialect>::TExtDialectState,
+    ) { }
+
+    fn ty_aliaser_visit_ext(
+        &mut self,
+        aliaser: &mut crate::types::Aliaser<BottomDialect>,
+        ext_ty: &mut Type<BottomDialect>,
+        ext_state: &mut <BottomDialect as SystemRDialect>::TExtDialectState,
+    ) { }
+
+    fn ty_shift_visit_ext(
+        &mut self,
+        shift: &mut crate::types::visit::Shift,
+        ext_ty: &mut Type<BottomDialect>,
+        ext_state: &mut <BottomDialect as SystemRDialect>::TExtDialectState,
+    ) { }
+
+    fn type_check_ext_equals_ty(
+        &mut self,
+        ctx: &mut Context<BottomDialect>,
+        ext_ty: &mut <BottomDialect as SystemRDialect>::TExtType,
+        other_ty: &mut crate::types::Type<BottomDialect>,
+    ) -> bool { false }
 }

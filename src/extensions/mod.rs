@@ -19,8 +19,7 @@ use crate::{
     diagnostics::Diagnostic,
     patterns::{Pattern, PatTyStack},
     syntax::{error::Error, parser::ParserState},
-    terms::Term,
-    types::{Context, Type, patterns::Matrix},
+    types::{Context, Type, patterns::Matrix, visit::{Subst, Shift}, Aliaser}, visit::MutTypeVisitor, terms::Term,
 };
 
 pub mod type_alias;
@@ -71,7 +70,7 @@ pub trait SystemRExtension<
     ) -> bool;
     fn pat_ctor_eq_within(
         &self,
-        ctx: &Context<TExtDialect>,
+        ctx: &mut Context<TExtDialect>,
         label: &str,
         inner: &Pattern<TExtDialect>,
         target: &TExtDialect::TExtType,
@@ -100,9 +99,33 @@ pub trait SystemRExtension<
         ext_ty: &TExtDialect::TExtType
     );
     fn exhaustive_for_ext(
-        &self,
+        &mut self,
         matrix: &Matrix<TExtDialect>,
-        ext_state: &TExtDialect::TExtDialectState,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) -> bool;
+    fn ty_shift_visit_ext(
+        &mut self,
+        shift: &mut Shift,
+        ext_ty: &mut Type<TExtDialect>,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    );
+    fn ty_aliaser_visit_ext(
+        &mut self,
+        aliaser: &mut Aliaser<TExtDialect>,
+        ext_ty: &mut Type<TExtDialect>,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    );
+    fn ty_subst_visit_ext(
+        &mut self,
+        subst_visitor: &mut Subst<TExtDialect>,
+        ext_ty: &mut Type<TExtDialect>,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    );
+    fn type_check_ext_equals_ty(
+        &mut self,
+        ctx: &mut Context<TExtDialect>,
+        ext_ty: &mut TExtDialect::TExtType,
+        other_ty: &mut Type<TExtDialect>,
     ) -> bool;
 }
 

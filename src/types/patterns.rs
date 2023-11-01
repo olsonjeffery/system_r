@@ -124,7 +124,7 @@ impl<'pat, TExtDialect: Eq + hash::Hash + PartialOrd + PartialEq + SystemRDialec
     /// dummy constructors are useful, then the current patterns are exhaustive
     pub fn exhaustive<
         TExt: SystemRExtension<TExtDialect> + Clone + Default + fmt::Debug,
-    >(&self, ext: &TExt, ext_state: &TExtDialect::TExtDialectState) -> bool {
+    >(&self, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) -> bool {
         match &self.expr_ty {
             Type::Variant(v) => v.iter().all(|variant| {
                 // For all constructors in the sum type, generate a constructor
@@ -311,7 +311,7 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + PartialEq + Partial
             return Err(Diagnostic::error(expr.span, format!("incompatible arms! {:?} expr: {:?}", set, expr)));
         }
 
-        if matrix.exhaustive(ext, &self.ext_state) {
+        if matrix.exhaustive(ext, &mut self.ext_state) {
             match set.into_iter().next() {
                 Some(s) => Ok(s),
                 None => Err(Diagnostic::error(
@@ -337,7 +337,7 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + PartialEq + Partial
     /// This function is primarily used as a first pass to ensure that a pattern
     /// is valid for a given case expression
     pub(crate) fn pattern_type_eq<TExt: Clone + Default + fmt::Debug + SystemRExtension<TExtDialect>>(
-        &self,
+        &mut self,
         pat: &Pattern<TExtDialect>,
         ty: &Type<TExtDialect>,
         ext: &TExt
@@ -371,7 +371,7 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + PartialEq + Partial
                     }
                     false
                 }
-                Type::Extended(ext_ty) => ext.pat_ctor_eq_within(&self, label, inner, ext_ty),
+                Type::Extended(ext_ty) => ext.pat_ctor_eq_within(self, label, inner, ext_ty),
                 _ => false,
             },
             Pattern::Extended(v) => ext.pat_ext_pattern_type_eq(self, v, ty),
@@ -390,7 +390,7 @@ mod test {
     fn product() {
         let ty = Type::Product(vec![Type::Bool, Type::Bool, Type::Nat]);
         let pat = prod!(boolean!(true), boolean!(true), num!(10));
-        let ctx = Context::default();
+        let mut ctx = Context::default();
         let mut ext = BottomExtension;
         assert!(ctx.pattern_type_eq(&pat, &ty, &mut ext));
     }
@@ -400,7 +400,7 @@ mod test {
     fn product_mistyped() {
         let ty = Type::Product(vec![Type::Bool, Type::Bool, Type::Bool]);
         let pat = prod!(boolean!(true), boolean!(true), num!(10));
-        let ctx = Context::default();
+        let mut ctx = Context::default();
         let mut ext = BottomExtension;
         assert!(ctx.pattern_type_eq(&pat, &ty, &mut ext));
     }
@@ -422,7 +422,7 @@ mod test {
         let pat2 = con!("A", boolean!(true));
         let pat3 = con!("B", num!(1));
 
-        let ctx = Context::default();
+        let mut ctx = Context::default();
         let mut ext = BottomExtension;
 
         assert!(ctx.pattern_type_eq(&pat1, &ty, &mut ext));
@@ -449,7 +449,7 @@ mod test {
         let pat4 = con!("B", prod!(num!(1), Variable("x".into())));
         let pat5 = con!("A", num!(1));
 
-        let ctx = Context::default();
+        let mut ctx = Context::default();
         let mut ext = BottomExtension;
         assert!(ctx.pattern_type_eq(&pat1, &ty, &mut ext));
         assert!(ctx.pattern_type_eq(&pat2, &ty, &mut ext));
@@ -476,7 +476,7 @@ mod test {
             assert!(matrix.add_pattern::<BottomExtension>(pat, &mut ext, &mut state));
         }
         assert!(!matrix.add_pattern(&Any, &mut BottomExtension, &mut state));
-        assert!(matrix.exhaustive(&ext, &state));
+        assert!(matrix.exhaustive(&mut ext, &mut state));
     }
 
     #[test]
@@ -496,7 +496,7 @@ mod test {
             con!("C", prod!(num!(1), Any)),
         ];
 
-        let ctx = Context::default();
+        let mut ctx = Context::default();
         let mut ext = BottomExtension;
         let mut state = BottomState;
         assert!(pats.iter().all(|p| ctx.pattern_type_eq(p, &ty, &mut ext)));
@@ -507,9 +507,9 @@ mod test {
         }
         let last = con!("C", Any);
 
-        assert!(!matrix.exhaustive(&ext, &state));
+        assert!(!matrix.exhaustive(&mut ext, &mut state));
         assert!(matrix.add_pattern(&last, &mut BottomExtension, &mut state));
-        assert!(matrix.exhaustive(&ext, &state));
+        assert!(matrix.exhaustive(&mut ext, &mut state));
     }
 
     #[test]
@@ -517,9 +517,9 @@ mod test {
         let pats = vec![boolean!(true), boolean!(false)];
 
         let ty = Type::Bool;
-        let ctx = Context::default();
+        let mut ctx = Context::default();
         let mut state = BottomState;
-        let ext = BottomExtension;
+        let mut ext = BottomExtension;
         assert!(pats.iter().all(|p| ctx.pattern_type_eq(p, &ty, &mut BottomExtension)));
 
         let mut matrix = Matrix::new(ty);
@@ -527,6 +527,6 @@ mod test {
             assert!(matrix.add_pattern(p, &mut BottomExtension, &mut state));
         }
         assert!(!matrix.add_pattern(&pats[1], &mut BottomExtension, &mut state));
-        assert!(matrix.exhaustive(&ext, &state));
+        assert!(matrix.exhaustive(&mut ext, &mut state));
     }
 }

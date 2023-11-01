@@ -203,19 +203,43 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
             }
             Kind::App(t1, t2) => {
                 let ty1 = self.type_check(&t1, ext)?;
-                let ty2 = self.type_check(&t2, ext)?;
+                let mut ty2 = self.type_check(&t2, ext)?;
                 match ty1.clone() {
-                    Type::Arrow(ty11, ty12) => {
+                    Type::Arrow(mut ty11, ty12) => {
                         // does the invocation's type (ty2)
                         // match the type of the function's
                         // arg (ty11)?
                         if *ty11 == ty2 {
                             Ok(*ty12)
                         } else {
-                            let d = Diagnostic::error(term.span, "Type<TExtDialect> mismatch in application")
-                                .message(t1.span, format!("Abstraction requires type {:?}", ty11))
-                                .message(t2.span, format!("Value has a type of {:?}", ty2));
-                            Err(d)
+                            match *ty11.clone() {
+                                Type::Extended(ext_ty) => {
+                                    // essentially a recapitulation of check above
+                                    if ext.type_check_ext_equals_ty(self, &mut ext_ty.clone(), &mut ty2) {
+                                        Ok(*ty12)
+                                    } else {
+                                        let d = Diagnostic::error(term.span, "Type<TExtDialect> mismatch in ext application")
+                                            .message(t2.span, format!("WTF is ty12? {:?}", ty12))
+                                            .message(term.span, format!("parent term {:?}", term.kind))
+                                            .message(term.span, format!("ctx stack {:?}", self.stack));
+                                        Err(d)
+                                    }
+                                }, _ => {
+                                    let d = Diagnostic::error(term.span, "Type<TExtDialect> mismatch in application")
+                                        .message(t1.span, format!("Abstraction requires type {:?}", ty11))
+                                        .message(t2.span, format!("Value has a type of {:?}", ty2))
+                                        .message(t2.span, format!("WTF is ty12? {:?}", ty12))
+                                        .message(term.span, format!("parent term {:?}", term.kind));
+                                    Err(d)
+                                    /*
+                                     (extended
+                                        (TypeAliasApp("$Option", [TyVar(0)]))
+                                        ->
+                                        ((TyVar(0)->(TyVar(0),TyVar(0),TyVar(0)))->"None: Unit | Some: (TyVar(0),TyVar(0),TyVar(0))"
+                                        )) 
+                                     */
+                                }
+                            }
                         }
                     }
                     Type::PlatformBinding(ty11, ty12) => {
@@ -365,23 +389,16 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
                 let ty1 = self.type_check(&term, ext)?;
                 match ty1 {
                     Type::Universal(mut ty12) => {
-                        Shift::new(1).visit(&mut ty);
+                        Shift::new(1).visit(&mut ty, ext, &mut self.ext_state);
                         //panic!("type_check for Kind::TyApp: term: {:?} span: {:?} ty: {:?} ty12 {:?} stack: {:?}", term, term.span, ty, ty12, self.stack);
-                        Subst::new(*ty).visit(&mut ty12);
-                        Shift::new(-1).visit(&mut ty12);
+                        Subst::new(*ty.clone()).visit(&mut ty12, ext, &mut self.ext_state);
+                        Shift::new(-1).visit(&mut ty12, ext, &mut self.ext_state);
                         Ok(*ty12)
                     }
                     _ => Err(Diagnostic::error(
                         term.span,
                         format!("Expected a universal type, not {:?}", ty1),
                     )),
-                    /*
-                        (
-                            extended(TypeAliasApp("$Option", [TyVar(0)])
-                            )->(TyVar(0)->(TyVar(0),TyVar(0),TyVar(0))
-                            )->"None: Unit | Some: (TyVar(0),TyVar(0),TyVar(0))"
-                        ) 
-                     */
                 }
             }
             // See src/types/patterns.rs for exhaustiveness and typechecking
@@ -392,7 +409,7 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
                 Type::Rec(inner) => {
                     let ty_ = self.type_check(tm, ext)?;
                     if ty_ == *rec.clone() {
-                        let s = subst(*rec.clone(), *inner.clone());
+                        let s = subst(*rec.clone(), *inner.clone(), ext, &mut self.ext_state);
                         Ok(s)
                     } else {
                         let d = Diagnostic::error(term.span, "Type<TExtDialect> mismatch in unfold")
@@ -410,7 +427,7 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
             Kind::Fold(rec, tm) => match rec.as_ref() {
                 Type::Rec(inner) => {
                     let ty_ = self.type_check(tm, ext)?;
-                    let s = subst(*rec.clone(), *inner.clone());
+                    let s = subst(*rec.clone(), *inner.clone(), ext, &mut self.ext_state);
                     if ty_ == s {
                         Ok(*rec.clone())
                     } else {
@@ -427,7 +444,7 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
             },
             Kind::Pack(witness, evidence, signature) => {
                 if let Type::Existential(exists) = signature.as_ref() {
-                    let sig_prime = subst(*witness.clone(), *exists.clone());
+                    let sig_prime = subst(*witness.clone(), *exists.clone(), ext, &mut self.ext_state);
                     let evidence_ty = self.type_check(evidence, ext)?;
                     if evidence_ty == sig_prime {
                         Ok(*signature.clone())
@@ -465,24 +482,34 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
     }
 }
 
-pub fn subst<TExtDialect: SystemRDialect + Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + Hash>(
+pub fn subst<TExtDialect: SystemRDialect + Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + Hash,
+    TExt: SystemRExtension<TExtDialect> + Default + Clone + fmt::Debug,
+>(
     mut s: Type<TExtDialect>,
     mut t: Type<TExtDialect>,
+    ext: &mut TExt,
+    ext_state: &mut TExtDialect::TExtDialectState,
 ) -> Type<TExtDialect> {
-    Shift::new(1).visit(&mut s);
-    Subst::new(s).visit(&mut t);
-    Shift::new(-1).visit(&mut t);
+    Shift::new(1).visit(&mut s, ext, ext_state);
+    Subst::new(s).visit(&mut t, ext, ext_state);
+    Shift::new(-1).visit(&mut t, ext, ext_state);
     t
 }
 
-struct Aliaser<'ctx, TExtDialect: SystemRDialect + Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq> {
+pub struct Aliaser<'ctx, TExtDialect: SystemRDialect + Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq> {
     map: &'ctx HashMap<String, Type<TExtDialect>>,
 }
 
-impl<'ctx, TExtDialect: SystemRDialect + Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash>
-    MutTypeVisitor<TExtDialect> for Aliaser<'ctx, TExtDialect>
+impl<'ctx, TExtDialect: SystemRDialect + Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
+    TExt: SystemRExtension<TExtDialect> + Clone + Default + fmt::Debug,
+>
+    MutTypeVisitor<TExtDialect, TExt> for Aliaser<'ctx, TExtDialect>
 {
-    fn visit(&mut self, ty: &mut Type<TExtDialect>) {
+    fn visit_ext(&mut self, ty: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &mut <TExtDialect as SystemRDialect>::TExtDialectState) {
+        ext.ty_aliaser_visit_ext(self, ty, ext_state);
+    }
+
+    fn visit(&mut self, ty: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
         match ty {
             Type::Unit | Type::Bool | Type::Nat | Type::Tag(_) => {}
             Type::Var(v) => {}
@@ -492,14 +519,14 @@ impl<'ctx, TExtDialect: SystemRDialect + Default + Clone + fmt::Debug + PartialE
                     *ty = aliased.clone();
                 }
             }
-            Type::Variant(v) => self.visit_variant(v),
-            Type::Product(v) => self.visit_product(v),
+            Type::Variant(v) => self.visit_variant(v, ext, ext_state),
+            Type::Product(v) => self.visit_product(v, ext, ext_state),
 
-            Type::Arrow(ty1, ty2) => self.visit_arrow(ty1, ty2),
-            Type::Universal(ty) => self.visit_universal(ty),
-            Type::Existential(ty) => self.visit_existential(ty),
-            Type::Rec(ty) => self.visit_rec(ty),
-            Type::Extended(ty) => self.visit_ext(ty),
+            Type::Arrow(ty1, ty2) => self.visit_arrow(ty1, ty2, ext, ext_state),
+            Type::Universal(ty) => self.visit_universal(ty, ext, ext_state),
+            Type::Existential(ty) => self.visit_existential(ty, ext, ext_state),
+            Type::Rec(ty) => self.visit_rec(ty, ext, ext_state),
+            Type::Extended(_) => self.visit_ext(ty, ext, ext_state),
         }
     }
 }
@@ -509,12 +536,12 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
 > MutTermVisitor<TExtDialect, TExt> for Context<TExtDialect>
 {
     fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect>, term: &mut Term<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
-        self.aliaser().visit(ty);
+        self.aliaser().visit(ty, ext, ext_state);
         self.visit(term, ext, ext_state);
     }
 
     fn visit_tyapp(&mut self, sp: &mut Span, term: &mut Term<TExtDialect>, ty: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
-        self.aliaser().visit(ty);
+        self.aliaser().visit(ty, ext, ext_state);
         self.visit(term, ext, ext_state);
     }
 
@@ -526,17 +553,17 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
         ty: &mut Type<TExtDialect>,
  ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState,
     ) {
-        self.aliaser().visit(ty);
+        self.aliaser().visit(ty, ext, ext_state);
         self.visit(term, ext, ext_state);
     }
 
     fn visit_fold(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect>, tm: &mut Term<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
-        self.aliaser().visit(ty);
+        self.aliaser().visit(ty, ext, ext_state);
         self.visit(tm, ext, ext_state);
     }
 
     fn visit_unfold(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect>, tm: &mut Term<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
-        self.aliaser().visit(ty);
+        self.aliaser().visit(ty, ext, ext_state);
         self.visit(tm, ext, ext_state);
     }
 }

@@ -48,56 +48,59 @@ use crate::types::{Type, Variant};
 
 pub trait MutTypeVisitor<
     TExtDialect: SystemRDialect + Clone + Default + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
+    TExt: SystemRExtension<TExtDialect> + Clone + Default + fmt::Debug,
 >: Sized
 {
-    fn visit_pb(&mut self, i: &mut Type<TExtDialect>, r: &mut Type<TExtDialect>) {}
-    fn visit_var(&mut self, var: &mut usize) {}
-    fn visit_alias(&mut self, alias: &mut String) {}
+    fn visit_pb(&mut self, i: &mut Type<TExtDialect>, r: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {}
+    fn visit_var(&mut self, var: &mut usize, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {}
+    fn visit_alias(&mut self, alias: &mut String, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {}
 
-    fn visit_arrow(&mut self, ty1: &mut Type<TExtDialect>, ty2: &mut Type<TExtDialect>) {
-        self.visit(ty1);
-        self.visit(ty2);
+    fn visit_arrow(&mut self, ty1: &mut Type<TExtDialect>, ty2: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
+        self.visit(ty1, ext, ext_state);
+        self.visit(ty2, ext, ext_state);
     }
 
-    fn visit_universal(&mut self, inner: &mut Type<TExtDialect>) {
-        self.visit(inner);
+    fn visit_universal(&mut self, inner: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
+        self.visit(inner, ext, ext_state);
     }
 
-    fn visit_existential(&mut self, inner: &mut Type<TExtDialect>) {
-        self.visit(inner);
+    fn visit_existential(&mut self, inner: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
+        self.visit(inner, ext, ext_state);
     }
 
-    fn visit_variant(&mut self, variant: &mut Vec<Variant<TExtDialect>>) {
+    fn visit_variant(&mut self, variant: &mut Vec<Variant<TExtDialect>>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
         for v in variant {
-            self.visit(&mut v.ty);
+            self.visit(&mut v.ty, ext, ext_state);
         }
     }
 
-    fn visit_product(&mut self, product: &mut Vec<Type<TExtDialect>>) {
+    fn visit_product(&mut self, product: &mut Vec<Type<TExtDialect>>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
         for v in product {
-            self.visit(v);
+            self.visit(v, ext, ext_state);
         }
     }
 
-    fn visit_rec(&mut self, ty: &mut Type<TExtDialect>) {
-        self.visit(ty);
+    fn visit_rec(&mut self, ty: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
+        self.visit(ty, ext, ext_state);
     }
 
-    fn visit_ext(&mut self, ty: &mut TExtDialect::TExtType) {}
+    fn visit_ext(&mut self, ty: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
+        panic!("this path shouldn't be reached; needs override in every concrete impl");
+    }
 
-    fn visit(&mut self, ty: &mut Type<TExtDialect>) {
+    fn visit(&mut self, ty: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
         match ty {
             Type::Unit | Type::Bool | Type::Nat | Type::Tag(_) => {}
-            Type::PlatformBinding(i, r) => self.visit_pb(i, r),
-            Type::Var(v) => self.visit_var(v),
-            Type::Variant(v) => self.visit_variant(v),
-            Type::Product(v) => self.visit_product(v),
-            Type::Alias(s) => self.visit_alias(s),
-            Type::Arrow(ty1, ty2) => self.visit_arrow(ty1, ty2),
-            Type::Universal(ty) => self.visit_universal(ty),
-            Type::Existential(ty) => self.visit_existential(ty),
-            Type::Rec(ty) => self.visit_rec(ty),
-            Type::Extended(ty) => self.visit_ext(ty),
+            Type::PlatformBinding(i, r) => self.visit_pb(i, r, ext, ext_state),
+            Type::Var(v) => self.visit_var(v, ext, ext_state),
+            Type::Variant(v) => self.visit_variant(v, ext, ext_state),
+            Type::Product(v) => self.visit_product(v, ext, ext_state),
+            Type::Alias(s) => self.visit_alias(s, ext, ext_state),
+            Type::Arrow(ty1, ty2) => self.visit_arrow(ty1, ty2, ext, ext_state),
+            Type::Universal(ty) => self.visit_universal(ty, ext, ext_state),
+            Type::Existential(ty) => self.visit_existential(ty, ext, ext_state),
+            Type::Rec(ty) => self.visit_rec(ty, ext, ext_state),
+            Type::Extended(_) => self.visit_ext(ty, ext, ext_state),
         }
     }
 }

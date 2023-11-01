@@ -262,7 +262,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
 
     fn pat_ctor_eq_within(
         &self,
-        ctx: &Context<TypeAliasDialect>,
+        ctx: &mut Context<TypeAliasDialect>,
         ctor_label: &str,
         inner: &Pattern<TypeAliasDialect>,
         aliased_target: &<TypeAliasDialect as SystemRDialect>::TExtType,
@@ -271,7 +271,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
             return false;
         };
 
-        let ps = &ctx.ext_state;
+        let ps = &mut ctx.ext_state;
         let dealiased = match reify_type(ps, type_alias_label, inner_types) {
             Err(e) => return false,
             Ok(t) => t,
@@ -303,7 +303,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
             return Err(Diagnostic::error(sp.clone(), format!("")));
         };
 
-        let ps = &ctx.ext_state;
+        let ps = &mut ctx.ext_state;
         let dealiased = match reify_type(ps, type_alias_label, inner_types) {
             Err(e) => return Err(Diagnostic::error(sp.clone(), format!("failed to reify type: {:?}", e))),
             Ok(t) => t,
@@ -404,9 +404,9 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
     }
 
     fn exhaustive_for_ext(
-        &self,
+        &mut self,
         matrix: &crate::types::patterns::Matrix<TypeAliasDialect>,
-        ext_state: &<TypeAliasDialect as SystemRDialect>::TExtDialectState,
+        ext_state: &mut <TypeAliasDialect as SystemRDialect>::TExtDialectState,
     ) -> bool {
         let Type::Extended(TypeAliasType::TypeAliasApp(type_decl_key, applied_types)) = matrix.expr_ty.clone() else {
             return false;
@@ -433,6 +433,75 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
             }),
             _ => return false
         }
+    }
+
+    fn ty_subst_visit_ext(
+        &mut self,
+        subst_visitor: &mut Subst<TypeAliasDialect>,
+        ext_ty: &mut Type<TypeAliasDialect>,
+        ext_state: &mut <TypeAliasDialect as SystemRDialect>::TExtDialectState,
+    ) {
+        let Type::Extended(TypeAliasType::TypeAliasApp(type_decl_key, applied_types)) = ext_ty else {
+            return;
+        };
+        let mut reified = match reify_type(ext_state, &type_decl_key, &applied_types) {
+            Ok(t) => t,
+            _ => return,
+        };
+        *ext_ty = reified;
+        subst_visitor.visit(ext_ty, self, ext_state);
+    }
+
+    fn ty_aliaser_visit_ext(
+        &mut self,
+        aliaser: &mut crate::types::Aliaser<TypeAliasDialect>,
+        ext_ty: &mut Type<TypeAliasDialect>,
+        ext_state: &mut <TypeAliasDialect as SystemRDialect>::TExtDialectState,
+    ) {
+        let Type::Extended(TypeAliasType::TypeAliasApp(type_decl_key, applied_types)) = ext_ty.clone() else {
+            return;
+        };
+        let mut reified = match reify_type(ext_state, &type_decl_key, &applied_types) {
+            Ok(t) => t,
+            _ => return,
+        };
+        aliaser.visit(&mut reified, self, ext_state);
+    }
+
+    fn ty_shift_visit_ext(
+        &mut self,
+        shift: &mut crate::types::visit::Shift,
+        ext_ty: &mut Type<TypeAliasDialect>,
+        ext_state: &mut <TypeAliasDialect as SystemRDialect>::TExtDialectState,
+    ) {
+        let Type::Extended(TypeAliasType::TypeAliasApp(type_decl_key, applied_types)) = ext_ty.clone() else {
+            return;
+        };
+        let mut reified = match reify_type(ext_state, &type_decl_key, &applied_types) {
+            Ok(t) => t,
+            _ => return,
+        };
+        shift.cutoff += 1;
+        *ext_ty = reified; // :3
+        shift.visit(ext_ty, self, ext_state);
+        shift.cutoff -= 1;
+    }
+
+    fn type_check_ext_equals_ty(
+        &mut self,
+        ctx: &mut Context<TypeAliasDialect>,
+        ext_ty: &mut <TypeAliasDialect as SystemRDialect>::TExtType,
+        other_ty: &mut Type<TypeAliasDialect>,
+    ) -> bool {
+        let TypeAliasType::TypeAliasApp(type_decl_key, applied_types) = ext_ty.clone() else {
+            return false;
+        };
+        let reified = match reify_type(&mut ctx.ext_state, &type_decl_key, &applied_types) {
+            Ok(t) => t,
+            _ => return false,
+        };
+        //panic!("end of type_check_Ext_equals_ty ext {:?} other {:?} stack {:?}", reified, *other_ty, ctx.stack);
+        reified == *other_ty
     }
 }
 
@@ -477,11 +546,13 @@ pub fn set_holed_type_for(
 }
 
 pub fn reify_type<'s>(
-    ext_state: &TypeAliasDialectState,
+    ext_state: &mut TypeAliasDialectState,
     type_decl_key: &str,
     applied_types: &Vec<Type<TypeAliasDialect>>,
 ) -> Result<Type<TypeAliasDialect>, Error<TypeAliasTokenKind>> {
     let (tyabs_count, mut holed_type) = get_holed_type_from(ext_state, type_decl_key)?;
+
+    let mut ext = TypeAliasExtension; // :3
 
     if applied_types.len() != tyabs_count {
         return Err(Error {
@@ -499,7 +570,7 @@ pub fn reify_type<'s>(
     // reverse order!
     for ty in applied_types {
         // FIXME error if there's no substitution
-        Subst::new(ty.clone()).visit(&mut holed_type)
+        Subst::new(ty.clone()).visit(&mut holed_type, &mut ext, ext_state)
     }
 
     // FIXME need to confirm it is TmVar free at this point, falls out of

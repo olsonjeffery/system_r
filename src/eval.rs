@@ -352,7 +352,7 @@ fn term_subst(mut s: Term<BottomDialect>, t: &mut Term<BottomDialect>) {
 fn type_subst(s: Type<BottomDialect>, t: &mut Term<BottomDialect>) {
     let mut ext = BottomExtension;
     let mut state = BottomState;
-    TyTermSubst::new(s).visit(t, &mut ext, &mut state);
+    TyTermSubst::new(s, &mut ext, &mut state).visit(t, &mut ext, &mut state);
     Shift::new(-1).visit(t, &mut ext, &mut state);
 }
 

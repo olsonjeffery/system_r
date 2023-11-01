@@ -181,22 +181,32 @@ pub struct TyTermSubst<
     ty: Type<TExtDialect>,
 }
 
-impl<TExtDialect: SystemRDialect + Eq + Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash>
+impl<TExtDialect: SystemRDialect + Eq + Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash,
+>
     TyTermSubst<TExtDialect>
 {
-    pub fn new(ty: Type<TExtDialect>) -> TyTermSubst<TExtDialect> {
+    pub fn new<
+    TExt: SystemRExtension<TExtDialect> + Clone + Default + fmt::Debug,
+    >(ty: Type<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState) -> TyTermSubst<TExtDialect> {
         use crate::types::visit::*;
         let mut ty = ty;
-        Shift::new(1).visit(&mut ty);
+        Shift::new(1).visit(&mut ty, ext, ext_state);
         TyTermSubst { cutoff: 0, ty }
     }
 
-    fn visit_ty(&mut self, ty: &mut Type<TExtDialect>) {
+    fn visit_ty<
+    TExt: SystemRExtension<TExtDialect> + Clone + Default + fmt::Debug,
+    >(&mut self, ty: &mut Type<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) {
         let mut s = crate::types::visit::Subst {
             cutoff: self.cutoff,
             ty: self.ty.clone(),
         };
-        s.visit(ty);
+        s.visit(ty, ext, ext_state);
     }
 }
 
@@ -206,13 +216,13 @@ impl<TExtDialect: hash::Hash + Eq + Clone + fmt::Debug + Default + PartialEq + P
 {
     fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect>, term: &mut Term<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
         // self.cutoff += 1;
-        self.visit_ty(ty);
+        self.visit_ty(ty, ext, ext_state);
         self.visit(term, ext, ext_state);
         // self.cutoff -= 1;
     }
 
     fn visit_tyapp(&mut self, sp: &mut Span, term: &mut Term<TExtDialect>, ty: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
-        self.visit_ty(ty);
+        self.visit_ty(ty, ext, ext_state);
         self.visit(term, ext, ext_state);
     }
 
@@ -223,12 +233,12 @@ impl<TExtDialect: hash::Hash + Eq + Clone + fmt::Debug + Default + PartialEq + P
     }
 
     fn visit_fold(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect>, term: &mut Term<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
-        self.visit_ty(ty);
+        self.visit_ty(ty, ext, ext_state);
         self.visit(term, ext, ext_state);
     }
 
     fn visit_unfold(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect>, term: &mut Term<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
-        self.visit_ty(ty);
+        self.visit_ty(ty, ext, ext_state);
         self.visit(term, ext, ext_state);
     }
 
@@ -247,9 +257,9 @@ impl<TExtDialect: hash::Hash + Eq + Clone + fmt::Debug + Default + PartialEq + P
         sig: &mut Type<TExtDialect>,
         ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState,
     ) {
-        self.visit_ty(wit);
+        self.visit_ty(wit, ext, ext_state);
         self.visit(body, ext, ext_state);
-        self.visit_ty(sig);
+        self.visit_ty(sig, ext, ext_state);
     }
 
     fn visit_injection(
@@ -260,7 +270,7 @@ impl<TExtDialect: hash::Hash + Eq + Clone + fmt::Debug + Default + PartialEq + P
         ty: &mut Type<TExtDialect>,
         ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState,
     ) {
-        self.visit_ty(ty);
+        self.visit_ty(ty, ext, ext_state);
         self.visit(term, ext, ext_state);
     }
 }
@@ -283,7 +293,7 @@ impl<TExtDialect: hash::Hash + Eq + Clone + fmt::Debug + Default + PartialEq + P
         match &mut term.kind {
             Kind::Injection(label, val, ty) => {
                 if let Type::Rec(inner) = *ty.clone() {
-                    let ty_prime = crate::types::subst(*ty.clone(), *inner.clone());
+                    let ty_prime = crate::types::subst(*ty.clone(), *inner.clone(), ext, ext_state);
                     let rewrite_ty = Term::new(
                         Kind::Injection(label.clone(), val.clone(), Box::new(ty_prime)),
                         term.span,
