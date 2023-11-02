@@ -29,12 +29,12 @@ res ;
         """
         When TypeAlias parses the code
         And TypeAlias type checks the code
-        And TypeAlias-dialect is resolved into bottom-dialect system_r
-        And bottom eval is ran
+        And TypeAliasDialect is resolved into BottomDialect system_r
+        And type_check and eval for BottomDialect is ran
         Then the last ext should parse successfully
-        Then the last parse should be successful
-        Then the last eval should be successful
-        Then the resulting eval Kind should equal: "(7,7,7)"
+        And the last parse should be successful
+        And the last eval should be successful
+        Then the final value after eval should equal: "(7,7,7)"
 
     # Scenario: type decl with no tyabs
 

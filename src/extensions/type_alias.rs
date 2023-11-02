@@ -30,7 +30,7 @@ use crate::{
     visit::{MutTypeVisitor, PatternVisitor},
 };
 
-use super::{SystemRDialect, SystemRExtension, SystemRTranslator};
+use super::{SystemRDialect, SystemRExtension, SystemRResolver};
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct TypeAliasExtension;
@@ -643,15 +643,19 @@ pub fn get_holed_type_from_decl<'s>(
     Ok((push_count, type_shape))
 }
 
-impl SystemRTranslator<TypeAliasDialect, BottomDialect> for TypeAliasExtension {
+impl SystemRResolver<TypeAliasDialect, BottomDialect> for TypeAliasExtension {
     fn resolve(
         &self,
-        in_ctx: &mut Context<TypeAliasDialect>,
+        ext_state: &mut TypeAliasDialectState,
         tm: Term<TypeAliasDialect>,
-    ) -> Result<(Context<BottomDialect>, Term<BottomDialect>), Diagnostic> {
+    ) -> Result<Term<BottomDialect>, Diagnostic> {
+        let out_tm = Term::unit();
+        Ok(out_tm)
+        /*
         Err(Diagnostic::error(
             tm.span,
             format!("TypeAliasDialect->BottomDialect resolve unimpl"),
         ))
+        */
     }
 }

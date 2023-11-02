@@ -59,7 +59,7 @@ fn when_it_is_parsed(world: &mut common::SpecsWorld) {
         assert!(false, "passed empty code snippet to parser");
     }
     let parse_result = testing::parse_single_block(&world.platform_bindings, &world.code_snippet);
-    let eval_res = match parse_result {
+    let parse_result = match parse_result {
         Ok(term) => term,
         Err(e) => {
             world.last_parse_success = false;
@@ -70,8 +70,8 @@ fn when_it_is_parsed(world: &mut common::SpecsWorld) {
         }
     };
     world.last_parse_success = true;
-    world.last_parse_term = eval_res.clone();
-    world.last_parse_kind = eval_res.kind;
+    world.last_parse_term = parse_result.clone();
+    world.last_parse_kind = parse_result.kind;
     world.last_parse_msg = "".to_owned();
 }
 #[when("bottom eval is ran")]
@@ -106,6 +106,7 @@ fn when_bottom_eval_is_ran(world: &mut common::SpecsWorld) {
 }
 
 #[when("eval is ran")]
+#[when("type_check and eval for BottomDialect is ran")]
 #[when("sr evals it")]
 fn when_eval_is_ran(world: &mut common::SpecsWorld) {
     if world.code_snippet == "" {
@@ -231,4 +232,24 @@ fn then_the_evaluated_value_should_be_a_fn_abs(world: &mut common::SpecsWorld) {
         "expected true match result for input, but got false with {:?}",
         world.last_eval_kind
     );
+}
+
+#[then(regex = r#"the final value after eval should equal: "([^"]*)""#)]
+fn then_the_final_value_after_eval_should_equal(world: &mut common::SpecsWorld, snippet: String) {
+    let first_final_value = world.last_eval_kind.clone();
+
+    world.last_parse_success = false;
+    world.code_snippet = snippet;
+    when_it_is_parsed(world);
+    if world.last_parse_success {
+        world.contexts.remove(BOTTOM_CTX_NAME);
+        given_a_new_context(world);
+        when_eval_is_ran(world);
+
+        if world.last_eval_success {
+            assert_eq!(first_final_value, world.last_eval_kind, "Comparing final value after eval (left) to provided input snippet (right) failed.");
+        }
+        assert!(false, "failed; shouldn't reach here");
+    }
+    assert!(false, "failed; shouldn't reach here");
 }

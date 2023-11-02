@@ -9,7 +9,7 @@ use system_r::{
     diagnostics::Diagnostic,
     extensions::{
         type_alias::{TypeAliasContext, TypeAliasDialectState, TypeAliasExtension},
-        SystemRDialect, SystemRExtension, SystemRTranslator,
+        SystemRDialect, SystemRExtension, SystemRResolver,
     },
     syntax::parser::{self, ParserState},
     terms::Term,
@@ -23,7 +23,7 @@ use crate::common::{
     SpecsWorld,
 };
 
-use super::system_r::BOTTOM_CTX_NAME;
+use super::system_r::{BOTTOM_CTX_NAME, given_a_new_context};
 
 static TYPE_ALIAS_CTX_NAME: &'static str = "TypeAlias";
 
@@ -121,7 +121,7 @@ fn when_type_alias_type_checks_the_code(world: &mut SpecsWorld) {
     }
 }
 
-#[when("TypeAlias-dialect is resolved into bottom-dialect system_r")]
+#[when("TypeAliasDialect is resolved into BottomDialect system_r")]
 pub fn when_it_is_converted_to_bottom_dialect(world: &mut SpecsWorld) {
     let tm = match world.last_ext_parse_term.clone() {
         OmniTerm::TypeAlias(t) => t,
@@ -132,8 +132,12 @@ pub fn when_it_is_converted_to_bottom_dialect(world: &mut SpecsWorld) {
         panic!("expected to get a TypeAlias context, didn't!");
     };
 
-    let (bottom_ctx, bottom_tm) = {
-        match TypeAliasExtension.resolve(&mut in_ctx.clone(), tm) {
+    let bottom_tm = {
+        // this is an implementation of the SystemRResolver trait
+        // for the TypeAliasExtension marker type, it returns a
+        // Term<BottomDialect>, something that can be type_check'd
+        // and eval'd by the existing system
+        match TypeAliasExtension.resolve(&mut in_ctx.ext_state, tm) {
             Ok(tm) => tm,
             Err(d) => {
                 world.last_parse_success = false;
@@ -145,7 +149,8 @@ pub fn when_it_is_converted_to_bottom_dialect(world: &mut SpecsWorld) {
 
     world
         .contexts
-        .insert(BOTTOM_CTX_NAME.to_owned(), OmniContext::Bottom(bottom_ctx));
+        .remove(BOTTOM_CTX_NAME);
+    given_a_new_context(world);
     world.last_parse_term = bottom_tm.clone();
     world.last_parse_kind = bottom_tm.kind;
     world.last_parse_success = true;

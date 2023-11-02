@@ -102,7 +102,7 @@ pub enum TypeErrorKind<TExtDialect: Eq + SystemRDialect + Default + Clone + fmt:
 #[derive(Clone, Debug, PartialEq)]
 pub struct Context<TExtDialect: Eq + PartialEq + PartialOrd + SystemRDialect + Clone + fmt::Debug + Default> {
     pub stack: VecDeque<Type<TExtDialect>>,
-    map: HashMap<String, Type<TExtDialect>>,
+    pub map: HashMap<String, Type<TExtDialect>>,
     pub platform_bindings: PlatformBindings,
     _d: TExtDialect,
     pub ext_state: TExtDialect::TExtDialectState,

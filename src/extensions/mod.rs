@@ -134,14 +134,14 @@ pub trait SystemRExtension<
     ) -> bool;
 }
 
-pub trait SystemRTranslator<
+pub trait SystemRResolver<
     InDialect: Eq + SystemRDialect + Clone + PartialEq + PartialOrd + fmt::Debug + Default,
     OutDialect: Eq + SystemRDialect + Clone + PartialEq + PartialOrd + fmt::Debug + Default,
 >
 {
     fn resolve(
         &self,
-        in_ctx: &mut Context<InDialect>,
+        ext_state: &mut InDialect::TExtDialectState,
         tm: Term<InDialect>,
-    ) -> Result<(Context<OutDialect>, Term<OutDialect>), Diagnostic>;
+    ) -> Result<Term<OutDialect>, Diagnostic>;
 }
