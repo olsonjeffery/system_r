@@ -279,15 +279,6 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + PartialEq + Partial
                 }
 
                 let arm_ty = self.type_check(&arm.term, ext)?;
-                match arm.term.clone().kind {
-                    Kind::Injection(label, _, _) => {
-                        if label == "Some" {
-                            //panic!("got Some Arm {:?}, derived ty:::: {:?}",
-                            // arm, arm_ty);
-                        }
-                    }
-                    _ => {}
-                }
 
                 while self.stack.len() > height {
                     self.pop();

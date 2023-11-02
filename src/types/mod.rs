@@ -386,7 +386,7 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
                         *v += 1;
                     }
                 });
-                let ty2 = self.type_check(&term, ext)?;
+                let ty2 = self.type_check(term, ext)?;
                 self.stack.iter_mut().for_each(|ty| {
                     if let Type::Var(v) = ty {
                         *v -= 1;
@@ -414,7 +414,7 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
             }
             // See src/types/patterns.rs for exhaustiveness and typechecking
             // of case expressions
-            Kind::Case(expr, arms) => self.type_check_case(&expr, arms, ext),
+            Kind::Case(expr, arms) => self.type_check_case(expr, arms, ext),
 
             Kind::Unfold(rec, tm) => match rec.as_ref() {
                 Type::Rec(inner) => {
