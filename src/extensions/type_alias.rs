@@ -25,7 +25,7 @@ use crate::{
         parser::{ErrorKind, ParserState},
         ExtTokenKind,
     },
-    terms::{Kind, Term, Literal},
+    terms::{Kind, Term},
     types::{visit::Subst, Context, Type, patterns::overlap},
     visit::{MutTypeVisitor, PatternVisitor},
 };
@@ -444,7 +444,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         let Type::Extended(TypeAliasType::TypeAliasApp(type_decl_key, applied_types)) = ext_ty else {
             return;
         };
-        let mut reified = match reify_type(ext_state, &type_decl_key, &applied_types) {
+        let reified = match reify_type(ext_state, &type_decl_key, &applied_types) {
             Ok(t) => t,
             _ => return,
         };
@@ -477,7 +477,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         let Type::Extended(TypeAliasType::TypeAliasApp(type_decl_key, applied_types)) = ext_ty.clone() else {
             return;
         };
-        let mut reified = match reify_type(ext_state, &type_decl_key, &applied_types) {
+        let reified = match reify_type(ext_state, &type_decl_key, &applied_types) {
             Ok(t) => t,
             _ => return,
         };

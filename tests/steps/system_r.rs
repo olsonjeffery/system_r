@@ -11,7 +11,7 @@ use system_r::{
 
 use crate::common::{self, extensions::OmniContext};
 
-pub static CTX_NAME: &'static str = "system_r_bottom";
+pub static BOTTOM_CTX_NAME: &'static str = "system_r_bottom";
 
 #[given(regex = r#"^a new ctx"#)]
 #[given(regex = r#"^a new sr ctx"#)]
@@ -20,7 +20,7 @@ pub fn given_a_new_context(world: &mut common::SpecsWorld) {
     let new_ctx = Context::default();
     world
         .contexts
-        .insert(CTX_NAME.to_string(), OmniContext::Bottom(new_ctx));
+        .insert(BOTTOM_CTX_NAME.to_string(), OmniContext::Bottom(new_ctx));
 }
 
 #[given(regex = r#"^a code block:(\w?.*)$"#)]
@@ -38,7 +38,7 @@ fn given_an_intrinsic_for_nat_addition_named_i_nat_add(world: &mut common::Specs
 
     world
         .contexts
-        .get_mut(CTX_NAME)
+        .get_mut(BOTTOM_CTX_NAME)
         .unwrap()
         .set_platform_bindings(pb.clone());
 }
@@ -76,7 +76,7 @@ fn when_it_is_parsed(world: &mut common::SpecsWorld) {
 }
 #[when("bottom eval is ran")]
 fn when_bottom_eval_is_ran(world: &mut common::SpecsWorld) {
-    let Some(OmniContext::Bottom(ctx)) = world.contexts.get_mut(CTX_NAME) else {
+    let Some(OmniContext::Bottom(ctx)) = world.contexts.get_mut(BOTTOM_CTX_NAME) else {
         panic!("expected to get a bottom context, didn't!");
     };
     let mut term = world.last_parse_term.clone();
@@ -106,7 +106,7 @@ fn when_eval_is_ran(world: &mut common::SpecsWorld) {
     if world.code_snippet == "" {
         assert!(false, "passed empty code snippet to parser");
     }
-    let Some(OmniContext::Bottom(ctx)) = world.contexts.get_mut(CTX_NAME) else {
+    let Some(OmniContext::Bottom(ctx)) = world.contexts.get_mut(BOTTOM_CTX_NAME) else {
         panic!("expected to get a bottom context, didn't!");
     };
     let mut term = world.last_parse_term.clone();

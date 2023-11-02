@@ -205,7 +205,7 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
                 let ty1 = self.type_check(&t1, ext)?;
                 let mut ty2 = self.type_check(&t2, ext)?;
                 match ty1.clone() {
-                    Type::Arrow(mut ty11, ty12) => {
+                    Type::Arrow(ty11, ty12) => {
                         // does the invocation's type (ty2)
                         // match the type of the function's
                         // arg (ty11)?

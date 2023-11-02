@@ -19,7 +19,7 @@ use crate::{
     diagnostics::Diagnostic,
     patterns::{Pattern, PatTyStack},
     syntax::{error::Error, parser::ParserState},
-    types::{Context, Type, patterns::Matrix, visit::{Subst, Shift}, Aliaser}, visit::MutTypeVisitor, terms::Term,
+    types::{Context, Type, patterns::Matrix, visit::{Subst, Shift}, Aliaser}, terms::Term,
 };
 
 pub mod type_alias;

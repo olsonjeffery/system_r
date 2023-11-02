@@ -2,7 +2,7 @@
 Feature: Technical Debt
     #
     # Incomplete list:
-    # - large amount of clones, not accounting for memory use well; Move to Rc's and a pool of unique types?
+    # - large amount of calls to clone(), not accounting for memory use well; Move to Rc's and a pool of unique types? remove Clone derive?
     # - Parser is broken into functions and ParserState; can it be reunified into a struct + impl? tried once and failed
     # - in line with above, rationalize state & functionality across system_r
     #    - SystemRExtensions are reified currently as a marker type/empty struct implementing a trait + dialect-state;

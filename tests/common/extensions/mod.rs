@@ -3,7 +3,7 @@ use system_r::{
     extensions::type_alias::{TypeAliasContext, TypeAliasDialect, TypeAliasDialectState},
     platform_bindings::PlatformBindings,
     terms::{Kind, Term},
-    types::Context,
+    types::{Context, Type},
 };
 
 #[derive(Clone, Default, Debug)]
@@ -56,5 +56,5 @@ pub enum OmniType {
     #[default]
     Empty,
     //Bottom(Type<BottomDialect>),
-    //TypeAlias(Type<TypeAliasDialect>),
+    TypeAlias(Type<TypeAliasDialect>),
 }

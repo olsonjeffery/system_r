@@ -19,7 +19,7 @@ use system_r::{
 
 use crate::common::{
     self,
-    extensions::{OmniContext, OmniKind, OmniState, OmniTerm},
+    extensions::{OmniContext, OmniKind, OmniState, OmniTerm, OmniType},
     SpecsWorld,
 };
 
@@ -111,7 +111,11 @@ fn when_type_alias_type_checks_the_code(world: &mut SpecsWorld) {
     };
     match type_check_for_extension(ctx, &mut term, &mut TypeAliasExtension) {
         Err(e) => panic!("{:?}", e),
-        _ => {}
+        Ok(t) => {
+            let ext_state = ctx.ext_state.clone();
+            world.last_ext_state = OmniState::TypeAlias(ext_state);
+            world.last_ext_ty = OmniType::TypeAlias(t);
+        }
     }
 }
 
@@ -124,7 +128,7 @@ pub fn when_it_is_converted_to_bottom_dialect(world: &mut SpecsWorld) {
 
     let mut ps = match &world.last_ext_state {
         OmniState::TypeAlias(ps) => ps.clone(),
-        _ => panic!("expected OmniState::TypeAlias"),
+        v => panic!("expected OmniState::TypeAlias, got {:?}", v),
     };
 
     let bottom_tm = match TypeAliasExtension.resolve(&mut ps, tm) {
