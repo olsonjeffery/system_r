@@ -23,6 +23,8 @@ use crate::common::{
     SpecsWorld,
 };
 
+use super::system_r::BOTTOM_CTX_NAME;
+
 static TYPE_ALIAS_CTX_NAME: &'static str = "TypeAlias";
 
 pub fn parse_for_extension<
@@ -126,20 +128,22 @@ pub fn when_it_is_converted_to_bottom_dialect(world: &mut SpecsWorld) {
         _ => panic!("expected struct data!"),
     };
 
-    let mut ps = match &world.last_ext_state {
-        OmniState::TypeAlias(ps) => ps.clone(),
-        v => panic!("expected OmniState::TypeAlias, got {:?}", v),
+    let Some(OmniContext::TypeAlias(in_ctx)) = world.contexts.get_mut(TYPE_ALIAS_CTX_NAME) else {
+        panic!("expected to get a TypeAlias context, didn't!");
     };
 
-    let bottom_tm = match TypeAliasExtension.resolve(&mut ps, tm) {
-        Ok(tm) => tm,
-        Err(d) => {
-            world.last_parse_success = false;
-            world.last_parse_msg = code_format("", d);
-            return;
+    let (bottom_ctx, bottom_tm) = {
+        match TypeAliasExtension.resolve(&mut in_ctx.clone(), tm) {
+            Ok(tm) => tm,
+            Err(d) => {
+                world.last_parse_success = false;
+                world.last_parse_msg = code_format("", d);
+                return;
+            }
         }
     };
 
+    world.contexts.insert(BOTTOM_CTX_NAME.to_owned(), OmniContext::Bottom(bottom_ctx));
     world.last_parse_term = bottom_tm.clone();
     world.last_parse_kind = bottom_tm.kind;
     world.last_parse_success = true;

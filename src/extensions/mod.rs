@@ -136,9 +136,9 @@ pub trait SystemRTranslator<
 {
     fn resolve(
         &self,
-        st: &mut InDialect::TExtDialectState,
+        in_ctx: &mut Context<InDialect>,
         tm: Term<InDialect>,
-    ) -> Result<Term<OutDialect>, Diagnostic>;
+    ) -> Result<(Context<OutDialect>, Term<OutDialect>), Diagnostic>;
 }
 
 // FIXME a set of translator visitor structs, with ::new(), to facilitate

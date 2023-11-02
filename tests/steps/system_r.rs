@@ -6,7 +6,7 @@ use system_r::{
     terms::{Kind, Literal, Term},
     testing::{self, code_format, do_bottom_eval},
     types::Context,
-    types::Type,
+    types::Type, diagnostics::Diagnostic, system_r_util::span::Span,
 };
 
 use crate::common::{self, extensions::OmniContext};
@@ -77,7 +77,12 @@ fn when_it_is_parsed(world: &mut common::SpecsWorld) {
 #[when("bottom eval is ran")]
 fn when_bottom_eval_is_ran(world: &mut common::SpecsWorld) {
     let Some(OmniContext::Bottom(ctx)) = world.contexts.get_mut(BOTTOM_CTX_NAME) else {
-        panic!("expected to get a bottom context, didn't!");
+        world.last_eval_success = false;
+        world.last_eval_term = Term::unit();
+        world.last_eval_fty = Type::Unit;
+        world.last_eval_kind = Kind::Lit(Literal::Unit);
+        world.last_eval_msg = "Failed to do bottom eval; there is no Context<BottomDialect> stored".to_owned();
+        return;
     };
     let mut term = world.last_parse_term.clone();
 

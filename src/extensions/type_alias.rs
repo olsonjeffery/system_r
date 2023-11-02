@@ -645,9 +645,9 @@ pub fn get_holed_type_from_decl<'s>(
 impl SystemRTranslator<TypeAliasDialect, BottomDialect> for TypeAliasExtension {
     fn resolve(
         &self,
-        st: &mut TypeAliasDialectState,
+        in_ctx: &mut Context<TypeAliasDialect>,
         tm: Term<TypeAliasDialect>,
-    ) -> Result<Term<BottomDialect>, Diagnostic> {
-        Err(Diagnostic::error(tm.span, format!("BottomExtension::resolve() unimpl")))
+    ) -> Result<(Context<BottomDialect>, Term<BottomDialect>), Diagnostic> {
+        Err(Diagnostic::error(tm.span, format!("TypeAliasDialect->BottomDialect resolve unimpl")))
     }
 }
