@@ -174,15 +174,16 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
         pts: &mut crate::patterns::PatTyStack<BottomDialect>,
         label: &str,
         pat: &Pattern<BottomDialect>,
-        ext_ty: &<BottomDialect as SystemRDialect>::TExtType
-    ) { }
+        ext_ty: &<BottomDialect as SystemRDialect>::TExtType,
+    ) {
+    }
 
     fn exhaustive_for_ext(
         &mut self,
         matrix: &crate::types::patterns::Matrix<BottomDialect>,
         ext_state: &mut <BottomDialect as SystemRDialect>::TExtDialectState,
     ) -> bool {
-       false 
+        false
     }
 
     fn ty_subst_visit_ext(
@@ -190,26 +191,31 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
         subst_visitor: &mut crate::types::visit::Subst<BottomDialect>,
         ty: &mut Type<BottomDialect>,
         ext_state: &mut <BottomDialect as SystemRDialect>::TExtDialectState,
-    ) { }
+    ) {
+    }
 
     fn ty_aliaser_visit_ext(
         &mut self,
         aliaser: &mut crate::types::Aliaser<BottomDialect>,
         ext_ty: &mut Type<BottomDialect>,
         ext_state: &mut <BottomDialect as SystemRDialect>::TExtDialectState,
-    ) { }
+    ) {
+    }
 
     fn ty_shift_visit_ext(
         &mut self,
         shift: &mut crate::types::visit::Shift,
         ext_ty: &mut Type<BottomDialect>,
         ext_state: &mut <BottomDialect as SystemRDialect>::TExtDialectState,
-    ) { }
+    ) {
+    }
 
     fn type_check_ext_equals_ty(
         &mut self,
         ctx: &mut Context<BottomDialect>,
         ext_ty: &mut <BottomDialect as SystemRDialect>::TExtType,
         other_ty: &mut crate::types::Type<BottomDialect>,
-    ) -> bool { false }
+    ) -> bool {
+        false
+    }
 }

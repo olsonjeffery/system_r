@@ -51,30 +51,63 @@ pub trait MutTypeVisitor<
     TExt: SystemRExtension<TExtDialect> + Clone + Default + fmt::Debug,
 >: Sized
 {
-    fn visit_pb(&mut self, i: &mut Type<TExtDialect>, r: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {}
+    fn visit_pb(
+        &mut self,
+        i: &mut Type<TExtDialect>,
+        r: &mut Type<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) {
+    }
     fn visit_var(&mut self, var: &mut usize, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {}
     fn visit_alias(&mut self, alias: &mut String, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {}
 
-    fn visit_arrow(&mut self, ty1: &mut Type<TExtDialect>, ty2: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
+    fn visit_arrow(
+        &mut self,
+        ty1: &mut Type<TExtDialect>,
+        ty2: &mut Type<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) {
         self.visit(ty1, ext, ext_state);
         self.visit(ty2, ext, ext_state);
     }
 
-    fn visit_universal(&mut self, inner: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
+    fn visit_universal(
+        &mut self,
+        inner: &mut Type<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) {
         self.visit(inner, ext, ext_state);
     }
 
-    fn visit_existential(&mut self, inner: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
+    fn visit_existential(
+        &mut self,
+        inner: &mut Type<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) {
         self.visit(inner, ext, ext_state);
     }
 
-    fn visit_variant(&mut self, variant: &mut Vec<Variant<TExtDialect>>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
+    fn visit_variant(
+        &mut self,
+        variant: &mut Vec<Variant<TExtDialect>>,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) {
         for v in variant {
             self.visit(&mut v.ty, ext, ext_state);
         }
     }
 
-    fn visit_product(&mut self, product: &mut Vec<Type<TExtDialect>>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
+    fn visit_product(
+        &mut self,
+        product: &mut Vec<Type<TExtDialect>>,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) {
         for v in product {
             self.visit(v, ext, ext_state);
         }
@@ -110,15 +143,50 @@ pub trait MutTermVisitor<
     TExt: SystemRExtension<TExtDialect> + Default + fmt::Debug + Clone,
 >: Sized
 {
-    fn visit_lit(&mut self, sp: &mut Span, lit: &mut Literal, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {}
-    fn visit_var(&mut self, sp: &mut Span, var: &mut usize, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {}
-    fn visit_pb(&mut self, sp: &mut Span, idx: &mut usize, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {}
+    fn visit_lit(
+        &mut self,
+        sp: &mut Span,
+        lit: &mut Literal,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) {
+    }
+    fn visit_var(
+        &mut self,
+        sp: &mut Span,
+        var: &mut usize,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) {
+    }
+    fn visit_pb(
+        &mut self,
+        sp: &mut Span,
+        idx: &mut usize,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) {
+    }
 
-    fn visit_abs(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect>, term: &mut Term<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
+    fn visit_abs(
+        &mut self,
+        sp: &mut Span,
+        ty: &mut Type<TExtDialect>,
+        term: &mut Term<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) {
         self.visit(term, ext, ext_state);
     }
 
-    fn visit_app(&mut self, sp: &mut Span, t1: &mut Term<TExtDialect>, t2: &mut Term<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
+    fn visit_app(
+        &mut self,
+        sp: &mut Span,
+        t1: &mut Term<TExtDialect>,
+        t2: &mut Term<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) {
         self.visit(t1, ext, ext_state);
         self.visit(t2, ext, ext_state);
     }
@@ -129,53 +197,109 @@ pub trait MutTermVisitor<
         pat: &mut Pattern<TExtDialect>,
         t1: &mut Term<TExtDialect>,
         t2: &mut Term<TExtDialect>,
-        ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
     ) {
         self.visit(t1, ext, ext_state);
         self.visit(t2, ext, ext_state);
     }
 
-    fn visit_tyabs(&mut self, sp: &mut Span, term: &mut Term<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
+    fn visit_tyabs(
+        &mut self,
+        sp: &mut Span,
+        term: &mut Term<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) {
         self.visit(term, ext, ext_state);
     }
 
-    fn visit_tyapp(&mut self, sp: &mut Span, term: &mut Term<TExtDialect>, ty: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
+    fn visit_tyapp(
+        &mut self,
+        sp: &mut Span,
+        term: &mut Term<TExtDialect>,
+        ty: &mut Type<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) {
         self.visit(term, ext, ext_state);
     }
 
-    fn visit_primitive(&mut self, sp: &mut Span, prim: &mut Primitive, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {}
+    fn visit_primitive(
+        &mut self,
+        sp: &mut Span,
+        prim: &mut Primitive,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) {
+    }
     fn visit_injection(
         &mut self,
         sp: &mut Span,
         label: &mut String,
         term: &mut Term<TExtDialect>,
         ty: &mut Type<TExtDialect>,
-        ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
     ) {
         self.visit(term, ext, ext_state);
     }
 
-    fn visit_case(&mut self, sp: &mut Span, term: &mut Term<TExtDialect>, arms: &mut Vec<Arm<TExtDialect>>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
+    fn visit_case(
+        &mut self,
+        sp: &mut Span,
+        term: &mut Term<TExtDialect>,
+        arms: &mut Vec<Arm<TExtDialect>>,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) {
         self.visit(term, ext, ext_state);
         for arm in arms {
             self.visit(&mut arm.term, ext, ext_state);
         }
     }
 
-    fn visit_product(&mut self, sp: &mut Span, product: &mut Vec<Term<TExtDialect>>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
+    fn visit_product(
+        &mut self,
+        sp: &mut Span,
+        product: &mut Vec<Term<TExtDialect>>,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) {
         for t in product {
             self.visit(t, ext, ext_state);
         }
     }
 
-    fn visit_projection(&mut self, sp: &mut Span, term: &mut Term<TExtDialect>, index: &mut usize, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
+    fn visit_projection(
+        &mut self,
+        sp: &mut Span,
+        term: &mut Term<TExtDialect>,
+        index: &mut usize,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) {
         self.visit(term, ext, ext_state);
     }
 
-    fn visit_fold(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect>, term: &mut Term<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
+    fn visit_fold(
+        &mut self,
+        sp: &mut Span,
+        ty: &mut Type<TExtDialect>,
+        term: &mut Term<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) {
         self.visit(term, ext, ext_state);
     }
-    fn visit_unfold(&mut self, sp: &mut Span, ty: &mut Type<TExtDialect>, term: &mut Term<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
+    fn visit_unfold(
+        &mut self,
+        sp: &mut Span,
+        ty: &mut Type<TExtDialect>,
+        term: &mut Term<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) {
         self.visit(term, ext, ext_state);
     }
 
@@ -185,12 +309,20 @@ pub trait MutTermVisitor<
         witness: &mut Type<TExtDialect>,
         evidence: &mut Term<TExtDialect>,
         signature: &mut Type<TExtDialect>,
- ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
     ) {
         self.visit(evidence, ext, ext_state);
     }
 
-    fn visit_unpack(&mut self, sp: &mut Span, package: &mut Term<TExtDialect>, term: &mut Term<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
+    fn visit_unpack(
+        &mut self,
+        sp: &mut Span,
+        package: &mut Term<TExtDialect>,
+        term: &mut Term<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) {
         self.visit(package, ext, ext_state);
         self.visit(term, ext, ext_state);
     }
@@ -199,7 +331,14 @@ pub trait MutTermVisitor<
         self.walk(term, ext, ext_state);
     }
 
-    fn visit_ext(&mut self, sp: &mut Span, k: &mut TExtDialect::TExtKind, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {}
+    fn visit_ext(
+        &mut self,
+        sp: &mut Span,
+        k: &mut TExtDialect::TExtKind,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) {
+    }
 
     fn walk(&mut self, term: &mut Term<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
         let sp = &mut term.span;
@@ -233,20 +372,37 @@ pub trait PatternVisitor<
     TExt: SystemRExtension<TExtDialect> + Clone + fmt::Debug + Default,
 >: Sized
 {
-    fn visit_ext(&mut self, pat: &TExtDialect::TExtPat, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {}
+    fn visit_ext(&mut self, pat: &TExtDialect::TExtPat, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
+    }
     fn visit_literal(&mut self, lit: &Literal, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {}
     fn visit_variable(&mut self, var: &str, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {}
-    fn visit_product(&mut self, pats: &Vec<Pattern<TExtDialect>>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
+    fn visit_product(
+        &mut self,
+        pats: &Vec<Pattern<TExtDialect>>,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) {
         for p in pats {
             self.visit_pattern(p, ext, ext_state);
         }
     }
 
-    fn visit_constructor(&mut self, label: &str, pat: &Pattern<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
+    fn visit_constructor(
+        &mut self,
+        label: &str,
+        pat: &Pattern<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) {
         self.visit_pattern(pat, ext, ext_state);
     }
 
-    fn visit_pattern(&mut self, pattern: &Pattern<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
+    fn visit_pattern(
+        &mut self,
+        pattern: &Pattern<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) {
         match pattern {
             Pattern::Any => {}
             Pattern::Constructor(label, pat) => self.visit_constructor(label, pat, ext, ext_state),

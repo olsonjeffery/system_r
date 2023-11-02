@@ -6,7 +6,7 @@ use system_r::{
     terms::{Kind, Literal, Term},
     testing::{self, code_format, do_bottom_eval},
     types::Context,
-    types::Type, diagnostics::Diagnostic, system_r_util::span::Span,
+    types::Type,
 };
 
 use crate::common::{self, extensions::OmniContext};

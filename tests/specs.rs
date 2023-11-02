@@ -1,3 +1,4 @@
+#![deny(warnings)]
 extern crate chrono;
 extern crate cucumber;
 

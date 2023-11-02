@@ -37,7 +37,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 use super::Type;
-use crate::{extensions::{SystemRDialect, SystemRExtension}, visit::MutTypeVisitor};
+use crate::{
+    extensions::{SystemRDialect, SystemRExtension},
+    visit::MutTypeVisitor,
+};
 use core::fmt;
 use std::{convert::TryFrom, hash};
 
@@ -52,12 +55,17 @@ impl Shift {
     }
 }
 
-impl<TExtDialect: SystemRDialect + Clone + Default + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExt: SystemRExtension<TExtDialect> + Clone + Default + fmt::Debug,
->
-    MutTypeVisitor<TExtDialect, TExt> for Shift
+impl<
+        TExtDialect: SystemRDialect + Clone + Default + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
+        TExt: SystemRExtension<TExtDialect> + Clone + Default + fmt::Debug,
+    > MutTypeVisitor<TExtDialect, TExt> for Shift
 {
-    fn visit_ext(&mut self, ty: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &mut <TExtDialect as SystemRDialect>::TExtDialectState) {
+    fn visit_ext(
+        &mut self,
+        ty: &mut Type<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &mut <TExtDialect as SystemRDialect>::TExtDialectState,
+    ) {
         ext.ty_shift_visit_ext(self, ty, ext_state);
     }
     fn visit_var(&mut self, var: &mut usize, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
@@ -66,13 +74,23 @@ impl<TExtDialect: SystemRDialect + Clone + Default + fmt::Debug + PartialEq + Pa
         }
     }
 
-    fn visit_universal(&mut self, inner: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
+    fn visit_universal(
+        &mut self,
+        inner: &mut Type<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) {
         self.cutoff += 1;
         self.visit(inner, ext, ext_state);
         self.cutoff -= 1;
     }
 
-    fn visit_existential(&mut self, inner: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
+    fn visit_existential(
+        &mut self,
+        inner: &mut Type<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) {
         self.cutoff += 1;
         self.visit(inner, ext, ext_state);
         self.cutoff -= 1;
@@ -103,18 +121,28 @@ impl<TExtDialect: Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq
     }
 }
 
-impl<TExtDialect: Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash,
-    TExt: SystemRExtension<TExtDialect> + Clone + Default + fmt::Debug,
->
-    MutTypeVisitor<TExtDialect, TExt> for Subst<TExtDialect>
+impl<
+        TExtDialect: Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash,
+        TExt: SystemRExtension<TExtDialect> + Clone + Default + fmt::Debug,
+    > MutTypeVisitor<TExtDialect, TExt> for Subst<TExtDialect>
 {
-    fn visit_universal(&mut self, inner: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
+    fn visit_universal(
+        &mut self,
+        inner: &mut Type<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) {
         self.cutoff += 1;
         self.visit(inner, ext, ext_state);
         self.cutoff -= 1;
     }
 
-    fn visit_existential(&mut self, inner: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
+    fn visit_existential(
+        &mut self,
+        inner: &mut Type<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) {
         self.cutoff += 1;
         self.visit(inner, ext, ext_state);
         self.cutoff -= 1;
@@ -137,13 +165,17 @@ impl<TExtDialect: Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq
             Type::Var(v) => {
                 let makes_cutoff = *v >= self.cutoff;
                 if self.ty == Type::Nat {
-                    //panic!("about to substitute in Nat to {:?}, would it make the cutoff? {:?}", ty, makes_cutoff)
+                    //panic!("about to substitute in Nat to {:?}, would it make
+                    // the cutoff? {:?}", ty, makes_cutoff)
                 }
                 if makes_cutoff {
                     Shift::new(self.cutoff as isize).visit(&mut self.ty, ext, ext_state);
                     *ty = self.ty.clone();
                 } else {
-                    self.visit_var(v, ext, ext_state); // this is a NOOP; should remove? was previously another arm of this match
+                    self.visit_var(v, ext, ext_state); // this is a NOOP; should
+                                                       // remove? was previously
+                                                       // another arm of this
+                                                       // match
                 }
             }
             Type::Variant(v) => self.visit_variant(v, ext, ext_state),

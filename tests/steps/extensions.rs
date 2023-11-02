@@ -143,7 +143,9 @@ pub fn when_it_is_converted_to_bottom_dialect(world: &mut SpecsWorld) {
         }
     };
 
-    world.contexts.insert(BOTTOM_CTX_NAME.to_owned(), OmniContext::Bottom(bottom_ctx));
+    world
+        .contexts
+        .insert(BOTTOM_CTX_NAME.to_owned(), OmniContext::Bottom(bottom_ctx));
     world.last_parse_term = bottom_tm.clone();
     world.last_parse_kind = bottom_tm.kind;
     world.last_parse_success = true;

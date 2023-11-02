@@ -17,9 +17,14 @@ use std::hash;
 
 use crate::{
     diagnostics::Diagnostic,
-    patterns::{Pattern, PatTyStack},
+    patterns::{PatTyStack, Pattern},
     syntax::{error::Error, parser::ParserState},
-    types::{Context, Type, patterns::Matrix, visit::{Subst, Shift}, Aliaser}, terms::Term,
+    terms::Term,
+    types::{
+        patterns::Matrix,
+        visit::{Shift, Subst},
+        Aliaser, Context, Type,
+    },
 };
 
 pub mod type_alias;
@@ -96,7 +101,7 @@ pub trait SystemRExtension<
         pts: &mut PatTyStack<TExtDialect>,
         label: &str,
         pat: &Pattern<TExtDialect>,
-        ext_ty: &TExtDialect::TExtType
+        ext_ty: &TExtDialect::TExtType,
     );
     fn exhaustive_for_ext(
         &mut self,
@@ -140,8 +145,3 @@ pub trait SystemRTranslator<
         tm: Term<InDialect>,
     ) -> Result<(Context<OutDialect>, Term<OutDialect>), Diagnostic>;
 }
-
-// FIXME a set of translator visitor structs, with ::new(), to facilitate
-// going from In* to Out*
-//
-// does it become a big, stacked visitor for Kind->{Pattern|Type} ?

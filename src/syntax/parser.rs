@@ -499,7 +499,10 @@ pub fn letexpr<
 
     let t1 = once(ps, |p| parse(p, ext), "let binder required")?;
     let len = ps.tmvar.len();
-    for var in PatVarStack::<TExtDialect>::collect(&pat, ext, &mut ps.ext_state).into_iter().rev() {
+    for var in PatVarStack::<TExtDialect>::collect(&pat, ext, &mut ps.ext_state)
+        .into_iter()
+        .rev()
+    {
         ps.tmvar.push(var);
     }
     expect(ps, ext, ExtTokenKind::In)?;
@@ -725,7 +728,10 @@ pub fn case_arm<
 
     let pat = once(ps, |p| pattern(p, ext), "missing pattern")?;
 
-    for var in PatVarStack::<TExtDialect>::collect(&pat, ext, &mut ps.ext_state).into_iter().rev() {
+    for var in PatVarStack::<TExtDialect>::collect(&pat, ext, &mut ps.ext_state)
+        .into_iter()
+        .rev()
+    {
         ps.tmvar.push(var);
     }
 

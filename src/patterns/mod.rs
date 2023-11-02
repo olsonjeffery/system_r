@@ -71,9 +71,11 @@ pub struct PatVarStack<TExtDialect: Eq + SystemRDialect + Default + fmt::Debug +
 impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Default + fmt::Debug + Clone + PartialEq + PartialOrd>
     PatVarStack<TExtDialect>
 {
-    pub fn collect<
-        TExt: SystemRExtension<TExtDialect> + Clone + fmt::Debug + Default,
-    >(pat: &Pattern<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) -> Vec<String> {
+    pub fn collect<TExt: SystemRExtension<TExtDialect> + Clone + fmt::Debug + Default>(
+        pat: &Pattern<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) -> Vec<String> {
         let mut p = Self::default();
         p.visit_pattern(pat, ext, ext_state);
         p.inner
@@ -81,9 +83,9 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Default + fmt::Debug + Clon
 }
 
 impl<
-    TExtDialect: hash::Hash + Eq + SystemRDialect + Default + fmt::Debug + Clone + PartialEq + PartialOrd,
-    TExt: SystemRExtension<TExtDialect> + Clone + fmt::Debug + Default,
-> PatternVisitor<TExtDialect, TExt> for PatVarStack<TExtDialect>
+        TExtDialect: hash::Hash + Eq + SystemRDialect + Default + fmt::Debug + Clone + PartialEq + PartialOrd,
+        TExt: SystemRExtension<TExtDialect> + Clone + fmt::Debug + Default,
+    > PatternVisitor<TExtDialect, TExt> for PatVarStack<TExtDialect>
 {
     fn visit_variable(&mut self, var: &str, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
         self.inner.push(var.to_owned());
@@ -99,18 +101,21 @@ pub struct PatternCount<
 impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + Default + fmt::Debug + PartialEq + PartialOrd>
     PatternCount<TExtDialect>
 {
-    pub fn collect<
-        TExt: SystemRExtension<TExtDialect> + Clone + fmt::Debug + Default,
-    >(pat: &Pattern<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) -> usize {
+    pub fn collect<TExt: SystemRExtension<TExtDialect> + Clone + fmt::Debug + Default>(
+        pat: &Pattern<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) -> usize {
         let mut p = PatternCount(0, Default::default(), Default::default());
         p.visit_pattern(pat, ext, ext_state);
         p.0
     }
 }
 
-impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + Default + fmt::Debug + PartialEq + PartialOrd,
+impl<
+        TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + Default + fmt::Debug + PartialEq + PartialOrd,
         TExt: SystemRExtension<TExtDialect> + Clone + fmt::Debug + Default,
-> PatternVisitor<TExtDialect, TExt> for PatternCount<TExtDialect>
+    > PatternVisitor<TExtDialect, TExt> for PatternCount<TExtDialect>
 {
     fn visit_variable(&mut self, var: &str, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
         self.0 += 1;
@@ -161,9 +166,12 @@ pub struct PatTyStack<TExtDialect: Eq + SystemRDialect + Clone + Default + fmt::
 impl<'ty, TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + Default + fmt::Debug + PartialEq + PartialOrd>
     PatTyStack<TExtDialect>
 {
-    pub fn collect<
-        TExt: SystemRExtension<TExtDialect> + Clone + fmt::Debug + Default
-    >(ty: &'ty Type<TExtDialect>, pat: &Pattern<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) -> Vec<Type<TExtDialect>> {
+    pub fn collect<TExt: SystemRExtension<TExtDialect> + Clone + fmt::Debug + Default>(
+        ty: &'ty Type<TExtDialect>,
+        pat: &Pattern<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) -> Vec<Type<TExtDialect>> {
         let mut p = PatTyStack {
             ty: ty.clone(),
             inner: Vec::with_capacity(16),
@@ -173,12 +181,17 @@ impl<'ty, TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + Default + fmt:
     }
 }
 
-impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: SystemRExtension<TExtDialect> + fmt::Debug + Default + Clone,
-    >
-    PatternVisitor<TExtDialect, TExt> for PatTyStack<TExtDialect>
+impl<
+        TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+        TExt: SystemRExtension<TExtDialect> + fmt::Debug + Default + Clone,
+    > PatternVisitor<TExtDialect, TExt> for PatTyStack<TExtDialect>
 {
-    fn visit_product(&mut self, pats: &Vec<Pattern<TExtDialect>>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
+    fn visit_product(
+        &mut self,
+        pats: &Vec<Pattern<TExtDialect>>,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) {
         if let Type::Product(tys) = self.ty.clone() {
             let ty = Type::Product(tys.clone());
             for (ty, pat) in tys.iter().zip(pats.iter()) {
@@ -189,29 +202,38 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Defaul
         }
     }
 
-    fn visit_constructor(&mut self, label: &str, pat: &Pattern<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
+    fn visit_constructor(
+        &mut self,
+        label: &str,
+        pat: &Pattern<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) {
         match self.ty.clone() {
             Type::Variant(vs) => {
                 let ty = self.ty.clone();
                 self.ty = variant_field::<TExtDialect>(&vs, label, Span::zero()).unwrap().clone();
                 self.visit_pattern(pat, ext, ext_state);
                 self.ty = ty;
-            },
+            }
             Type::Extended(v) => {
                 ext.pat_visit_constructor_of_ext(ext_state, self, label, pat, &v);
             }
-            _ => { }
+            _ => {}
         }
     }
 
     fn visit_ext(&mut self, p: &TExtDialect::TExtPat, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {}
 
-    fn visit_pattern(&mut self, pattern: &Pattern<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
+    fn visit_pattern(
+        &mut self,
+        pattern: &Pattern<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) {
         match pattern {
             Pattern::Any | Pattern::Literal(_) => {}
-            Pattern::Variable(_) => {
-                self.inner.push(self.ty.clone())
-            },
+            Pattern::Variable(_) => self.inner.push(self.ty.clone()),
             Pattern::Constructor(label, pat) => self.visit_constructor(label, pat, ext, ext_state),
             Pattern::Product(pats) => self.visit_product(pats, ext, ext_state),
             Pattern::Extended(p) => self.visit_ext(p, ext, ext_state),
@@ -229,7 +251,10 @@ mod test {
     fn pattern_count() {
         let mut pat: Pattern<BottomDialect> = Pattern::Variable(String::new());
         let mut state = BottomState;
-        assert_eq!(PatternCount::<BottomDialect>::collect(&mut pat, &mut BottomExtension, &mut state), 1);
+        assert_eq!(
+            PatternCount::<BottomDialect>::collect(&mut pat, &mut BottomExtension, &mut state),
+            1
+        );
     }
 
     #[test]
@@ -237,13 +262,19 @@ mod test {
         let mut pat: Pattern<BottomDialect> = Pattern::Variable(String::new());
         let ty = Type::Nat;
         let mut state = BottomState;
-        assert_eq!(PatTyStack::<BottomDialect>::collect(&ty, &mut pat, &mut BottomExtension, &mut state), vec![ty]);
+        assert_eq!(
+            PatTyStack::<BottomDialect>::collect(&ty, &mut pat, &mut BottomExtension, &mut state),
+            vec![ty]
+        );
     }
 
     #[test]
     fn pattern_var_stack() {
         let mut pat: Pattern<BottomDialect> = Pattern::Variable("x".into());
         let mut state = BottomState;
-        assert_eq!(PatVarStack::<BottomDialect>::collect(&mut pat, &mut BottomExtension, &mut state), vec![String::from("x")]);
+        assert_eq!(
+            PatVarStack::<BottomDialect>::collect(&mut pat, &mut BottomExtension, &mut state),
+            vec![String::from("x")]
+        );
     }
 }

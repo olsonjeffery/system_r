@@ -122,9 +122,11 @@ impl<'pat, TExtDialect: Eq + hash::Hash + PartialOrd + PartialEq + SystemRDialec
     /// For a sum type, a dummy constructor of pattern `Const_i _` is generated
     /// for all `i` of the possible constructors of the type. If none of the
     /// dummy constructors are useful, then the current patterns are exhaustive
-    pub fn exhaustive<
-        TExt: SystemRExtension<TExtDialect> + Clone + Default + fmt::Debug,
-    >(&self, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) -> bool {
+    pub fn exhaustive<TExt: SystemRExtension<TExtDialect> + Clone + Default + fmt::Debug>(
+        &self,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
+    ) -> bool {
         match &self.expr_ty {
             Type::Variant(v) => v.iter().all(|variant| {
                 // For all constructors in the sum type, generate a constructor
@@ -165,9 +167,7 @@ impl<'pat, TExtDialect: Eq + hash::Hash + PartialOrd + PartialEq + SystemRDialec
                 let unit = Pattern::Literal(Literal::Unit);
                 !self.can_add_row(vec![&unit])
             }
-            Type::Extended(_) => {
-                ext.exhaustive_for_ext(self, ext_state)
-            }
+            Type::Extended(_) => ext.exhaustive_for_ext(self, ext_state),
             _ => false,
         }
     }
@@ -209,7 +209,8 @@ impl<'pat, TExtDialect: Eq + hash::Hash + PartialOrd + PartialEq + SystemRDialec
     pub fn add_pattern<TExt: Clone + fmt::Debug + Default + SystemRExtension<TExtDialect>>(
         &mut self,
         pat: &'pat Pattern<TExtDialect>,
-        ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState,
+        ext: &mut TExt,
+        ext_state: &mut TExtDialect::TExtDialectState,
     ) -> bool {
         match pat {
             Pattern::Any | Pattern::Variable(_) => {
@@ -261,7 +262,7 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + PartialEq + Partial
         &mut self,
         expr: &Term<TExtDialect>,
         arms: &[Arm<TExtDialect>],
-        ext: &mut TExt
+        ext: &mut TExt,
     ) -> Result<Type<TExtDialect>, Diagnostic> {
         let ty = self.type_check(expr, ext)?;
         let mut matrix = patterns::Matrix::<TExtDialect>::new(ty);
@@ -271,7 +272,8 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + PartialEq + Partial
             if self.pattern_type_eq(&arm.pat, &matrix.expr_ty, ext) {
                 let height = self.stack.len();
 
-                let binds = PatTyStack::<TExtDialect>::collect::<TExt>(&matrix.expr_ty, &arm.pat, ext, &mut self.ext_state);
+                let binds =
+                    PatTyStack::<TExtDialect>::collect::<TExt>(&matrix.expr_ty, &arm.pat, ext, &mut self.ext_state);
                 for b in binds.into_iter().rev() {
                     self.push(b.clone());
                 }
@@ -280,9 +282,10 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + PartialEq + Partial
                 match arm.term.clone().kind {
                     Kind::Injection(label, _, _) => {
                         if label == "Some" {
-                            //panic!("got Some Arm {:?}, derived ty:::: {:?}", arm, arm_ty);
+                            //panic!("got Some Arm {:?}, derived ty:::: {:?}",
+                            // arm, arm_ty);
                         }
-                    },
+                    }
                     _ => {}
                 }
 
@@ -308,7 +311,10 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + PartialEq + Partial
         }
 
         if set.len() != 1 {
-            return Err(Diagnostic::error(expr.span, format!("incompatible arms! {:?} expr: {:?}", set, expr)));
+            return Err(Diagnostic::error(
+                expr.span,
+                format!("incompatible arms! {:?} expr: {:?}", set, expr),
+            ));
         }
 
         if matrix.exhaustive(ext, &mut self.ext_state) {
@@ -340,7 +346,7 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + PartialEq + Partial
         &mut self,
         pat: &Pattern<TExtDialect>,
         ty: &Type<TExtDialect>,
-        ext: &TExt
+        ext: &TExt,
     ) -> bool {
         match pat {
             Pattern::Any => true,

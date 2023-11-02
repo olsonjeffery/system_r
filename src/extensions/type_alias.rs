@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
 use crate::{
     bottom::{BottomDialect, BottomKind, BottomPattern, BottomTokenKind},
@@ -26,7 +26,7 @@ use crate::{
         ExtTokenKind,
     },
     terms::{Kind, Term},
-    types::{visit::Subst, Context, Type, patterns::overlap},
+    types::{patterns::overlap, visit::Subst, Context, Type},
     visit::{MutTypeVisitor, PatternVisitor},
 };
 
@@ -185,11 +185,12 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
             ps.tmvar.pop();
         }
 
-        // FIXME return the whole structure, move erasure
+        // Optionally: return the whole structure, move erasure
         // logic to resolve()
         //Ok(Term {span: sp, kind:
         // Kind::Extended(TypeAliasKind::TypeAliasExpr(struct_ident,
         // Box::new(type_shape), Box::new(t2)))})
+        // but actually erasure is easy and makes sense in this case
         Ok(t2)
     }
 
@@ -368,7 +369,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
                 ));
             }
         };
-        // FIXME this is gonna go away 
+        // FIXME this is gonna go away
         panic!("type_check_application_of_ext got label {:?} reified type: {:?} ty2: {:?}", label, reified_ext_ty, ty2);
         */
     }
@@ -379,12 +380,11 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         pts: &mut crate::patterns::PatTyStack<TypeAliasDialect>,
         label: &str,
         pat: &Pattern<TypeAliasDialect>,
-        ext_ty: &<TypeAliasDialect as SystemRDialect>::TExtType
+        ext_ty: &<TypeAliasDialect as SystemRDialect>::TExtType,
     ) {
         // handle where this is Type::Extended; at which point
         // the extension needs to re-create the above logic (including variant_field())
         let ty = pts.ty.clone();
-
 
         let TypeAliasType::TypeAliasApp(ext_label, applied_types) = ext_ty else {
             return;
@@ -393,11 +393,12 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
             Ok(t) => t,
             Err(e) => {
                 panic!("reifiy failed {:?}", e);
-            },
+            }
         };
         pts.ty = reified_type.clone();
 
-        //panic!("before re-entry into visitor, label {:?} pat {:?}, reified: {:?}", label, pat, reified_type);
+        //panic!("before re-entry into visitor, label {:?} pat {:?}, reified: {:?}",
+        // label, pat, reified_type);
         pts.visit_constructor(label, pat, self, ext_state);
 
         pts.ty = ty;
@@ -413,7 +414,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         };
         let reified = match reify_type(ext_state, &type_decl_key, &applied_types) {
             Ok(t) => t,
-            _ => return false
+            _ => return false,
         };
         match reified {
             Type::Variant(v) => v.iter().all(|variant| {
@@ -431,7 +432,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
                 }
                 ret
             }),
-            _ => return false
+            _ => return false,
         }
     }
 
@@ -500,11 +501,11 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
             Ok(t) => t,
             _ => return false,
         };
-        //panic!("end of type_check_Ext_equals_ty ext {:?} other {:?} stack {:?}", reified, *other_ty, ctx.stack);
+        //panic!("end of type_check_Ext_equals_ty ext {:?} other {:?} stack {:?}",
+        // reified, *other_ty, ctx.stack);
         reified == *other_ty
     }
 }
-
 
 pub fn has_holed_type_named(
     ps: &<TypeAliasDialect as SystemRDialect>::TExtDialectState,
@@ -648,6 +649,9 @@ impl SystemRTranslator<TypeAliasDialect, BottomDialect> for TypeAliasExtension {
         in_ctx: &mut Context<TypeAliasDialect>,
         tm: Term<TypeAliasDialect>,
     ) -> Result<(Context<BottomDialect>, Term<BottomDialect>), Diagnostic> {
-        Err(Diagnostic::error(tm.span, format!("TypeAliasDialect->BottomDialect resolve unimpl")))
+        Err(Diagnostic::error(
+            tm.span,
+            format!("TypeAliasDialect->BottomDialect resolve unimpl"),
+        ))
     }
 }

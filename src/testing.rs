@@ -63,7 +63,7 @@ pub fn type_check_term<
 >(
     ctx: &mut types::Context<TExtDialect>,
     term: &mut Term<TExtDialect>,
-    ext: &mut TExt
+    ext: &mut TExt,
 ) -> Result<Type<TExtDialect>, Diagnostic> {
     // Step 1
     let ty = ctx.type_check(term, ext)?;
@@ -77,7 +77,7 @@ pub fn dealias_and_type_check_term<
 >(
     ctx: &mut types::Context<TExtDialect>,
     term: &mut Term<TExtDialect>,
-    ext: &mut TExt
+    ext: &mut TExt,
 ) -> Result<Type<TExtDialect>, Diagnostic> {
     // Step 0
     ctx.de_alias(term, ext);
@@ -182,7 +182,7 @@ pub fn do_type_check<
 >(
     ctx: &mut types::Context<TExtDialect>,
     term: &mut Term<TExtDialect>,
-    ext: &mut TExt
+    ext: &mut TExt,
 ) -> Result<Type<TExtDialect>, Diagnostic> {
     let tc_result = dealias_and_type_check_term(ctx, term, ext);
     let Some(pre_ty) = tc_result.clone().ok() else {
