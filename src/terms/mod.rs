@@ -130,7 +130,6 @@ pub struct Arm<TExtDialect: Eq + SystemRDialect + PartialEq + PartialOrd + Defau
     pub span: Span,
     pub pat: Pattern<TExtDialect>,
     pub term: Box<Term<TExtDialect>>,
-    pub _d: TExtDialect,
 }
 
 /// Constant literal expression or pattern

@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::{
     bottom::{BottomDialect, BottomKind, BottomPattern, BottomTokenKind},
@@ -27,7 +27,10 @@ use crate::{
     },
     terms::{Kind, Term},
     types::{patterns::overlap, visit::Subst, Context, Type},
-    visit::{MutTypeVisitor, PatternVisitor},
+    visit::{
+        DialectChangingPatternVisitor, DialectChangingTermVisitor, DialectChangingTypeVisitor, MutTypeVisitor,
+        PatternVisitor,
+    },
 };
 
 use super::{SystemRDialect, SystemRExtension, SystemRResolver};
@@ -376,7 +379,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
 
     fn pat_visit_constructor_of_ext(
         &mut self,
-        ext_state: &mut TypeAliasDialectState,
+        ext_state: &TypeAliasDialectState,
         pts: &mut crate::patterns::PatTyStack<TypeAliasDialect>,
         label: &str,
         pat: &Pattern<TypeAliasDialect>,
@@ -440,7 +443,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         &mut self,
         subst_visitor: &mut Subst<TypeAliasDialect>,
         ext_ty: &mut Type<TypeAliasDialect>,
-        ext_state: &mut <TypeAliasDialect as SystemRDialect>::TExtDialectState,
+        ext_state: &<TypeAliasDialect as SystemRDialect>::TExtDialectState,
     ) {
         let Type::Extended(TypeAliasType::TypeAliasApp(type_decl_key, applied_types)) = ext_ty else {
             return;
@@ -457,7 +460,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         &mut self,
         aliaser: &mut crate::types::Aliaser<TypeAliasDialect>,
         ext_ty: &mut Type<TypeAliasDialect>,
-        ext_state: &mut <TypeAliasDialect as SystemRDialect>::TExtDialectState,
+        ext_state: &<TypeAliasDialect as SystemRDialect>::TExtDialectState,
     ) {
         let Type::Extended(TypeAliasType::TypeAliasApp(type_decl_key, applied_types)) = ext_ty.clone() else {
             return;
@@ -473,7 +476,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         &mut self,
         shift: &mut crate::types::visit::Shift,
         ext_ty: &mut Type<TypeAliasDialect>,
-        ext_state: &mut <TypeAliasDialect as SystemRDialect>::TExtDialectState,
+        ext_state: &<TypeAliasDialect as SystemRDialect>::TExtDialectState,
     ) {
         let Type::Extended(TypeAliasType::TypeAliasApp(type_decl_key, applied_types)) = ext_ty.clone() else {
             return;
@@ -547,7 +550,7 @@ pub fn set_holed_type_for(
 }
 
 pub fn reify_type<'s>(
-    ext_state: &mut TypeAliasDialectState,
+    ext_state: &TypeAliasDialectState,
     type_decl_key: &str,
     applied_types: &Vec<Type<TypeAliasDialect>>,
 ) -> Result<Type<TypeAliasDialect>, Error<TypeAliasTokenKind>> {
@@ -643,19 +646,77 @@ pub fn get_holed_type_from_decl<'s>(
     Ok((push_count, type_shape))
 }
 
-impl SystemRResolver<TypeAliasDialect, BottomDialect> for TypeAliasExtension {
+pub struct TypeAliasToBottomDialectResolver;
+
+impl SystemRResolver<TypeAliasDialect, BottomDialect> for TypeAliasToBottomDialectResolver {
     fn resolve(
         &self,
-        ext_state: &mut TypeAliasDialectState,
+        ext_state: TypeAliasDialectState,
         tm: Term<TypeAliasDialect>,
     ) -> Result<Term<BottomDialect>, Diagnostic> {
-        let out_tm = Term::unit();
-        Ok(out_tm)
-        /*
-        Err(Diagnostic::error(
-            tm.span,
-            format!("TypeAliasDialect->BottomDialect resolve unimpl"),
-        ))
-        */
+        //let out_tm = Term::unit();
+        let ttv = TatbTermVisitor::new(ext_state);
+        Ok(ttv.visit(&tm))
+    }
+}
+
+pub struct TatbPatVisitor {
+    ext_state: Rc<RefCell<TypeAliasDialectState>>,
+}
+
+impl DialectChangingPatternVisitor<TypeAliasDialect, BottomDialect> for TatbPatVisitor {
+    fn visit_ext(&self, pat: &Pattern<TypeAliasDialect>) -> Pattern<BottomDialect> {
+        panic!("pattern visit_ext not impl, {:?}", self.ext_state.as_ref())
+    }
+}
+
+pub struct TatbTypeVisitor {
+    ext_state: Rc<RefCell<TypeAliasDialectState>>,
+}
+
+impl<'a> DialectChangingTypeVisitor<TypeAliasDialect, BottomDialect> for TatbTypeVisitor {
+    fn visit_ext(&self, ty: &Type<TypeAliasDialect>) -> Type<BottomDialect> {
+        match ty {
+            Type::Extended(TypeAliasType::TypeAliasApp(label, applied_types)) => {
+                let ext_state = &*self.ext_state.as_ref().borrow();
+                let out_ty = match reify_type(ext_state, label, applied_types) {
+                    Ok(t) => t,
+                    Err(e) => panic!("failed called reifiy_type with error: {:?}", e),
+                };
+                self.visit(&out_ty)
+            }
+            _ => panic!("called into visit_ext for Tatb Type visitor with non TypeAliasApp type; shouldn't happen"),
+        }
+    }
+}
+
+pub struct TatbTermVisitor {
+    pub ext_state: Rc<RefCell<TypeAliasDialectState>>,
+}
+
+impl<'a> TatbTermVisitor {
+    pub fn new(ext_state: TypeAliasDialectState) -> Self {
+        let out = TatbTermVisitor {
+            ext_state: Rc::new(RefCell::new(ext_state)),
+        };
+        out
+    }
+}
+
+impl DialectChangingTermVisitor<TypeAliasDialect, BottomDialect, TatbTypeVisitor, TatbPatVisitor> for TatbTermVisitor {
+    fn get_type_visitor(&self) -> TatbTypeVisitor {
+        TatbTypeVisitor {
+            ext_state: self.ext_state.clone(),
+        }
+    }
+
+    fn get_pat_visitor(&self) -> TatbPatVisitor {
+        TatbPatVisitor {
+            ext_state: self.ext_state.clone(),
+        }
+    }
+
+    fn visit_ext(&self, term: &Term<TypeAliasDialect>) -> Term<BottomDialect> {
+        panic!("no extended kinds should have persisted beyond parse phase");
     }
 }

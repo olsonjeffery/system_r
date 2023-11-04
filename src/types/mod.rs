@@ -152,6 +152,10 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
     ) {
         crate::visit::MutTermVisitor::visit(self, term, ext, &mut self.ext_state.clone())
     }
+
+    pub fn to_ext_state(self) -> TExtDialect::TExtDialectState {
+        self.ext_state
+    }
 }
 
 /// Helper function for extracting type from a variant
@@ -500,7 +504,7 @@ pub fn subst<
     mut s: Type<TExtDialect>,
     mut t: Type<TExtDialect>,
     ext: &mut TExt,
-    ext_state: &mut TExtDialect::TExtDialectState,
+    ext_state: &TExtDialect::TExtDialectState,
 ) -> Type<TExtDialect> {
     Shift::new(1).visit(&mut s, ext, ext_state);
     Subst::new(s).visit(&mut t, ext, ext_state);
@@ -522,12 +526,12 @@ impl<
         &mut self,
         ty: &mut Type<TExtDialect>,
         ext: &mut TExt,
-        ext_state: &mut <TExtDialect as SystemRDialect>::TExtDialectState,
+        ext_state: &<TExtDialect as SystemRDialect>::TExtDialectState,
     ) {
         ext.ty_aliaser_visit_ext(self, ty, ext_state);
     }
 
-    fn visit(&mut self, ty: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
+    fn visit(&mut self, ty: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::TExtDialectState) {
         match ty {
             Type::Unit | Type::Bool | Type::Nat | Type::Tag(_) => {}
             Type::Var(v) => {}
@@ -560,7 +564,7 @@ impl<
         ty: &mut Type<TExtDialect>,
         term: &mut Term<TExtDialect>,
         ext: &mut TExt,
-        ext_state: &mut TExtDialect::TExtDialectState,
+        ext_state: &TExtDialect::TExtDialectState,
     ) {
         self.aliaser().visit(ty, ext, ext_state);
         self.visit(term, ext, ext_state);
@@ -572,7 +576,7 @@ impl<
         term: &mut Term<TExtDialect>,
         ty: &mut Type<TExtDialect>,
         ext: &mut TExt,
-        ext_state: &mut TExtDialect::TExtDialectState,
+        ext_state: &TExtDialect::TExtDialectState,
     ) {
         self.aliaser().visit(ty, ext, ext_state);
         self.visit(term, ext, ext_state);
@@ -585,7 +589,7 @@ impl<
         term: &mut Term<TExtDialect>,
         ty: &mut Type<TExtDialect>,
         ext: &mut TExt,
-        ext_state: &mut TExtDialect::TExtDialectState,
+        ext_state: &TExtDialect::TExtDialectState,
     ) {
         self.aliaser().visit(ty, ext, ext_state);
         self.visit(term, ext, ext_state);
@@ -597,7 +601,7 @@ impl<
         ty: &mut Type<TExtDialect>,
         tm: &mut Term<TExtDialect>,
         ext: &mut TExt,
-        ext_state: &mut TExtDialect::TExtDialectState,
+        ext_state: &TExtDialect::TExtDialectState,
     ) {
         self.aliaser().visit(ty, ext, ext_state);
         self.visit(tm, ext, ext_state);
@@ -609,7 +613,7 @@ impl<
         ty: &mut Type<TExtDialect>,
         tm: &mut Term<TExtDialect>,
         ext: &mut TExt,
-        ext_state: &mut TExtDialect::TExtDialectState,
+        ext_state: &TExtDialect::TExtDialectState,
     ) {
         self.aliaser().visit(ty, ext, ext_state);
         self.visit(tm, ext, ext_state);

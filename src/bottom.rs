@@ -170,7 +170,7 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
 
     fn pat_visit_constructor_of_ext(
         &mut self,
-        ext_state: &mut BottomState,
+        ext_state: &BottomState,
         pts: &mut crate::patterns::PatTyStack<BottomDialect>,
         label: &str,
         pat: &Pattern<BottomDialect>,
@@ -190,7 +190,7 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
         &mut self,
         subst_visitor: &mut crate::types::visit::Subst<BottomDialect>,
         ty: &mut Type<BottomDialect>,
-        ext_state: &mut <BottomDialect as SystemRDialect>::TExtDialectState,
+        ext_state: &<BottomDialect as SystemRDialect>::TExtDialectState,
     ) {
     }
 
@@ -198,7 +198,7 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
         &mut self,
         aliaser: &mut crate::types::Aliaser<BottomDialect>,
         ext_ty: &mut Type<BottomDialect>,
-        ext_state: &mut <BottomDialect as SystemRDialect>::TExtDialectState,
+        ext_state: &<BottomDialect as SystemRDialect>::TExtDialectState,
     ) {
     }
 
@@ -206,7 +206,7 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
         &mut self,
         shift: &mut crate::types::visit::Shift,
         ext_ty: &mut Type<BottomDialect>,
-        ext_state: &mut <BottomDialect as SystemRDialect>::TExtDialectState,
+        ext_state: &<BottomDialect as SystemRDialect>::TExtDialectState,
     ) {
     }
 

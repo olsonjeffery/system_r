@@ -247,7 +247,15 @@ fn then_the_final_value_after_eval_should_equal(world: &mut common::SpecsWorld, 
         when_eval_is_ran(world);
 
         if world.last_eval_success {
-            assert_eq!(first_final_value, world.last_eval_kind, "Comparing final value after eval (left) to provided input snippet (right) failed.");
+            let left = first_final_value;
+            let right = world.last_eval_kind.clone();
+            let left_dbg = format!("{:?}", left);
+            let right_dbg = format!("{:?}", right);
+            assert_eq!(
+                left_dbg, right_dbg,
+                "Comparing final value after eval (left) to provided input snippet (right) failed."
+            );
+            return;
         }
         assert!(false, "failed; shouldn't reach here");
     }

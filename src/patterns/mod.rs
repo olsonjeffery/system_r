@@ -74,7 +74,7 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Default + fmt::Debug + Clon
     pub fn collect<TExt: SystemRExtension<TExtDialect> + Clone + fmt::Debug + Default>(
         pat: &Pattern<TExtDialect>,
         ext: &mut TExt,
-        ext_state: &mut TExtDialect::TExtDialectState,
+        ext_state: &TExtDialect::TExtDialectState,
     ) -> Vec<String> {
         let mut p = Self::default();
         p.visit_pattern(pat, ext, ext_state);
@@ -87,7 +87,7 @@ impl<
         TExt: SystemRExtension<TExtDialect> + Clone + fmt::Debug + Default,
     > PatternVisitor<TExtDialect, TExt> for PatVarStack<TExtDialect>
 {
-    fn visit_variable(&mut self, var: &str, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
+    fn visit_variable(&mut self, var: &str, ext: &mut TExt, ext_state: &TExtDialect::TExtDialectState) {
         self.inner.push(var.to_owned());
     }
 }
@@ -104,7 +104,7 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + Default + fmt::Debu
     pub fn collect<TExt: SystemRExtension<TExtDialect> + Clone + fmt::Debug + Default>(
         pat: &Pattern<TExtDialect>,
         ext: &mut TExt,
-        ext_state: &mut TExtDialect::TExtDialectState,
+        ext_state: &TExtDialect::TExtDialectState,
     ) -> usize {
         let mut p = PatternCount(0, Default::default(), Default::default());
         p.visit_pattern(pat, ext, ext_state);
@@ -117,7 +117,7 @@ impl<
         TExt: SystemRExtension<TExtDialect> + Clone + fmt::Debug + Default,
     > PatternVisitor<TExtDialect, TExt> for PatternCount<TExtDialect>
 {
-    fn visit_variable(&mut self, var: &str, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {
+    fn visit_variable(&mut self, var: &str, ext: &mut TExt, ext_state: &TExtDialect::TExtDialectState) {
         self.0 += 1;
     }
 }
@@ -170,7 +170,7 @@ impl<'ty, TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + Default + fmt:
         ty: &'ty Type<TExtDialect>,
         pat: &Pattern<TExtDialect>,
         ext: &mut TExt,
-        ext_state: &mut TExtDialect::TExtDialectState,
+        ext_state: &TExtDialect::TExtDialectState,
     ) -> Vec<Type<TExtDialect>> {
         let mut p = PatTyStack {
             ty: ty.clone(),
@@ -190,7 +190,7 @@ impl<
         &mut self,
         pats: &Vec<Pattern<TExtDialect>>,
         ext: &mut TExt,
-        ext_state: &mut TExtDialect::TExtDialectState,
+        ext_state: &TExtDialect::TExtDialectState,
     ) {
         if let Type::Product(tys) = self.ty.clone() {
             let ty = Type::Product(tys.clone());
@@ -207,7 +207,7 @@ impl<
         label: &str,
         pat: &Pattern<TExtDialect>,
         ext: &mut TExt,
-        ext_state: &mut TExtDialect::TExtDialectState,
+        ext_state: &TExtDialect::TExtDialectState,
     ) {
         match self.ty.clone() {
             Type::Variant(vs) => {
@@ -223,20 +223,20 @@ impl<
         }
     }
 
-    fn visit_ext(&mut self, p: &TExtDialect::TExtPat, ext: &mut TExt, ext_state: &mut TExtDialect::TExtDialectState) {}
+    fn visit_ext(&mut self, p: &Pattern<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::TExtDialectState) {}
 
     fn visit_pattern(
         &mut self,
         pattern: &Pattern<TExtDialect>,
         ext: &mut TExt,
-        ext_state: &mut TExtDialect::TExtDialectState,
+        ext_state: &TExtDialect::TExtDialectState,
     ) {
         match pattern {
             Pattern::Any | Pattern::Literal(_) => {}
             Pattern::Variable(_) => self.inner.push(self.ty.clone()),
             Pattern::Constructor(label, pat) => self.visit_constructor(label, pat, ext, ext_state),
             Pattern::Product(pats) => self.visit_product(pats, ext, ext_state),
-            Pattern::Extended(p) => self.visit_ext(p, ext, ext_state),
+            Pattern::Extended(_) => self.visit_ext(pattern, ext, ext_state),
         }
     }
 }

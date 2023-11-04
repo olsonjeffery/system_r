@@ -8,7 +8,7 @@ use cucumber::{given, then, when};
 use system_r::{
     diagnostics::Diagnostic,
     extensions::{
-        type_alias::{TypeAliasContext, TypeAliasDialectState, TypeAliasExtension},
+        type_alias::{TypeAliasContext, TypeAliasDialectState, TypeAliasExtension, TypeAliasToBottomDialectResolver},
         SystemRDialect, SystemRExtension, SystemRResolver,
     },
     syntax::parser::{self, ParserState},
@@ -23,7 +23,7 @@ use crate::common::{
     SpecsWorld,
 };
 
-use super::system_r::{BOTTOM_CTX_NAME, given_a_new_context};
+use super::system_r::{given_a_new_context, BOTTOM_CTX_NAME};
 
 static TYPE_ALIAS_CTX_NAME: &'static str = "TypeAlias";
 
@@ -128,16 +128,22 @@ pub fn when_it_is_converted_to_bottom_dialect(world: &mut SpecsWorld) {
         _ => panic!("expected struct data!"),
     };
 
-    let Some(OmniContext::TypeAlias(in_ctx)) = world.contexts.get_mut(TYPE_ALIAS_CTX_NAME) else {
-        panic!("expected to get a TypeAlias context, didn't!");
+    let in_ctx = match world.take_ctx_by_name(TYPE_ALIAS_CTX_NAME) {
+        Ok(c) => match c {
+            OmniContext::TypeAlias(ctx) => ctx,
+            _ => panic!("Expected TypeAlias context, didn't get one!"),
+        },
+        Err(()) => panic!("expected to get a TypeAlias context, didn't!"),
     };
+
+    let ext_state = in_ctx.to_ext_state();
 
     let bottom_tm = {
         // this is an implementation of the SystemRResolver trait
         // for the TypeAliasExtension marker type, it returns a
         // Term<BottomDialect>, something that can be type_check'd
         // and eval'd by the existing system
-        match TypeAliasExtension.resolve(&mut in_ctx.ext_state, tm) {
+        match TypeAliasToBottomDialectResolver.resolve(ext_state, tm) {
             Ok(tm) => tm,
             Err(d) => {
                 world.last_parse_success = false;
@@ -147,9 +153,7 @@ pub fn when_it_is_converted_to_bottom_dialect(world: &mut SpecsWorld) {
         }
     };
 
-    world
-        .contexts
-        .remove(BOTTOM_CTX_NAME);
+    world.contexts.remove(BOTTOM_CTX_NAME);
     given_a_new_context(world);
     world.last_parse_term = bottom_tm.clone();
     world.last_parse_kind = bottom_tm.kind;

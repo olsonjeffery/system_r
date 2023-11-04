@@ -41,4 +41,11 @@ impl SpecsWorld {
         let st = std::mem::replace(&mut self.last_ext_state, OmniState::Empty);
         st
     }
+
+    pub fn take_ctx_by_name(&mut self, ctx_name: &str) -> Result<OmniContext, ()> {
+        match self.contexts.remove(ctx_name) {
+            Some(v) => Ok(v),
+            None => Err(()),
+        }
+    }
 }

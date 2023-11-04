@@ -97,7 +97,7 @@ pub trait SystemRExtension<
     ) -> Result<Type<TExtDialect>, Diagnostic>;
     fn pat_visit_constructor_of_ext(
         &mut self,
-        ext_state: &mut TExtDialect::TExtDialectState,
+        ext_state: &TExtDialect::TExtDialectState,
         pts: &mut PatTyStack<TExtDialect>,
         label: &str,
         pat: &Pattern<TExtDialect>,
@@ -112,19 +112,19 @@ pub trait SystemRExtension<
         &mut self,
         shift: &mut Shift,
         ext_ty: &mut Type<TExtDialect>,
-        ext_state: &mut TExtDialect::TExtDialectState,
+        ext_state: &TExtDialect::TExtDialectState,
     );
     fn ty_aliaser_visit_ext(
         &mut self,
         aliaser: &mut Aliaser<TExtDialect>,
         ext_ty: &mut Type<TExtDialect>,
-        ext_state: &mut TExtDialect::TExtDialectState,
+        ext_state: &TExtDialect::TExtDialectState,
     );
     fn ty_subst_visit_ext(
         &mut self,
         subst_visitor: &mut Subst<TExtDialect>,
         ext_ty: &mut Type<TExtDialect>,
-        ext_state: &mut TExtDialect::TExtDialectState,
+        ext_state: &TExtDialect::TExtDialectState,
     );
     fn type_check_ext_equals_ty(
         &mut self,
@@ -141,7 +141,7 @@ pub trait SystemRResolver<
 {
     fn resolve(
         &self,
-        ext_state: &mut InDialect::TExtDialectState,
+        ext_state: InDialect::TExtDialectState,
         tm: Term<InDialect>,
     ) -> Result<Term<OutDialect>, Diagnostic>;
 }

@@ -749,12 +749,7 @@ pub fn case_arm<
 
     span += ps.span;
 
-    Ok(Arm {
-        span,
-        pat,
-        term,
-        _d: Default::default(),
-    })
+    Ok(Arm { span, pat, term })
 }
 
 pub fn case<
