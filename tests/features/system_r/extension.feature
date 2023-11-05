@@ -1,21 +1,21 @@
 @system_r
 Feature: Extension of system_r
-    @wip
+    # Add structural type/data-shape capture (with arity-based TyAbs) with the `type`
+    # keyword, all TypeAlias application with $TypeName[Of V]
+    # where V is a TyAbs in the StructData value
+    # StructData $TypeAlias = \V. \K {Left V | Right K} in body
+    #
+    # For this scenario, the below code will convert to
+    # vanilla system_r equiv to:
+    #
+    # let tripler = \X (\c: {None | Some X}. \x: X->(X, X, X). 
+    #   case c of 
+    #     | None => None of {None | Some (X, X, X)}
+    #     | Some val => Some x val of {None | Some (X, X, X)} ) in
+    # let Some(res) = tripler [Nat] (Some 7 of {None|Some Nat}) (\x: Nat. (x, x, x)) in
+    # res ;
+
     Scenario: TypeAlias happy path
-        # Add structural type/data-shape capture with the `type`
-        # keyword, all TypeAlias application with $TypeName[Of V]
-        # where V is a TyAbs in the StructData value
-        # StructData $TypeAlias = \V. \K {Left V | Right K} in body
-        #
-        # For this scenario, the below code will convert to
-        # vanilla system_r equiv to:
-        #
-        # let tripler = \X (\c: {None | Some X}. \x: X->(X, X, X). 
-	    #   case c of 
-		#     | None => None of {None | Some (X, X, X)}
-		#     | Some val => Some x val of {None | Some (X, X, X)} ) in
-        # let Some(res) = tripler [Nat] (Some 7 of {None|Some Nat}) (\x: Nat. (x, x, x)) in
-        # res ;
 
         Given a system_r toolchain extended for TypeAlias
         And a code block:
@@ -36,7 +36,27 @@ res ;
         And the last eval should be successful
         Then the final value after eval should equal: "(7,7,7)"
 
-    # Scenario: type decl with no tyabs
+    @wip
+    Scenario: TypeAlias with no tyabs
+        Given a system_r toolchain extended for TypeAlias
+        And adding an instrinsic named iiiNatAdd to the "TypeAlias" context
+        And a code block:
+        """type $NatOption = {None | Some Nat} in
+let doubler = \c: $NatOption.
+	case c of 
+		| None => None of $NatOption
+		| Some(val) => Some iiiNatAdd(val, val) of $NatOption in
+let Some(res) = doubler (Some 7 of $NatOption) in
+res ;
+        """
+        When TypeAlias parses the code
+        And TypeAlias type checks the code
+        And TypeAliasDialect is resolved into BottomDialect system_r
+        And type_check and eval for BottomDialect is ran
+        Then the last ext should parse successfully
+        And the last parse should be successful
+        And the last eval should be successful
+        Then the final value after eval should equal: "14"
 
     # Scenario: type decl with multiple tyabs
 

@@ -11,7 +11,7 @@ use system_r::{
 
 use crate::common::{self, extensions::OmniContext};
 
-pub static BOTTOM_CTX_NAME: &'static str = "system_r_bottom";
+pub static BOTTOM_CTX_NAME: &'static str = "Bottom";
 
 #[given(regex = r#"^a new ctx"#)]
 #[given(regex = r#"^a new sr ctx"#)]
@@ -30,17 +30,22 @@ fn given_a_code_snippet(world: &mut common::SpecsWorld, step: &Step) {
     world.code_snippet = step.docstring.clone().unwrap();
 }
 
-#[given(regex = r#"an instrinsic for Nat addition named iiiNatAdd"#)]
-fn given_an_intrinsic_for_nat_addition_named_i_nat_add(world: &mut common::SpecsWorld) {
+#[given(regex = r#"adding an instrinsic named iiiNatAdd to the "([^"]*)" context"#)]
+fn given_an_intrinsic_for_nat_addition_named_i_nat_add_to_ctx(world: &mut common::SpecsWorld, ctx_name: String) {
     let pb = &mut world.platform_bindings;
 
     pb.register("iiiNatAdd", common::platform_bindings::arith::pb_add());
 
     world
         .contexts
-        .get_mut(BOTTOM_CTX_NAME)
+        .get_mut(&ctx_name)
         .unwrap()
         .set_platform_bindings(pb.clone());
+}
+
+#[given(regex = r#"an instrinsic for Nat addition named iiiNatAdd"#)]
+fn given_an_intrinsic_for_nat_addition_named_i_nat_add(world: &mut common::SpecsWorld) {
+    given_an_intrinsic_for_nat_addition_named_i_nat_add_to_ctx(world, BOTTOM_CTX_NAME.to_owned());
 }
 
 #[when("it evals successfully")]

@@ -616,11 +616,17 @@ pub fn extract_tyabs_for_type_shape<'s>(
     ps: &mut ParserState<'s, TypeAliasDialect>,
     ext: &mut TypeAliasExtension,
 ) -> Result<usize, Error<TypeAliasTokenKind>> {
-    parser::expect(ps, ext, ExtTokenKind::Lambda)?;
-    let tyvar = parser::uppercase_id(ps, ext)?;
-    let index = ps.tyvar.push(tyvar);
-    let tyabs: Box<Type<TypeAliasDialect>> = Box::new(Type::Var(index));
-    Ok(1) // FIXME do dynamic tyabs extraction and return the count
+    let mut ext_2 = ext.clone();
+    let mut tyabs = Vec::new();
+    if ps.token.kind == ExtTokenKind::Lambda {
+        parser::expect(ps, ext, ExtTokenKind::Lambda)?;
+        tyabs = parser::once_or_more(ps, |p| {
+            let tyvar = parser::uppercase_id(p, ext)?;
+            p.tyvar.push(tyvar);
+            Ok(())
+        }, ExtTokenKind::Lambda, &mut ext_2)?;
+    }
+    Ok(tyabs.len()) // FIXME do dynamic tyabs extraction and return the count
 }
 
 pub fn get_holed_type_from_decl<'s>(

@@ -28,7 +28,7 @@ impl OmniContext {
         match self {
             OmniContext::Empty => todo!(),
             OmniContext::Bottom(ctx) => ctx.platform_bindings = pb,
-            OmniContext::TypeAlias(_) => todo!(),
+            OmniContext::TypeAlias(ctx) => ctx.platform_bindings = pb,
         }
     }
 }
