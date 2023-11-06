@@ -20,3 +20,16 @@ Feature: Platform Bindings
         Then the last parse should be successful
         And the last eval should be successful
         And the resulting eval Kind should be Nat of 32
+
+    Scenario: Nested PB invokes shouldn't choke
+        Given a new ctx
+        And an instrinsic for Nat addition named iiiNatAdd
+        And a srpt block:
+        """
+        let v = 1 in
+            iiiNatAdd (v, iiiNatAdd (v, v))
+        """
+        When it is parsed and evaluated
+        Then the last parse should be successful
+        And the last eval should be successful
+        And the resulting eval Kind should be Nat of 3

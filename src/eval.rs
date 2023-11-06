@@ -70,6 +70,7 @@ impl<'ctx> Eval<'ctx> {
             Kind::Product(fields) => fields.iter().all(Eval::normal_form),
             Kind::Fold(_, tm) => Eval::normal_form(tm),
             Kind::Pack(_, tm, _) => Eval::normal_form(tm),
+            Kind::PlatformBinding(_) => true,
             // Kind::Unpack(pack, tm) => Eval::normal_form(tm),
             _ => false,
         }
@@ -117,7 +118,9 @@ impl<'ctx> Eval<'ctx> {
                                 let span = t1.span;
                                 match (wc.0)(*t2, &span) {
                                     Ok(t) => Ok(Some(t)),
-                                    Err(_) => Ok(None),
+                                    Err(e) => {
+                                        Err(e)
+                                    },
                                 }
                             }
                             _ => panic!("unable to get platform_binding with idx after parsing; shouldn't happen"),
