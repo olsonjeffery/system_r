@@ -4,19 +4,22 @@ An extension of the simply typed lambda calculus with parametric polymorphism (k
 
 Consult the gherkin specs in the `/tests/features` directory for more on system_r's capabilities, embedding, etc.
 
-# Licenses:
+# Licenses
 
-Code in this repository is singly-licensed OR dual-licensed under the following licenses, as noted below:
+This project is licensed under either of
 
-- Remaining "original", imported repository files & content from the forked `lazear/types-and-programming-languages` is licensed under the MIT/Expat License, provided in-full at `/LICENSE.MIT`
-- Additionally, all of the above-mentioned code AND all subsequent contributions (whether as modification to existing repository file contents or added repository files) are made under the terms of the Apache License v2.0, provided in full at `LICENSE.APACHE2`
+- Apache License, Version 2.0, (`LICENSE-APACHE` or https://www.apache.org/licenses/LICENSE-2.0)
+- MIT license (`LICENSE-MIT` or https://opensource.org/licenses/MIT)
 
-Every code file in the repository is annotated with one, or both the MIT/Expat and Apache license headers, referencing the `LICENSE.*` files outlined above.
+at your option.
+
+# Contribution
+
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in system_r by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
 
 # Copyright
 
-- MIT-licensed changes are Copyright Michael Lazear, 2020
-- All subsequent changes under Apache v2.0 are Copyright entrants in AUTHORS.md, 2020-2023
+- All changes are copyright the contributors
 
 # Original System F docs from lazear/types-and-programming-languages main README
 

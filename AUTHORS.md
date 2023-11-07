@@ -1,1 +1,0 @@
-+ Jeffery Olson <olson.jeffery@gmail.com>
