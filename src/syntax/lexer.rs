@@ -1,7 +1,7 @@
 use super::{ExtTokenKind, Token};
 use crate::bottom::BottomDialect;
-use crate::extensions::SystemRDialect;
-use crate::extensions::SystemRExtension;
+use crate::dialect::SystemRDialect;
+use crate::dialect::SystemRExtension;
 use crate::system_r_util::span::{Location, Span};
 use core::fmt;
 use std::iter::Peekable;

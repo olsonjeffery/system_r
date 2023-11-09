@@ -1,6 +1,6 @@
 use system_r::{
     bottom::{BottomDialect, BottomKind, BottomState},
-    extensions::type_alias::{TypeAliasContext, TypeAliasDialect, TypeAliasDialectState},
+    dialect::type_alias::{TypeAliasContext, TypeAliasDialect, TypeAliasDialectState},
     platform_bindings::PlatformBindings,
     terms::{Kind, Term},
     types::{Context, Type},

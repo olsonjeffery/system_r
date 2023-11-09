@@ -7,7 +7,7 @@ use cucumber::{given, then, when};
 
 use system_r::{
     diagnostics::Diagnostic,
-    extensions::{
+    dialect::{
         type_alias::{TypeAliasContext, TypeAliasDialectState, TypeAliasExtension, TypeAliasToBottomDialectResolver},
         SystemRDialect, SystemRExtension, SystemRResolver,
     },

@@ -1,6 +1,6 @@
 use crate::{
     diagnostics::Diagnostic,
-    extensions::{SystemRDialect, SystemRExtension},
+    dialect::{SystemRDialect, SystemRExtension},
     patterns::Pattern,
     syntax::error::Error,
     terms::Term,

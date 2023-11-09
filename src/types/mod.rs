@@ -3,7 +3,7 @@
 pub mod patterns;
 pub mod visit;
 use crate::diagnostics::*;
-use crate::extensions::{SystemRDialect, SystemRExtension};
+use crate::dialect::{SystemRDialect, SystemRExtension};
 use crate::platform_bindings::PlatformBindings;
 use crate::system_r_util::span::Span;
 use crate::terms::{Kind, Literal, Primitive, Term};
@@ -203,13 +203,6 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
                                         .message(t2.span, format!("WTF is ty12? {:?}", ty12))
                                         .message(term.span, format!("parent term {:?}", term.kind));
                                     Err(d)
-                                    /*
-                                    (extended
-                                       (TypeAliasApp("$Option", [TyVar(0)]))
-                                       ->
-                                       ((TyVar(0)->(TyVar(0),TyVar(0),TyVar(0)))->"None: Unit | Some: (TyVar(0),TyVar(0),TyVar(0))"
-                                       ))
-                                    */
                                 }
                             }
                         }

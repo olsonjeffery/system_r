@@ -22,6 +22,9 @@ Feature: Platform Bindings
         And the resulting eval Kind should be Nat of 32
 
     Scenario: Nested PB invokes shouldn't choke
+        # The regression this captures is to ensure that the
+        # arguments to a PB are evaluated-down to normal form
+        # before the PB itself is invoked
         Given a new ctx
         And an instrinsic for Nat addition named iiiNatAdd
         And a srpt block:

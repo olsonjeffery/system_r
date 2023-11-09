@@ -14,7 +14,7 @@
 
 use super::*;
 use crate::diagnostics::*;
-use crate::extensions::{SystemRDialect, SystemRExtension};
+use crate::dialect::{SystemRDialect, SystemRExtension};
 use crate::patterns::{PatTyStack, Pattern};
 use crate::terms::*;
 use std::collections::HashSet;

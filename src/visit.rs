@@ -40,7 +40,7 @@ limitations under the License.
 use core::fmt;
 use std::hash;
 
-use crate::extensions::{SystemRDialect, SystemRExtension};
+use crate::dialect::{SystemRDialect, SystemRExtension};
 use crate::patterns::Pattern;
 use crate::system_r_util::span::Span;
 use crate::terms::{Arm, Kind, Literal, Primitive, Term};

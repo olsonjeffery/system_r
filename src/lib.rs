@@ -43,7 +43,7 @@ pub mod macros;
 pub mod bottom;
 pub mod diagnostics;
 pub mod eval;
-pub mod extensions;
+pub mod dialect;
 pub mod patterns;
 pub mod platform_bindings;
 pub mod syntax;

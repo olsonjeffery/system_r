@@ -1,5 +1,5 @@
 @system_r
-Feature: Extension of system_r
+Feature: Add new SystemRDialect implementations
     # Add structural type/data-shape capture (with arity-based TyAbs) with the `type`
     # keyword, all TypeAlias application with $TypeName[Of V]
     # where V is a TyAbs in the StructData value
@@ -15,7 +15,7 @@ Feature: Extension of system_r
     # let Some(res) = tripler [Nat] (Some 7 of {None|Some Nat}) (\x: Nat. (x, x, x)) in
     # res ;
 
-    Scenario: TypeAlias happy path
+    Scenario: TypeAliasDialect happy path
 
         Given a system_r toolchain extended for TypeAlias
         And a code block:
@@ -57,8 +57,6 @@ res ;
         And the last parse should be successful
         And the last eval should be successful
         Then the final value after eval should equal: "14"
-
-    # Scenario: type decl with multiple tyabs
 
     # Scenario: StructData pattern matching/destructing? more application?
      

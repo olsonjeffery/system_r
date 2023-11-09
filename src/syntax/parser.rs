@@ -3,7 +3,7 @@ use super::error::Error;
 use super::lexer::ExtLexer;
 use super::{ExtTokenKind, Token};
 use crate::bottom::{BottomDialect, BottomExtension};
-use crate::extensions::{SystemRDialect, SystemRExtension};
+use crate::dialect::{SystemRDialect, SystemRExtension};
 
 use crate::system_r_util::diagnostic::Diagnostic;
 use crate::system_r_util::span::*;
@@ -303,7 +303,7 @@ pub fn ty_atom<
             expect(ps, ext, ExtTokenKind::RBrace)?;
             Ok(Type::Variant(fields))
         }
-        v => error(ps, ErrorKind::ExpectedType),
+        v => error(ps, ErrorKind::ExtendedError(format!("Expected type-able token, got {:?}", v))),
     }
 }
 

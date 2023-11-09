@@ -1,6 +1,6 @@
 use super::Type;
 use crate::{
-    extensions::{SystemRDialect, SystemRExtension},
+    dialect::{SystemRDialect, SystemRExtension},
     visit::MutTypeVisitor,
 };
 use core::fmt;

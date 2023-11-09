@@ -1,5 +1,5 @@
 //! Representation lambda calculus terms
-use crate::extensions::SystemRDialect;
+use crate::dialect::SystemRDialect;
 use crate::patterns::Pattern;
 use crate::system_r_util::span::Span;
 use crate::types::Type;

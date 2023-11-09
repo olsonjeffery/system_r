@@ -1,7 +1,7 @@
 use core::fmt;
 use std::hash;
 
-use crate::extensions::{SystemRDialect, SystemRExtension};
+use crate::dialect::{SystemRDialect, SystemRExtension};
 use crate::patterns::{Pattern, PatternCount};
 use crate::system_r_util::span::Span;
 use crate::terms::{Arm, Kind, Term};

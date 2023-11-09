@@ -18,7 +18,7 @@ use core::fmt;
 use std::hash;
 
 use crate::bottom::BottomDialect;
-use crate::extensions::{SystemRDialect, SystemRExtension};
+use crate::dialect::{SystemRDialect, SystemRExtension};
 
 use crate::{
     bottom::BottomExtension,

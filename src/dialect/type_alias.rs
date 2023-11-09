@@ -585,6 +585,7 @@ pub fn pulls_types_from_tyapp(
             break;
         }
         if ps.token.kind == ExtTokenKind::Comma {
+            parser::bump(ps, ext);
             continue;
         }
         return Err(Error {
