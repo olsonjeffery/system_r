@@ -126,10 +126,6 @@ impl<
             Type::PlatformBinding(i, r) => {}
             Type::Var(v) => {
                 let makes_cutoff = *v >= self.cutoff;
-                if self.ty == Type::Nat {
-                    //panic!("about to substitute in Nat to {:?}, would it make
-                    // the cutoff? {:?}", ty, makes_cutoff)
-                }
                 if makes_cutoff {
                     Shift::new(self.cutoff as isize).visit(&mut self.ty, ext, ext_state);
                     *ty = self.ty.clone();

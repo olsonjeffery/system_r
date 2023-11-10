@@ -71,6 +71,7 @@ pub enum TypeAliasType {
     #[default]
     Empty,
     TypeAliasApp(String, Vec<Type<TypeAliasDialect>>),
+    VarWrap(usize),
 }
 
 #[derive(Clone, Default, Debug)]
@@ -483,16 +484,19 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         ext_ty: &mut <TypeAliasDialect as SystemRDialect>::TExtType,
         other_ty: &mut Type<TypeAliasDialect>,
     ) -> bool {
-        let TypeAliasType::TypeAliasApp(type_decl_key, applied_types) = ext_ty.clone() else {
-            return false;
-        };
-        let reified = match reify_type(&mut ctx.ext_state, &type_decl_key, &applied_types) {
-            Ok(t) => t,
-            _ => return false,
-        };
-        //panic!("end of type_check_Ext_equals_ty ext {:?} other {:?} stack {:?}",
-        // reified, *other_ty, ctx.stack);
-        reified == *other_ty
+        match ext_ty.clone() {
+            TypeAliasType::TypeAliasApp(type_decl_key, applied_types) => {
+                let reified = match reify_type(&mut ctx.ext_state, &type_decl_key, &applied_types) {
+                    Ok(t) => t,
+                    _ => return false,
+                };
+                //panic!("end of type_check_Ext_equals_ty ext {:?} other {:?} stack {:?}",
+                // reified, *other_ty, ctx.stack);
+                reified == *other_ty
+            },
+            TypeAliasType::VarWrap(v) => false, // shouldn't happen
+            TypeAliasType::Empty => false, // shouldn't happen
+        }
     }
 }
 
@@ -556,16 +560,22 @@ pub fn reify_type<'s>(
         });
     }
 
-    // FIXME need to know if we do this in forward or
-    // reverse order!
-    for ty in applied_types {
+    let cutoffs = (0..applied_types.len()).rev();
+    let mut var_indexes_to_fix = Vec::new();
+    for (ty, desired_cutoff) in applied_types.iter().zip(cutoffs) {
         // FIXME error if there's no substitution
-        Subst::new(ty.clone()).visit(&mut holed_type, &mut ext, ext_state)
+        let mut working_ty = ty.clone();
+        if let Type::Var(v) = working_ty {
+            var_indexes_to_fix.push(v);
+            working_ty = Type::Extended(TypeAliasType::VarWrap(v))
+        }
+        let abstract_type = holed_type.clone();
+        let mut subst_visitor = Subst::new(working_ty.clone());
+        subst_visitor.cutoff = desired_cutoff;
+        subst_visitor.visit(&mut holed_type, &mut ext, ext_state);
     }
-
-    // FIXME need to confirm it is TmVar free at this point, falls out of
-    // check above
-
+    holed_type = VarWrapReplacingVisitor.visit(&holed_type);
+    
     Ok(holed_type)
 }
 
@@ -665,6 +675,16 @@ impl DialectChangingPatternVisitor<TypeAliasDialect, BottomDialect> for TatbPatV
 
 pub struct TatbTypeVisitor {
     ext_state: Rc<RefCell<TypeAliasDialectState>>,
+}
+
+pub struct VarWrapReplacingVisitor;
+impl<'a> DialectChangingTypeVisitor<TypeAliasDialect, TypeAliasDialect> for VarWrapReplacingVisitor {
+    fn visit_ext(&self, ty: &Type<TypeAliasDialect>) -> Type<TypeAliasDialect> {
+        match ty {
+            Type::Extended(TypeAliasType::VarWrap(v)) => Type::Var(*v),
+            v => v.clone()
+        }
+    }
 }
 
 impl<'a> DialectChangingTypeVisitor<TypeAliasDialect, BottomDialect> for TatbTypeVisitor {

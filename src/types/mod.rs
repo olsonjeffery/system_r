@@ -95,7 +95,7 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
         self.stack.pop_front().expect("Context::pop() with empty type stack");
     }
 
-    fn find(&self, idx: usize) -> Option<&Type<TExtDialect>> {
+    pub fn find(&self, idx: usize) -> Option<&Type<TExtDialect>> {
         self.stack.get(idx)
     }
 
@@ -157,10 +157,15 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
             Kind::Lit(Literal::Nat(_)) => Ok(Type::Nat),
             Kind::Lit(Literal::Tag(s)) => Ok(Type::Tag(s.clone())),
             Kind::PlatformBinding(idx) => self.type_check_platform_binding(idx, &term.span),
-            Kind::Var(idx) => self
+            Kind::Var(idx) => {
+                let result = self
                 .find(*idx)
                 .cloned()
-                .ok_or_else(|| Diagnostic::error(term.span, format!("type_check: unbound variable {}", idx))),
+                .ok_or_else(|| Diagnostic::error(term.span, format!("type_check: unbound variable {}", idx)))?;
+                match result {
+                    v => Ok(v),
+                }
+            },
 
             Kind::Abs(ty, t2) => {
                 self.push(*ty.clone());
@@ -188,7 +193,7 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
                                     } else {
                                         let d = Diagnostic::error(
                                             term.span,
-                                            "Type<TExtDialect> mismatch in ext application",
+                                            "Type<TExtDialect> mismatch in ext application, ty11 side",
                                         )
                                         .message(t2.span, format!("WTF is ty12? {:?}", ty12))
                                         .message(term.span, format!("parent term {:?}", term.kind))
@@ -200,7 +205,7 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
                                     let d = Diagnostic::error(term.span, "Type<TExtDialect> mismatch in application")
                                         .message(t1.span, format!("Abstraction requires type {:?}", ty11))
                                         .message(t2.span, format!("Value has a type of {:?}", ty2))
-                                        .message(t2.span, format!("WTF is ty12? {:?}", ty12))
+                                        .message(t1.span, format!("Stack contents: {:?}", self.stack))
                                         .message(term.span, format!("parent term {:?}", term.kind));
                                     Err(d)
                                 }
@@ -282,12 +287,6 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
                     ))
                 }
                 Type::Extended(t) => {
-                    if label != "None" && label != "Some" {
-                        panic!(
-                            "about to head into ext to typecheck ** arm, label: {:?} term: {:?}",
-                            label, t
-                        )
-                    }
                     ext.type_check_injection_to_ext(self, label, t, &tm)
                 }
 
