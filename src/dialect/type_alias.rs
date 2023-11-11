@@ -164,7 +164,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
 
         // this should be a "holed-out" type specification (it should have
         // entries for where generic types can be substituted-in)
-        let type_shape = get_holed_type_from_decl(ps, self)?;
+        let type_shape = parse_holed_type_from_decl(ps, self)?;
         set_holed_type_for(ps, &struct_ident, type_shape.clone())?;
 
         let len = ps.tmvar.len();
@@ -584,7 +584,6 @@ pub fn pulls_types_from_tyapp(
     ext: &mut TypeAliasExtension,
 ) -> Result<Vec<Type<TypeAliasDialect>>, Error<TypeAliasTokenKind>> {
     parser::expect(ps, ext, ExtTokenKind::LSquare)?;
-    parser::expect(ps, ext, ExtTokenKind::Of)?;
 
     let mut ret_val = Vec::new();
     loop {
@@ -626,7 +625,7 @@ pub fn extract_tyabs_for_type_shape<'s>(
     Ok(tyabs.len()) // FIXME do dynamic tyabs extraction and return the count
 }
 
-pub fn get_holed_type_from_decl<'s>(
+pub fn parse_holed_type_from_decl<'s>(
     ps: &mut ParserState<'s, TypeAliasDialect>,
     ext: &mut TypeAliasExtension,
 ) -> Result<(usize, Type<TypeAliasDialect>), Error<TypeAliasTokenKind>> {

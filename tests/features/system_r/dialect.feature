@@ -20,11 +20,11 @@ Feature: Add new SystemRDialect implementations
         Given a system_r toolchain extended for TypeAlias
         And a code block:
         """type $Option = \V {None | Some V} in
-let tripler = \X (\c: $Option[of X]. \x: X->(X, X, X). 
+let tripler = \X (\c: $Option[X]. \x: X->(X, X, X). 
 	case c of 
-		| None => None of $Option[of (X, X, X)]
-		| Some(val) => Some x val of $Option[of (X, X, X)] ) in
-let Some(res) = tripler [Nat] (Some 7 of $Option[of Nat]) (\x: Nat. (x, x, x)) in
+		| None => None of $Option[(X, X, X)]
+		| Some(val) => Some x val of $Option[(X, X, X)] ) in
+let Some(res) = tripler [Nat] (Some 7 of $Option[Nat]) (\x: Nat. (x, x, x)) in
 res ;
         """
         When TypeAlias parses the code
@@ -43,11 +43,11 @@ res ;
         And a code block:
         """
 type $Either = \L \R {Left L | Right R } in
-let toNat = \I (\c: $Either[of I, Nat]. \x: I->Nat.
+let toNat = \I (\c: $Either[I, Nat]. \x: I->Nat.
 	case c of 
 		| Left(l) => x l
 		| Right(r) => r ) in
-toNat [Bool] (Left true of $Either[of Bool, Nat]) (\x: Bool. case x of | true => 1 | false => 0);
+toNat [Bool] (Left true of $Either[Bool, Nat]) (\x: Bool. case x of | true => 1 | false => 0);
         """
         When TypeAlias parses the code
         And TypeAlias type checks the code
