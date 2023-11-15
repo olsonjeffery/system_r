@@ -20,7 +20,7 @@ use system_r::{
 use crate::common::{
     self,
     extensions::{OmniContext, OmniKind, OmniState, OmniTerm, OmniType},
-    SpecsWorld
+    SpecsWorld,
 };
 
 use super::system_r::{given_a_new_context, BOTTOM_CTX_NAME};
@@ -101,7 +101,10 @@ fn when_it_is_processed_for_type_alias(world: &mut common::SpecsWorld) {
 #[when("TypeAlias type checks the code")]
 fn when_type_alias_type_checks_the_code(world: &mut SpecsWorld) {
     let OmniTerm::TypeAlias(mut term) = world.last_ext_parse_term.clone() else {
-        panic!("expected last ext parse term to be from TypeAliasDialect, wasn't! last ext parse term context: {:?}", world.last_ext_parse_term.clone());
+        panic!(
+            "expected last ext parse term to be from TypeAliasDialect, wasn't! last ext parse term context: {:?}",
+            world.last_ext_parse_term.clone()
+        );
     };
     let OmniState::TypeAlias(st) = world.take_last_ext_state() else {
         panic!("expect last ext state to be from TypeAliasDialect, wasn't!");
@@ -135,7 +138,11 @@ pub fn when_it_is_converted_to_bottom_dialect(world: &mut SpecsWorld) {
         Err(()) => panic!("expected to get a TypeAlias context, didn't!"),
     };
 
-    let Context { ext_state, platform_bindings, .. } = in_ctx;
+    let Context {
+        ext_state,
+        platform_bindings,
+        ..
+    } = in_ctx;
 
     let bottom_tm = {
         // this is an implementation of the SystemRResolver trait
@@ -154,7 +161,11 @@ pub fn when_it_is_converted_to_bottom_dialect(world: &mut SpecsWorld) {
 
     world.contexts.remove(BOTTOM_CTX_NAME);
     given_a_new_context(world);
-    world.contexts.get_mut(BOTTOM_CTX_NAME).unwrap().set_platform_bindings(platform_bindings);
+    world
+        .contexts
+        .get_mut(BOTTOM_CTX_NAME)
+        .unwrap()
+        .set_platform_bindings(platform_bindings);
     world.last_parse_term = bottom_tm.clone();
     world.last_parse_kind = bottom_tm.kind;
     world.last_parse_success = true;

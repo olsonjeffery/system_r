@@ -42,8 +42,8 @@ limitations under the License.
 pub mod macros;
 pub mod bottom;
 pub mod diagnostics;
-pub mod eval;
 pub mod dialect;
+pub mod eval;
 pub mod patterns;
 pub mod platform_bindings;
 pub mod syntax;

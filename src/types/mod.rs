@@ -159,13 +159,13 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
             Kind::PlatformBinding(idx) => self.type_check_platform_binding(idx, &term.span),
             Kind::Var(idx) => {
                 let result = self
-                .find(*idx)
-                .cloned()
-                .ok_or_else(|| Diagnostic::error(term.span, format!("type_check: unbound variable {}", idx)))?;
+                    .find(*idx)
+                    .cloned()
+                    .ok_or_else(|| Diagnostic::error(term.span, format!("type_check: unbound variable {}", idx)))?;
                 match result {
                     v => Ok(v),
                 }
-            },
+            }
 
             Kind::Abs(ty, t2) => {
                 self.push(*ty.clone());
@@ -286,9 +286,7 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
                         ),
                     ))
                 }
-                Type::Extended(t) => {
-                    ext.type_check_injection_to_ext(self, label, t, &tm)
-                }
+                Type::Extended(t) => ext.type_check_injection_to_ext(self, label, t, &tm),
 
                 _ => Err(Diagnostic::error(
                     term.span,

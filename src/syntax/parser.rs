@@ -303,7 +303,10 @@ pub fn ty_atom<
             expect(ps, ext, ExtTokenKind::RBrace)?;
             Ok(Type::Variant(fields))
         }
-        v => error(ps, ErrorKind::ExtendedError(format!("Expected type-able token, got {:?}", v))),
+        v => error(
+            ps,
+            ErrorKind::ExtendedError(format!("Expected type-able token, got {:?}", v)),
+        ),
     }
 }
 

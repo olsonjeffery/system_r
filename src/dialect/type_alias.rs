@@ -493,9 +493,9 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
                 //panic!("end of type_check_Ext_equals_ty ext {:?} other {:?} stack {:?}",
                 // reified, *other_ty, ctx.stack);
                 reified == *other_ty
-            },
+            }
             TypeAliasType::VarWrap(v) => false, // shouldn't happen
-            TypeAliasType::Empty => false, // shouldn't happen
+            TypeAliasType::Empty => false,      // shouldn't happen
         }
     }
 }
@@ -575,7 +575,7 @@ pub fn reify_type<'s>(
         subst_visitor.visit(&mut holed_type, &mut ext, ext_state);
     }
     holed_type = VarWrapReplacingVisitor.visit(&holed_type);
-    
+
     Ok(holed_type)
 }
 
@@ -616,11 +616,16 @@ pub fn extract_tyabs_for_type_shape<'s>(
     let mut tyabs = Vec::new();
     if ps.token.kind == ExtTokenKind::Lambda {
         parser::expect(ps, ext, ExtTokenKind::Lambda)?;
-        tyabs = parser::once_or_more(ps, |p| {
-            let tyvar = parser::uppercase_id(p, ext)?;
-            p.tyvar.push(tyvar);
-            Ok(())
-        }, ExtTokenKind::Lambda, &mut ext_2)?;
+        tyabs = parser::once_or_more(
+            ps,
+            |p| {
+                let tyvar = parser::uppercase_id(p, ext)?;
+                p.tyvar.push(tyvar);
+                Ok(())
+            },
+            ExtTokenKind::Lambda,
+            &mut ext_2,
+        )?;
     }
     Ok(tyabs.len()) // FIXME do dynamic tyabs extraction and return the count
 }
@@ -681,7 +686,7 @@ impl<'a> DialectChangingTypeVisitor<TypeAliasDialect, TypeAliasDialect> for VarW
     fn visit_ext(&self, ty: &Type<TypeAliasDialect>) -> Type<TypeAliasDialect> {
         match ty {
             Type::Extended(TypeAliasType::VarWrap(v)) => Type::Var(*v),
-            v => v.clone()
+            v => v.clone(),
         }
     }
 }

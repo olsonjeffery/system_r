@@ -8,18 +8,23 @@ Feature: Platform Bindings
     #    - just functions bound to rust! leave dyad-impl out of system_r
     #    - there will likely be higher-level APIs to emit these binding instructions; used's by an `rstrong_input`
 
+    @wip
     Scenario: Nat arith functions for usize literal for platform
         Given a new ctx
-        And an instrinsic for Nat addition named iiiNatAdd
+        And platform bindings for Nat add & sub
         And a srpt block:
         """
-        let v = 22 in
-            iiiNatAdd (v, 10)
+let fib = \z: Nat->Nat. \i: Nat.
+        case i of
+        | 1 => 1
+        | 0 => 1
+        | n => natAdd( z(natSub(n, 1)), z(natSub(n, 2)) ) in
+(fix fib)(7);
         """
         When it is parsed and evaluated
         Then the last parse should be successful
         And the last eval should be successful
-        And the resulting eval Kind should be Nat of 32
+        And the resulting eval Kind should be Nat of 21
 
     Scenario: Nested PB invokes shouldn't choke
         # The regression this captures is to ensure that the

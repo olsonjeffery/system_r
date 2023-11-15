@@ -54,14 +54,14 @@ let f = \x: (Nat, @Foo).
         Then the last eval should be successful
         Then the resulting eval Kind should be Nat of 2
 
+    # Scenario: Bytes / bin data
+
     # Scenario: Float
-    # Scenario: Decimal
-    # Scenario: Signed Nat
     # Scenario: Hex
 
-    # Scenario: Bytes / bin data
-    # Scenario: strings (utf8 byte data)
-    # Scenario: scientific/engineering notation for nat/float/decimal
+    # Scenario: scientific/engineering notation for nat/float
     # Scenario: Octal
+
+    # Scenario: strings (utf8 byte data)
     # Scenario: regex literal
 

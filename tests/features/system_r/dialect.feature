@@ -36,7 +36,6 @@ res ;
         And the last eval should be successful
         Then the final value after eval should equal: "(7,7,7)"
 
-    @wip
     Scenario: TypeAlias with multiple tyabs
         Given a system_r toolchain extended for TypeAlias
         And adding an instrinsic named iiiNatAdd to the "TypeAlias" context

@@ -43,6 +43,20 @@ fn given_an_intrinsic_for_nat_addition_named_i_nat_add_to_ctx(world: &mut common
         .set_platform_bindings(pb.clone());
 }
 
+#[given(regex = r#"platform bindings for Nat add & sub"#)]
+fn given_platform_bindings_for_nat_add_and_sub(world: &mut common::SpecsWorld) {
+    let pb = &mut world.platform_bindings;
+
+    pb.register("natAdd", common::platform_bindings::arith::pb_add());
+    pb.register("natSub", common::platform_bindings::arith::pb_sub());
+
+    world
+        .contexts
+        .get_mut(BOTTOM_CTX_NAME)
+        .unwrap()
+        .set_platform_bindings(pb.clone());
+}
+
 #[given(regex = r#"an instrinsic for Nat addition named iiiNatAdd"#)]
 fn given_an_intrinsic_for_nat_addition_named_i_nat_add(world: &mut common::SpecsWorld) {
     given_an_intrinsic_for_nat_addition_named_i_nat_add_to_ctx(world, BOTTOM_CTX_NAME.to_owned());

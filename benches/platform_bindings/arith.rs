@@ -25,11 +25,11 @@ pub fn pull_u32_from(args: &Vec<Term<BottomDialect>>, idx: usize, span: &Span) -
     Ok(arg_actual)
 }
 
-pub fn pb_sub() -> WrappedContent {
-    WrappedContent(sub, Type::Product(vec![Type::Nat, Type::Nat]), Type::Nat)
-}
 pub fn pb_add() -> WrappedContent {
     WrappedContent(add, Type::Product(vec![Type::Nat, Type::Nat]), Type::Nat)
+}
+pub fn pb_sub() -> WrappedContent {
+    WrappedContent(sub, Type::Product(vec![Type::Nat, Type::Nat]), Type::Nat)
 }
 fn sub(arg: Term<BottomDialect>, span: &Span) -> Result<Term<BottomDialect>, Diagnostic> {
     match arg.kind {

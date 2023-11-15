@@ -118,9 +118,7 @@ impl<'ctx> Eval<'ctx> {
                                 let span = t1.span;
                                 match (wc.0)(*t2, &span) {
                                     Ok(t) => Ok(Some(t)),
-                                    Err(e) => {
-                                        Err(e)
-                                    },
+                                    Err(e) => Err(e),
                                 }
                             }
                             _ => panic!("unable to get platform_binding with idx after parsing; shouldn't happen"),
