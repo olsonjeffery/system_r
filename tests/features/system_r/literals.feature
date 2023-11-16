@@ -1,7 +1,5 @@
 @system_r
 Feature: Literals
-    # Scenario: Boolean
-    # Scenario: Nat
     Scenario: Nat
         Given a new system_r context
         Given a srpt block:
@@ -20,12 +18,11 @@ Feature: Literals
         Then the last eval should be successful
         Then the resulting eval Kind should be Nat of 16
 
-    # Scenario: Tag
-        #- Tags: have two components: their kind (which all tags share) and their identifier name;
-        #      any two tags that share the same name are equivalent for equality purposes;
-        #    - anywhere an atomic typespec can appear, there can just be a tag literal
-        #    - Should variant injection/type constructions with labels have their labels be in @TagFormat ?
     Scenario: Tag basic
+        # Tags: have two components: their kind (which all tags share) and their identifier name;
+        # - any two tags that share the same name are equivalent for equality purposes;
+        # - anywhere an atomic typespec can appear, there can just be a tag literal
+        # - Should variant injection/type constructions with labels have their labels be in @TagFormat ?
         Given a new system_r context
         Given a srpt block:
         """
@@ -37,7 +34,6 @@ Feature: Literals
         Then the last eval should be successful
         Then the resulting eval Kind should be Tag of "@go"
 
-    @tag-impl
     Scenario: Tag in tuple typing
         Given a new system_r context
         Given a srpt block:
@@ -83,7 +79,10 @@ let f = \x: (Nat, @Foo).
         When it is parsed
         When eval is ran
         Then the last parse should have failed
+    
+    Scenario: Bytes in fn signature, case, allow looking for patterns
 
+    # Scenario: Boolean
     # Scenario: Float
     # Scenario: Hex
 
