@@ -54,7 +54,34 @@ let f = \x: (Nat, @Foo).
         Then the last eval should be successful
         Then the resulting eval Kind should be Nat of 2
 
-    # Scenario: Bytes / bin data
+    Scenario: Bytes / bin numeric literals
+        Given a new system_r context
+        Given a srpt block:
+        # We will support a very inefficient 0-255 byte array encoding for demonstration purposes
+        """
+        let bytes = [71, 69, 84, 32, 47, 32, 72, 84, 84, 80, 47, 49, 46, 49, 13, 10, 72,
+                111, 115, 116, 58, 32, 119, 119, 119, 46, 101, 120, 97, 109, 112, 108, 101,
+                46, 99, 111, 109, 13, 10, 67, 111, 110, 110, 101, 99, 116, 105, 111, 110, 58,
+                32, 99, 108, 111, 115, 101, 13, 10, 13, 10] in
+        bytes;
+        """
+        When it is parsed
+        When eval is ran
+        Then the last parse should be successful
+        Then the last eval should be successful
+        Then the result should be Bytes equal to UTF8 string "GET / HTTP/1.1\r\nHost: www.example.com\r\nConnection: close\r\n\r\n"
+    
+    Scenario: Bytes numeric literal admits only 0-255
+        Given a new system_r context
+        Given a srpt block:
+        # We will support a very inefficient 0-255 byte array encoding for demonstration purposes
+        """
+        let bytes = [71, 69, 256] in
+        bytes;
+        """
+        When it is parsed
+        When eval is ran
+        Then the last parse should have failed
 
     # Scenario: Float
     # Scenario: Hex

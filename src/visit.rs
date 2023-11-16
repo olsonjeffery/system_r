@@ -123,7 +123,7 @@ pub trait MutTypeVisitor<
 
     fn visit(&mut self, ty: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::TExtDialectState) {
         match ty {
-            Type::Unit | Type::Bool | Type::Nat | Type::Tag(_) => {}
+            Type::Unit | Type::Bool | Type::Nat | Type::Tag(_) | Type::Bytes => {}
             Type::PlatformBinding(i, r) => self.visit_pb(i, r, ext, ext_state),
             Type::Var(v) => self.visit_var(v, ext, ext_state),
             Type::Variant(v) => self.visit_variant(v, ext, ext_state),
@@ -501,6 +501,7 @@ pub trait DialectChangingTypeVisitor<
     fn visit(&self, ty: &Type<InDialect>) -> Type<OutDialect> {
         match ty {
             Type::Unit => Type::Unit,
+            Type::Bytes => Type::Bytes,
             Type::Bool => Type::Bool,
             Type::Nat => Type::Nat,
             Type::Tag(t) => Type::Tag(t.clone()),

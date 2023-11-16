@@ -122,7 +122,7 @@ impl<
 
     fn visit(&mut self, ty: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::TExtDialectState) {
         match ty {
-            Type::Unit | Type::Bool | Type::Nat | Type::Tag(_) => {}
+            Type::Unit | Type::Bool | Type::Nat | Type::Tag(_) | Type::Bytes => {}
             Type::PlatformBinding(i, r) => {}
             Type::Var(v) => {
                 let makes_cutoff = *v >= self.cutoff;

@@ -19,6 +19,7 @@ pub enum Type<TExtDialect: Eq + SystemRDialect + Default + Clone + fmt::Debug + 
     Unit,
     Nat,
     Bool,
+    Bytes,
     Tag(String),
     Alias(String),
     Var(usize),
@@ -152,6 +153,7 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
     ) -> Result<Type<TExtDialect>, Diagnostic> {
         match term.kind() {
             Kind::Extended(_) => self.type_check_ext(term),
+            Kind::Lit(Literal::Bytes(_)) => Ok(Type::Bytes),
             Kind::Lit(Literal::Unit) => Ok(Type::Unit),
             Kind::Lit(Literal::Bool(_)) => Ok(Type::Bool),
             Kind::Lit(Literal::Nat(_)) => Ok(Type::Nat),
@@ -485,7 +487,7 @@ impl<
 
     fn visit(&mut self, ty: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::TExtDialectState) {
         match ty {
-            Type::Unit | Type::Bool | Type::Nat | Type::Tag(_) => {}
+            Type::Unit | Type::Bool | Type::Nat | Type::Tag(_) | Type::Bytes => {}
             Type::Var(v) => {}
             Type::PlatformBinding(i, r) => {}
             Type::Alias(v) => {
@@ -577,6 +579,7 @@ impl<TExtDialect: SystemRDialect + Default + Clone + fmt::Debug + PartialEq + Pa
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            Type::Bytes => write!(f, "Bytes"),
             Type::Unit => write!(f, "Unit"),
             Type::Bool => write!(f, "Bool"),
             Type::Nat => write!(f, "Nat"),

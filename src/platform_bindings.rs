@@ -103,6 +103,7 @@ fn resolve_pb_type<
             Box::new(resolve_pb_type(*a)?),
             Box::new(resolve_pb_type(*b)?),
         )),
+        Type::Bytes => Ok(Type::Bytes),
         Type::Bool => Ok(Type::Bool),
         Type::Existential(a) => Ok(Type::Existential(Box::new(resolve_pb_type(*a)?))),
         Type::Nat => Ok(Type::Nat),

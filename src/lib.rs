@@ -37,6 +37,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 #![deny(warnings)]
+#![feature(exclusive_range_pattern)]
 #![allow(unused_variables, unused_macros)]
 #[macro_use]
 pub mod macros;

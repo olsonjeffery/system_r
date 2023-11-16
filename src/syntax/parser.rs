@@ -805,6 +805,46 @@ pub fn unpack<
     Ok(Term::new(Kind::Unpack(Box::new(package), Box::new(expr)), sp + ps.span))
 }
 
+pub fn numeric_bytes_arr<
+    TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
+    TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
+>(
+    ps: &mut ParserState<TExtDialect>,
+    ext: &mut TExt,
+) -> Result<Term<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
+    // advance past opening LSquare
+    let start_span = ps.span.clone();
+    let start_token = ps.token.clone();
+    bump(ps, ext);
+
+    let mut ext_2 = ext.clone();
+    let nats = once_or_more(ps, |p| atom(p, &mut ext_2), ExtTokenKind::Comma, ext)?;
+    let mut out_bytes: Vec<u8> = Vec::new();
+    for n in nats {
+        match n.kind {
+            Kind::Lit(Literal::Nat(n)) => {
+                match n {
+                    n @ 0..256 => {
+                        out_bytes.push(n as u8);
+                    },
+                    e => {
+                        return Err(Error { span: start_span, tok: start_token, kind: ErrorKind::ExtendedError(format!("expect Nat literals from 0 to 255, got {:?}", e)) });
+                    }
+                }
+            },
+            v => return Err(Error { span: start_span, tok: start_token, kind: ErrorKind::ExtendedError(format!("expect Nat literals from 0 to 255, got {:?}", v)) })
+        }
+    }
+
+    // lastly we should expect a closing RSquare, no trailing comma!
+    expect(ps, ext, ExtTokenKind::RSquare)?;
+
+    let mut bytes = Term::unit();
+    bytes.span = Span {start: start_span.start, end: ps.span.end};
+    bytes.kind = Kind::Lit(Literal::Bytes(out_bytes));
+    Ok(bytes)
+}
+
 pub fn atom<
     TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
     TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
@@ -814,6 +854,7 @@ pub fn atom<
 ) -> Result<Term<TExtDialect>, Error<TExtDialect::TExtTokenKind>> {
     match kind(ps) {
         ExtTokenKind::Extended(tk) => ext_atom(ps, ext),
+        ExtTokenKind::LSquare => numeric_bytes_arr(ps, ext),
         ExtTokenKind::LParen => paren(ps, ext),
         ExtTokenKind::Fix => fix(ps, ext),
         ExtTokenKind::Fold => fold(ps, ext),

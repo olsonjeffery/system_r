@@ -102,6 +102,7 @@ pub enum Literal {
     Bool(bool),
     Nat(u32),
     Tag(String),
+    Bytes(Vec<u8>),
 }
 
 impl<TExtDialect: Eq + SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone> Term<TExtDialect> {
@@ -136,6 +137,7 @@ impl fmt::Display for Literal {
             Literal::Bool(b) => write!(f, "{}", b),
             Literal::Unit => write!(f, "unit"),
             Literal::Tag(s) => write!(f, "{}", s),
+            Literal::Bytes(v) => write!(f, "{:#?}", v),
         }
     }
 }

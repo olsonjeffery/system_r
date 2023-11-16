@@ -8,8 +8,7 @@ Feature: Platform Bindings
     #    - just functions bound to rust! leave dyad-impl out of system_r
     #    - there will likely be higher-level APIs to emit these binding instructions; used's by an `rstrong_input`
 
-    @wip
-    Scenario: Nat arith functions for usize literal for platform
+    Scenario: Recursive fib() with natAdd & natSub
         Given a new ctx
         And platform bindings for Nat add & sub
         And a srpt block:
