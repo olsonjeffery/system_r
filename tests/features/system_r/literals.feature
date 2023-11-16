@@ -72,9 +72,10 @@ let f = \x: (Nat, @Foo).
         Then the result should be Bytes equal to UTF8 string "GET / HTTP/1.1\r\nHost: www.example.com\r\nConnection: close\r\n\r\n"
     
     Scenario: Bytes numeric literal admits only 0-255
+        # note: Nat is intrinsically an unsigned integer,
+        # so we get the lower bound for free
         Given a new system_r context
         Given a srpt block:
-        # We will support a very inefficient 0-255 byte array encoding for demonstration purposes
         """
         let bytes = [71, 69, 256] in
         bytes;
