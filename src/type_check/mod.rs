@@ -375,7 +375,7 @@ impl<TExtDialect: SystemRDialect>
                 Type::Rec(inner) => {
                     let ty_ = self.type_check(tm, ext)?;
                     if ty_ == *rec.clone() {
-                        let s = subst(*rec.clone(), *inner.clone(), ext, &mut self.ext_state);
+                        let s = subst(*rec.clone(), *inner.clone(), ext, &self.ext_state);
                         Ok(s)
                     } else {
                         let d = Diagnostic::error(term.span, "Type<TExtDialect> mismatch in unfold")
@@ -393,7 +393,7 @@ impl<TExtDialect: SystemRDialect>
             Kind::Fold(rec, tm) => match rec.as_ref() {
                 Type::Rec(inner) => {
                     let ty_ = self.type_check(tm, ext)?;
-                    let s = subst(*rec.clone(), *inner.clone(), ext, &mut self.ext_state);
+                    let s = subst(*rec.clone(), *inner.clone(), ext, &self.ext_state);
                     if ty_ == s {
                         Ok(*rec.clone())
                     } else {
@@ -410,7 +410,7 @@ impl<TExtDialect: SystemRDialect>
             },
             Kind::Pack(witness, evidence, signature) => {
                 if let Type::Existential(exists) = signature.as_ref() {
-                    let sig_prime = subst(*witness.clone(), *exists.clone(), ext, &mut self.ext_state);
+                    let sig_prime = subst(*witness.clone(), *exists.clone(), ext, &self.ext_state);
                     let evidence_ty = self.type_check(evidence, ext)?;
                     if evidence_ty == sig_prime {
                         Ok(*signature.clone())

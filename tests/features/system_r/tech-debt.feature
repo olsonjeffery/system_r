@@ -4,6 +4,7 @@ Feature: Technical Debt
     # Incomplete list:
     # - DONE Supertraits to clean up signatures
     # - pervasive Result<> everywhere; use anyhow?
+    # - clippy patrol
     # - adopt git2rs pre-commit hook
     # - rustdoc-documentation of entire API surface
     # - Rationalize state & functionality across system_r

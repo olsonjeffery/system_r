@@ -447,8 +447,8 @@ pub trait DialectChangingTypeVisitor<
     fn visit_var(&self, var: &usize) -> Type<OutDialect> {
         Type::Var(*var)
     }
-    fn visit_alias(&self, alias: &String) -> Type<OutDialect> {
-        Type::Alias(alias.clone())
+    fn visit_alias(&self, alias: &str) -> Type<OutDialect> {
+        Type::Alias(alias.to_owned())
     }
 
     fn visit_arrow(&self, ty1: &Type<InDialect>, ty2: &Type<InDialect>) -> Type<OutDialect> {
@@ -483,7 +483,7 @@ pub trait DialectChangingTypeVisitor<
     fn visit_product(&self, product: &Vec<Type<InDialect>>) -> Type<OutDialect> {
         let mut out_product = Vec::new();
         for v in product {
-            let out_ty = self.visit(&v);
+            let out_ty = self.visit(v);
             out_product.push(out_ty)
         }
         Type::Product(out_product)
@@ -534,11 +534,10 @@ pub trait DialectChangingTermVisitor<
     fn visit_abs(&self, sp: &Span, ty: &Type<InDialect>, term: &Term<InDialect>) -> Term<OutDialect> {
         let out_term = self.visit(term);
         let out_ty = {
-            let tv = self.get_type_visitor().visit(ty);
-            tv
+            self.get_type_visitor().visit(ty)
         };
         Term {
-            span: sp.clone(),
+            span: *sp,
             kind: Kind::Abs(Box::new(out_ty), Box::new(out_term)),
         }
     }
@@ -547,7 +546,7 @@ pub trait DialectChangingTermVisitor<
         let out_t1 = self.visit(t1);
         let out_t2 = self.visit(t2);
         Term {
-            span: sp.clone(),
+            span: *sp,
             kind: Kind::App(Box::new(out_t1), Box::new(out_t2)),
         }
     }
@@ -563,7 +562,7 @@ pub trait DialectChangingTermVisitor<
         let out_t1 = self.visit(t1);
         let out_t2 = self.visit(t2);
         Term {
-            span: sp.clone(),
+            span: *sp,
             kind: Kind::Let(Box::new(out_pat), Box::new(out_t1), Box::new(out_t2)),
         }
     }
@@ -572,7 +571,7 @@ pub trait DialectChangingTermVisitor<
         let out_term = self.visit(term);
 
         Term {
-            span: sp.clone(),
+            span: *sp,
             kind: Kind::TyAbs(Box::new(out_term)),
         }
     }
@@ -581,7 +580,7 @@ pub trait DialectChangingTermVisitor<
         let out_term = self.visit(term);
         let out_ty = self.get_type_visitor().visit(ty);
         Term {
-            span: sp.clone(),
+            span: *sp,
             kind: Kind::TyApp(Box::new(out_term), Box::new(out_ty)),
         }
     }
@@ -596,7 +595,7 @@ pub trait DialectChangingTermVisitor<
         let out_term = self.visit(term);
         let out_ty = self.get_type_visitor().visit(ty);
         Term {
-            span: sp.clone(),
+            span: *sp,
             kind: Kind::Injection(label.to_owned(), Box::new(out_term), Box::new(out_ty)),
         }
     }
@@ -609,14 +608,14 @@ pub trait DialectChangingTermVisitor<
             let out_pat = self.get_pat_visitor().visit(&arm.pat);
             let out_arm = Arm {
                 pat: out_pat,
-                span: arm.span.clone(),
+                span: arm.span,
                 term: Box::new(out_arm_term),
             };
             out_arms.push(out_arm);
         }
 
         Term {
-            span: sp.clone(),
+            span: *sp,
             kind: Kind::Case(Box::new(out_term), out_arms),
         }
     }
@@ -630,7 +629,7 @@ pub trait DialectChangingTermVisitor<
         }
 
         Term {
-            span: sp.clone(),
+            span: *sp,
             kind: Kind::Product(out_product),
         }
     }
@@ -638,7 +637,7 @@ pub trait DialectChangingTermVisitor<
     fn visit_projection(&self, sp: &Span, term: &Term<InDialect>, index: &usize) -> Term<OutDialect> {
         let out_term = self.visit(term);
         Term {
-            span: sp.clone(),
+            span: *sp,
             kind: Kind::Projection(Box::new(out_term), *index),
         }
     }
@@ -648,7 +647,7 @@ pub trait DialectChangingTermVisitor<
         let out_term = self.visit(term);
 
         Term {
-            span: sp.clone(),
+            span: *sp,
             kind: Kind::Fold(Box::new(out_ty), Box::new(out_term)),
         }
     }
@@ -657,7 +656,7 @@ pub trait DialectChangingTermVisitor<
         let out_term = self.visit(term);
 
         Term {
-            span: sp.clone(),
+            span: *sp,
             kind: Kind::Unfold(Box::new(out_ty), Box::new(out_term)),
         }
     }
@@ -675,7 +674,7 @@ pub trait DialectChangingTermVisitor<
         let evidence = self.visit(evidence);
         let k = Kind::Pack(Box::new(witness), Box::new(evidence), Box::new(signature));
         Term {
-            span: sp.clone(),
+            span: *sp,
             kind: k,
         }
     }
@@ -685,7 +684,7 @@ pub trait DialectChangingTermVisitor<
         let t = self.visit(term);
         let k = Kind::Unpack(Box::new(pkg), Box::new(t));
         Term {
-            span: sp.clone(),
+            span: *sp,
             kind: k,
         }
     }
@@ -697,26 +696,26 @@ pub trait DialectChangingTermVisitor<
         match &term.kind {
             Kind::Extended(_) => self.visit_ext(term),
             Kind::Lit(l) => Term {
-                span: sp.clone(),
+                span: *sp,
                 kind: Kind::Lit(l.clone()),
             },
             Kind::Var(v) => Term {
-                span: sp.clone(),
+                span: *sp,
                 kind: Kind::Var(*v),
             },
             Kind::PlatformBinding(v) => Term {
-                span: sp.clone(),
+                span: *sp,
                 kind: Kind::PlatformBinding(*v),
             },
             Kind::Abs(ty, term) => self.visit_abs(sp, ty, term),
             Kind::App(t1, t2) => self.visit_app(sp, t1, t2),
             // Do we need a separate branch?
             Kind::Fix(term) => Term {
-                span: sp.clone(),
+                span: *sp,
                 kind: Kind::Fix(Box::new(self.visit(term))),
             },
             Kind::Primitive(p) => Term {
-                span: sp.clone(),
+                span: *sp,
                 kind: Kind::Primitive(*p),
             },
             Kind::Injection(label, tm, ty) => self.visit_injection(sp, label, tm, ty),

@@ -9,7 +9,7 @@ let f = (\x: (Bool, Nat).
   | (true, x) => x
   | (false, _) => 0
   | _ => 0 ) in
-f (true, 16);
+f (false, 16);
         """
         When it evals successfully
-        Then the resulting eval Kind should be Nat of 16
+        Then the resulting eval Kind should be Nat of 0

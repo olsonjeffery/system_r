@@ -80,15 +80,13 @@ let f = \x: (Nat, @Foo).
         When eval is ran
         Then the last parse should have failed
     
-    Scenario: Bytes in fn signature, case, allow looking for patterns
+    # Scenario: Bytes in fn signature, case with exact match & catch-all arms
+    # Scenario: zero-length Bytes with []
 
     # Scenario: Boolean
+
     # Scenario: Float
+
     # Scenario: Hex
-
-    # Scenario: scientific/engineering notation for nat/float
     # Scenario: Octal
-
-    # Scenario: strings (utf8 byte data)
-    # Scenario: regex literal
-
+    # Scenario: scientific/engineering notation for nat/float
