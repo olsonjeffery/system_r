@@ -3,7 +3,7 @@ use system_r::system_r_util::span::Span;
 use system_r::terms::{Kind, Term};
 use system_r::{diagnostics::Diagnostic, platform_bindings::WrappedContent, terms::Literal, type_check::Type};
 
-pub fn pull_u32_from(args: &Vec<Term<BottomDialect>>, idx: usize, span: &Span) -> Result<u32, Diagnostic> {
+pub fn pull_u64_from(args: &Vec<Term<BottomDialect>>, idx: usize, span: &Span) -> Result<u64, Diagnostic> {
     let arg_t_raw = match args.get(idx) {
         Some(t) => t,
         None => {
@@ -37,8 +37,8 @@ fn sub(arg: Term<BottomDialect>, span: &Span) -> Result<Term<BottomDialect>, Dia
             if args.len() != 2 {
                 return Err(Diagnostic::error(*span, "nat::arith::sub: expected product of len 2"));
             }
-            let arg0_actual = pull_u32_from(&args, 0, span)?;
-            let arg1_actual = pull_u32_from(&args, 1, span)?;
+            let arg0_actual = pull_u64_from(&args, 0, span)?;
+            let arg1_actual = pull_u64_from(&args, 1, span)?;
             let sum = Kind::Lit(Literal::Nat(arg0_actual - arg1_actual));
             let mut ret_term = Term::unit();
             ret_term.kind = sum.clone();
@@ -59,8 +59,8 @@ fn add(arg: Term<BottomDialect>, span: &Span) -> Result<Term<BottomDialect>, Dia
             if args.len() != 2 {
                 return Err(Diagnostic::error(*span, "nat::arith::add: expected product of len 2"));
             }
-            let arg0_actual = pull_u32_from(&args, 0, span)?;
-            let arg1_actual = pull_u32_from(&args, 1, span)?;
+            let arg0_actual = pull_u64_from(&args, 0, span)?;
+            let arg1_actual = pull_u64_from(&args, 1, span)?;
             let sum = Kind::Lit(Literal::Nat(arg0_actual + arg1_actual));
             let mut ret_term = Term::unit();
             ret_term.kind = sum.clone();

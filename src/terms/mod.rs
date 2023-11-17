@@ -100,7 +100,7 @@ pub enum Literal {
     #[default]
     Unit,
     Bool(bool),
-    Nat(u32),
+    Nat(u64),
     Tag(String),
     Bytes(Vec<u8>),
 }

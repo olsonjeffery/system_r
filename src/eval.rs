@@ -81,7 +81,7 @@ impl<'ctx> Eval<'ctx> {
         p: Primitive,
         term: Term<BottomDialect>,
     ) -> Result<Option<Term<BottomDialect>>, Diagnostic> {
-        fn map<F: Fn(u32) -> u32>(f: F, mut term: Term<BottomDialect>) -> Option<Term<BottomDialect>> {
+        fn map<F: Fn(u64) -> u64>(f: F, mut term: Term<BottomDialect>) -> Option<Term<BottomDialect>> {
             match &term.kind {
                 Kind::Lit(Literal::Nat(n)) => {
                     term.kind = Kind::Lit(Literal::Nat(f(*n)));

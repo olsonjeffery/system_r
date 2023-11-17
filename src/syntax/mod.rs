@@ -9,7 +9,7 @@ use crate::{system_r_util::span::Span, dialect::ExtendedTokenKind};
 pub enum ExtTokenKind<TExtTokenKind: PartialEq> {
     Uppercase(String),
     Lowercase(String),
-    Nat(u32),
+    Nat(u64),
     TyNat,
     TyBool,
     TyArrow,

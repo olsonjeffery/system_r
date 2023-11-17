@@ -219,7 +219,7 @@ fn then_the_evaluated_term_should_be_boolean_true(world: &mut common::SpecsWorld
 
 #[then(regex = r#"the resulting eval Kind should be Nat of ([0-9]+)"#)]
 #[then(regex = r#"the resulting sr eval Kind should be Nat of ([0-9]+)"#)]
-fn then_the_evaluated_value_should_be_nat_of(world: &mut common::SpecsWorld, nat_size: u32) {
+fn then_the_evaluated_value_should_be_nat_of(world: &mut common::SpecsWorld, nat_size: u64) {
     assert!(
         world.last_eval_kind == Kind::Lit(Literal::Nat(nat_size)),
         "Expected Nat of {:?}, got {:?}",

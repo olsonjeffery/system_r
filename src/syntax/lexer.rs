@@ -112,7 +112,7 @@ impl<'s, TExtDialect: SystemRDialect>
         // have a string containing at least 1 single digit, as such
         // it is safe to call unwrap() on str::parse<u32>
         let (data, span) = self.consume_while(char::is_numeric);
-        let n = data.parse::<u32>().unwrap();
+        let n = data.parse::<u64>().unwrap();
         Token::new(ExtTokenKind::Nat(n), span)
     }
 
