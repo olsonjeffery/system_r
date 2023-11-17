@@ -42,7 +42,7 @@ use crate::dialect::{SystemRDialect, SystemRExtension};
 use crate::patterns::Pattern;
 use crate::system_r_util::span::Span;
 use crate::terms::{Arm, Kind, Literal, Primitive, Term};
-use crate::types::{Type, Variant};
+use crate::type_check::{Type, Variant};
 
 pub trait MutTypeVisitor<
     TExtDialect: SystemRDialect,

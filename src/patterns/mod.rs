@@ -1,7 +1,7 @@
 use crate::dialect::{SystemRDialect, SystemRExtension};
 use crate::system_r_util::span::Span;
 use crate::terms::{Kind, Literal, Term};
-use crate::types::{variant_field, Type};
+use crate::type_check::{variant_field, Type};
 use crate::visit::PatternVisitor;
 
 /// Patterns for case and let expressions

@@ -4,7 +4,7 @@ use crate::{
     patterns::Pattern,
     syntax::error::Error,
     terms::Term,
-    types::{Context, Type},
+    type_check::{TypeChecker, Type},
 };
 
 #[derive(Eq, Hash, Clone, Default, Debug, PartialEq, PartialOrd)]
@@ -76,16 +76,16 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
 
     fn pat_ext_pattern_type_eq(
         &self,
-        ctx: &Context<BottomDialect>,
+        ctx: &TypeChecker<BottomDialect>,
         pat: &BottomPattern,
-        ty: &crate::types::Type<BottomDialect>,
+        ty: &crate::type_check::Type<BottomDialect>,
     ) -> bool {
         false
     }
 
     fn pat_add_ext_pattern<'a>(
         &'a self,
-        parent: &crate::types::patterns::Matrix<'a, BottomDialect>,
+        parent: &crate::type_check::patterns::Matrix<'a, BottomDialect>,
         ext_pattern: &Pattern<BottomDialect>,
     ) -> bool {
         false
@@ -124,13 +124,13 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
     fn parser_ty(
         &mut self,
         ps: &mut crate::syntax::parser::ParserState<BottomDialect>,
-    ) -> Result<crate::types::Type<BottomDialect>, Error<BottomTokenKind>> {
+    ) -> Result<crate::type_check::Type<BottomDialect>, Error<BottomTokenKind>> {
         panic!("calling parser_ty on BottomExtension; shouldn't happen");
     }
 
     fn pat_ctor_eq_within(
         &self,
-        ctx: &mut Context<BottomDialect>,
+        ctx: &mut TypeChecker<BottomDialect>,
         label: &str,
         inner: &Pattern<BottomDialect>,
         target: &<BottomDialect as SystemRDialect>::Type,
@@ -140,11 +140,11 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
 
     fn type_check_injection_to_ext(
         &mut self,
-        ctx: &mut Context<BottomDialect>,
+        ctx: &mut TypeChecker<BottomDialect>,
         label: &str,
         target: &<BottomDialect as SystemRDialect>::Type,
         tm: &Term<BottomDialect>,
-    ) -> Result<crate::types::Type<BottomDialect>, Diagnostic> {
+    ) -> Result<crate::type_check::Type<BottomDialect>, Diagnostic> {
         panic!("type_check_injection_to_ext for BottomDialect; should never be called")
     }
 
@@ -160,7 +160,7 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
 
     fn exhaustive_for_ext(
         &mut self,
-        matrix: &crate::types::patterns::Matrix<BottomDialect>,
+        matrix: &crate::type_check::patterns::Matrix<BottomDialect>,
         ext_state: &mut <BottomDialect as SystemRDialect>::DialectState,
     ) -> bool {
         false
@@ -168,7 +168,7 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
 
     fn ty_subst_visit_ext(
         &mut self,
-        subst_visitor: &mut crate::types::visit::Subst<BottomDialect>,
+        subst_visitor: &mut crate::type_check::visit::Subst<BottomDialect>,
         ty: &mut Type<BottomDialect>,
         ext_state: &<BottomDialect as SystemRDialect>::DialectState,
     ) {
@@ -176,7 +176,7 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
 
     fn ty_aliaser_visit_ext(
         &mut self,
-        aliaser: &mut crate::types::Aliaser<BottomDialect>,
+        aliaser: &mut crate::type_check::Aliaser<BottomDialect>,
         ext_ty: &mut Type<BottomDialect>,
         ext_state: &<BottomDialect as SystemRDialect>::DialectState,
     ) {
@@ -184,7 +184,7 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
 
     fn ty_shift_visit_ext(
         &mut self,
-        shift: &mut crate::types::visit::Shift,
+        shift: &mut crate::type_check::visit::Shift,
         ext_ty: &mut Type<BottomDialect>,
         ext_state: &<BottomDialect as SystemRDialect>::DialectState,
     ) {
@@ -192,9 +192,9 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
 
     fn type_check_ext_equals_ty(
         &mut self,
-        ctx: &mut Context<BottomDialect>,
+        ctx: &mut TypeChecker<BottomDialect>,
         ext_ty: &mut <BottomDialect as SystemRDialect>::Type,
-        other_ty: &mut crate::types::Type<BottomDialect>,
+        other_ty: &mut crate::type_check::Type<BottomDialect>,
     ) -> bool {
         false
     }

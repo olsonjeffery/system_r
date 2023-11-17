@@ -6,7 +6,7 @@ mod platform_bindings;
 
 #[cfg(test)]
 mod bench {
-    use system_r::{testing, platform_bindings::PlatformBindings, types::Context, terms::Kind};
+    use system_r::{testing, platform_bindings::PlatformBindings, type_check::TypeChecker, terms::Kind};
     use test::{black_box, Bencher};
 
     #[bench]
@@ -43,7 +43,7 @@ let fib = \z: Nat->Nat. \i: Nat.
                 _ => return
             };
 
-            let mut ctx = Context::default();
+            let mut ctx = TypeChecker::default();
             ctx.platform_bindings = pb.clone();
 
             let result = match testing::type_check_and_eval_single_block(&mut ctx, &mut t, code, false) {

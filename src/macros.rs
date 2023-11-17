@@ -173,7 +173,7 @@ macro_rules! con {
 /// Variant type
 macro_rules! variant {
     ($label:expr, $ty:expr) => {
-        crate::types::Variant {
+        crate::type_check::Variant {
             label: $label.to_string(),
             ty: $ty,
         }

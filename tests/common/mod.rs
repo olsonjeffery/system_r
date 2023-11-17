@@ -6,7 +6,7 @@ use system_r::{
     bottom::BottomDialect,
     platform_bindings::PlatformBindings,
     terms::{Kind, Term},
-    types::Type,
+    type_check::Type,
 };
 
 use self::extensions::{OmniContext, OmniKind, OmniState, OmniTerm, OmniType};

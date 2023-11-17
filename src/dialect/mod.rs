@@ -6,10 +6,10 @@ use crate::{
     patterns::{PatTyStack, Pattern},
     syntax::{error::Error, parser::ParserState},
     terms::Term,
-    types::{
+    type_check::{
         patterns::Matrix,
         visit::{Shift, Subst},
-        Aliaser, Context, Type,
+        Aliaser, TypeChecker, Type,
     },
 };
 
@@ -52,26 +52,26 @@ pub trait SystemRExtension<TExtDialect: SystemRDialect>: Copy + Clone + Default 
     fn parser_ty_bump_if(&mut self, ps: &mut ParserState<TExtDialect>) -> bool;
     fn pat_add_ext_pattern<'a>(
         &'a self,
-        parent: &crate::types::patterns::Matrix<'a, TExtDialect>,
+        parent: &crate::type_check::patterns::Matrix<'a, TExtDialect>,
         ext_pattern: &Pattern<TExtDialect>,
     ) -> bool;
     fn pat_ext_matches(&self, pat: &TExtDialect::Pattern, term: &Term<TExtDialect>) -> bool;
     fn pat_ext_pattern_type_eq(
         &self,
-        ctx: &Context<TExtDialect>,
+        ctx: &TypeChecker<TExtDialect>,
         pat: &TExtDialect::Pattern,
         ty: &Type<TExtDialect>,
     ) -> bool;
     fn pat_ctor_eq_within(
         &self,
-        ctx: &mut Context<TExtDialect>,
+        ctx: &mut TypeChecker<TExtDialect>,
         label: &str,
         inner: &Pattern<TExtDialect>,
         target: &TExtDialect::Type,
     ) -> bool;
     fn type_check_injection_to_ext(
         &mut self,
-        ctx: &mut Context<TExtDialect>,
+        ctx: &mut TypeChecker<TExtDialect>,
         label: &str,
         target: &TExtDialect::Type,
         tm: &Term<TExtDialect>,
@@ -109,7 +109,7 @@ pub trait SystemRExtension<TExtDialect: SystemRDialect>: Copy + Clone + Default 
     );
     fn type_check_ext_equals_ty(
         &mut self,
-        ctx: &mut Context<TExtDialect>,
+        ctx: &mut TypeChecker<TExtDialect>,
         ext_ty: &mut TExtDialect::Type,
         other_ty: &mut Type<TExtDialect>,
     ) -> bool;

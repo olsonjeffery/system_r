@@ -62,7 +62,7 @@ pub enum TypeErrorKind<TExtDialect: SystemRDialect> {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Context<TExtDialect: SystemRDialect> {
+pub struct TypeChecker<TExtDialect: SystemRDialect> {
     pub stack: VecDeque<Type<TExtDialect>>,
     pub map: HashMap<String, Type<TExtDialect>>,
     pub platform_bindings: PlatformBindings,
@@ -70,7 +70,7 @@ pub struct Context<TExtDialect: SystemRDialect> {
 }
 
 impl<TExtDialect: SystemRDialect> Default
-    for Context<TExtDialect>
+    for TypeChecker<TExtDialect>
 {
     fn default() -> Self {
         Self {
@@ -83,7 +83,7 @@ impl<TExtDialect: SystemRDialect> Default
 }
 
 impl<TExtDialect: SystemRDialect>
-    Context<TExtDialect>
+    TypeChecker<TExtDialect>
 {
     fn push(&mut self, ty: Type<TExtDialect>) {
         self.stack.push_front(ty);
@@ -141,7 +141,7 @@ pub fn variant_field<'vs, TExtDialect: SystemRDialect>(
 }
 
 impl<TExtDialect: SystemRDialect>
-    Context<TExtDialect>
+    TypeChecker<TExtDialect>
 {
     pub fn type_check<TExt: SystemRExtension<TExtDialect>>(
         &mut self,
@@ -507,7 +507,7 @@ impl<
 impl<
         TExtDialect: SystemRDialect,
         TExt: SystemRExtension<TExtDialect>,
-    > MutTermVisitor<TExtDialect, TExt> for Context<TExtDialect>
+    > MutTermVisitor<TExtDialect, TExt> for TypeChecker<TExtDialect>
 {
     fn visit_abs(
         &mut self,

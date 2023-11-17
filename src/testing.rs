@@ -25,7 +25,7 @@ use crate::{
     platform_bindings::PlatformBindings,
     syntax::{error::Error, parser, parser::ErrorKind},
     terms::{visit::InjRewriter, Term},
-    types::{self, Type},
+    type_check::{self, Type},
     visit::MutTermVisitor,
 };
 
@@ -59,7 +59,7 @@ pub fn type_check_term<
     TExtDialect: SystemRDialect,
     TExt: SystemRExtension<TExtDialect>,
 >(
-    ctx: &mut types::Context<TExtDialect>,
+    ctx: &mut type_check::TypeChecker<TExtDialect>,
     term: &mut Term<TExtDialect>,
     ext: &mut TExt,
 ) -> Result<Type<TExtDialect>, Diagnostic> {
@@ -73,7 +73,7 @@ pub fn dealias_and_type_check_term<
     TExtDialect: SystemRDialect,
     TExt: SystemRExtension<TExtDialect>,
 >(
-    ctx: &mut types::Context<TExtDialect>,
+    ctx: &mut type_check::TypeChecker<TExtDialect>,
     term: &mut Term<TExtDialect>,
     ext: &mut TExt,
 ) -> Result<Type<TExtDialect>, Diagnostic> {
@@ -132,7 +132,7 @@ pub fn parse_single_block(
 }
 
 pub fn do_bottom_eval(
-    ctx: &mut types::Context<BottomDialect>,
+    ctx: &mut type_check::TypeChecker<BottomDialect>,
     term: &mut Term<BottomDialect>,
 ) -> Result<Term<BottomDialect>, Diagnostic> {
     let ev = eval::Eval::with_context(ctx);
@@ -148,7 +148,7 @@ pub fn do_bottom_eval(
 }
 
 pub fn type_check_and_eval_single_block(
-    ctx: &mut types::Context<BottomDialect>,
+    ctx: &mut type_check::TypeChecker<BottomDialect>,
     term: &mut Term<BottomDialect>,
     src: &str,
     fail_on_type_mismatch: bool,
@@ -178,7 +178,7 @@ pub fn do_type_check<
     TExtDialect: SystemRDialect,
     TExt: SystemRExtension<TExtDialect>,
 >(
-    ctx: &mut types::Context<TExtDialect>,
+    ctx: &mut type_check::TypeChecker<TExtDialect>,
     term: &mut Term<TExtDialect>,
     ext: &mut TExt,
 ) -> Result<Type<TExtDialect>, Diagnostic> {

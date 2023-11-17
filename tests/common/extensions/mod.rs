@@ -3,14 +3,14 @@ use system_r::{
     dialect::type_alias::{TypeAliasContext, TypeAliasDialect, TypeAliasDialectState},
     platform_bindings::PlatformBindings,
     terms::{Kind, Term},
-    types::{Context, Type},
+    type_check::{TypeChecker, Type},
 };
 
 #[derive(Clone, Default, Debug)]
 pub enum OmniContext {
     #[default]
     Empty,
-    Bottom(Context<BottomDialect>),
+    Bottom(TypeChecker<BottomDialect>),
     TypeAlias(TypeAliasContext),
 }
 

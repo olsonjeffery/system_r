@@ -11,7 +11,7 @@ use system_r::{
     syntax::parser::{self, ParserState},
     terms::Term,
     testing::{self, code_format},
-    types::{Context, Type},
+    type_check::{TypeChecker, Type},
 };
 
 use crate::common::{
@@ -41,7 +41,7 @@ pub fn type_check_for_extension<
     TExtDialect: SystemRDialect,
     TLE: SystemRExtension<TExtDialect>,
 >(
-    ctx: &mut Context<TExtDialect>,
+    ctx: &mut TypeChecker<TExtDialect>,
     term: &mut Term<TExtDialect>,
     ext: &mut TLE,
 ) -> Result<Type<TExtDialect>, Diagnostic> {
@@ -135,7 +135,7 @@ pub fn when_it_is_converted_to_bottom_dialect(world: &mut SpecsWorld) {
         Err(()) => panic!("expected to get a TypeAlias context, didn't!"),
     };
 
-    let Context {
+    let TypeChecker {
         ext_state,
         platform_bindings,
         ..

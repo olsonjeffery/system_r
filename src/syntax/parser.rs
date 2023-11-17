@@ -12,7 +12,7 @@ use core::fmt;
 use crate::patterns::{PatVarStack, Pattern};
 use crate::platform_bindings::PlatformBindings;
 use crate::terms::*;
-use crate::types::*;
+use crate::type_check::*;
 
 #[derive(Default, Debug, Clone)]
 pub struct ParserState<

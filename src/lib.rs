@@ -51,7 +51,7 @@ pub mod syntax;
 pub mod system_r_util;
 pub mod terms;
 pub mod testing;
-pub mod types;
+pub mod type_check;
 pub mod visit;
 
 //#[macro_use]

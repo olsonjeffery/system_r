@@ -12,7 +12,7 @@ use crate::{
         ExtTokenKind,
     },
     terms::{Kind, Term},
-    types::{patterns::overlap, visit::Subst, Context, Type},
+    type_check::{patterns::overlap, visit::Subst, TypeChecker, Type},
     visit::{
         DialectChangingPatternVisitor, DialectChangingTermVisitor, DialectChangingTypeVisitor, MutTypeVisitor,
         PatternVisitor,
@@ -24,7 +24,7 @@ use super::{SystemRDialect, SystemRExtension, SystemRResolver, ExtendedTokenKind
 #[derive(Copy, Clone, Debug, Default)]
 pub struct TypeAliasExtension;
 
-pub type TypeAliasContext = Context<TypeAliasDialect>;
+pub type TypeAliasContext = TypeChecker<TypeAliasDialect>;
 
 pub fn new<'s>(platform_bindings: &'s PlatformBindings, input: &'s str) -> ParserState<'s, TypeAliasDialect> {
     parser::ext_new::<TypeAliasDialect, TypeAliasExtension>(platform_bindings, input, &mut TypeAliasExtension)
@@ -123,16 +123,16 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
 
     fn pat_ext_pattern_type_eq(
         &self,
-        ctx: &Context<TypeAliasDialect>,
+        ctx: &TypeChecker<TypeAliasDialect>,
         pat: &TypeAliasPattern,
-        ty: &crate::types::Type<TypeAliasDialect>,
+        ty: &crate::type_check::Type<TypeAliasDialect>,
     ) -> bool {
         false
     }
 
     fn pat_add_ext_pattern<'a>(
         &'a self,
-        parent: &crate::types::patterns::Matrix<'a, TypeAliasDialect>,
+        parent: &crate::type_check::patterns::Matrix<'a, TypeAliasDialect>,
         ext_pattern: &crate::patterns::Pattern<TypeAliasDialect>,
     ) -> bool {
         false
@@ -258,7 +258,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
 
     fn pat_ctor_eq_within(
         &self,
-        ctx: &mut Context<TypeAliasDialect>,
+        ctx: &mut TypeChecker<TypeAliasDialect>,
         ctor_label: &str,
         inner: &Pattern<TypeAliasDialect>,
         aliased_target: &<TypeAliasDialect as SystemRDialect>::Type,
@@ -289,7 +289,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
 
     fn type_check_injection_to_ext(
         &mut self,
-        ctx: &mut Context<TypeAliasDialect>,
+        ctx: &mut TypeChecker<TypeAliasDialect>,
         inj_label: &str,
         target: &<TypeAliasDialect as SystemRDialect>::Type,
         tm: &Term<TypeAliasDialect>,
@@ -370,7 +370,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
 
     fn exhaustive_for_ext(
         &mut self,
-        matrix: &crate::types::patterns::Matrix<TypeAliasDialect>,
+        matrix: &crate::type_check::patterns::Matrix<TypeAliasDialect>,
         ext_state: &mut <TypeAliasDialect as SystemRDialect>::DialectState,
     ) -> bool {
         let Type::Extended(TypeAliasType::TypeAliasApp(type_decl_key, applied_types)) = matrix.expr_ty.clone() else {
@@ -419,7 +419,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
 
     fn ty_aliaser_visit_ext(
         &mut self,
-        aliaser: &mut crate::types::Aliaser<TypeAliasDialect>,
+        aliaser: &mut crate::type_check::Aliaser<TypeAliasDialect>,
         ext_ty: &mut Type<TypeAliasDialect>,
         ext_state: &<TypeAliasDialect as SystemRDialect>::DialectState,
     ) {
@@ -435,7 +435,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
 
     fn ty_shift_visit_ext(
         &mut self,
-        shift: &mut crate::types::visit::Shift,
+        shift: &mut crate::type_check::visit::Shift,
         ext_ty: &mut Type<TypeAliasDialect>,
         ext_state: &<TypeAliasDialect as SystemRDialect>::DialectState,
     ) {
@@ -454,7 +454,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
 
     fn type_check_ext_equals_ty(
         &mut self,
-        ctx: &mut Context<TypeAliasDialect>,
+        ctx: &mut TypeChecker<TypeAliasDialect>,
         ext_ty: &mut <TypeAliasDialect as SystemRDialect>::Type,
         other_ty: &mut Type<TypeAliasDialect>,
     ) -> bool {

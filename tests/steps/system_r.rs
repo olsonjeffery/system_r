@@ -5,8 +5,8 @@ use cucumber::{gherkin::Step, given, then, when};
 use system_r::{
     terms::{Kind, Literal, Term},
     testing::{self, code_format, do_bottom_eval},
-    types::Context,
-    types::Type,
+    type_check::TypeChecker,
+    type_check::Type,
 };
 
 use crate::common::{self, extensions::OmniContext};
@@ -17,7 +17,7 @@ pub static BOTTOM_CTX_NAME: &'static str = "Bottom";
 #[given(regex = r#"^a new sr ctx"#)]
 #[given(regex = r#"^a new system_r context"#)]
 pub fn given_a_new_context(world: &mut common::SpecsWorld) {
-    let new_ctx = Context::default();
+    let new_ctx = TypeChecker::default();
     world
         .contexts
         .insert(BOTTOM_CTX_NAME.to_string(), OmniContext::Bottom(new_ctx));

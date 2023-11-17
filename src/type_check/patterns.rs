@@ -194,7 +194,7 @@ impl<'pat, TExtDialect: SystemRDialect>
 }
 
 impl<TExtDialect: SystemRDialect>
-    Context<TExtDialect>
+    TypeChecker<TExtDialect>
 {
     /// Type check a case expression, returning the Type of the arms, assuming
     /// that the case expression is exhaustive and well-typed
@@ -349,7 +349,7 @@ mod test {
     fn product() {
         let ty = Type::Product(vec![Type::Bool, Type::Bool, Type::Nat]);
         let pat = prod!(boolean!(true), boolean!(true), num!(10));
-        let mut ctx = Context::default();
+        let mut ctx = TypeChecker::default();
         let mut ext = BottomExtension;
         assert!(ctx.pattern_type_eq(&pat, &ty, &mut ext));
     }
@@ -359,7 +359,7 @@ mod test {
     fn product_mistyped() {
         let ty = Type::Product(vec![Type::Bool, Type::Bool, Type::Bool]);
         let pat = prod!(boolean!(true), boolean!(true), num!(10));
-        let mut ctx = Context::default();
+        let mut ctx = TypeChecker::default();
         let mut ext = BottomExtension;
         assert!(ctx.pattern_type_eq(&pat, &ty, &mut ext));
     }
@@ -381,7 +381,7 @@ mod test {
         let pat2 = con!("A", boolean!(true));
         let pat3 = con!("B", num!(1));
 
-        let mut ctx = Context::default();
+        let mut ctx = TypeChecker::default();
         let mut ext = BottomExtension;
 
         assert!(ctx.pattern_type_eq(&pat1, &ty, &mut ext));
@@ -408,7 +408,7 @@ mod test {
         let pat4 = con!("B", prod!(num!(1), Variable("x".into())));
         let pat5 = con!("A", num!(1));
 
-        let mut ctx = Context::default();
+        let mut ctx = TypeChecker::default();
         let mut ext = BottomExtension;
         assert!(ctx.pattern_type_eq(&pat1, &ty, &mut ext));
         assert!(ctx.pattern_type_eq(&pat2, &ty, &mut ext));
@@ -455,7 +455,7 @@ mod test {
             con!("C", prod!(num!(1), Any)),
         ];
 
-        let mut ctx = Context::default();
+        let mut ctx = TypeChecker::default();
         let mut ext = BottomExtension;
         let mut state = BottomState;
         assert!(pats.iter().all(|p| ctx.pattern_type_eq(p, &ty, &mut ext)));
@@ -476,7 +476,7 @@ mod test {
         let pats = vec![boolean!(true), boolean!(false)];
 
         let ty = Type::Bool;
-        let mut ctx = Context::default();
+        let mut ctx = TypeChecker::default();
         let mut state = BottomState;
         let mut ext = BottomExtension;
         assert!(pats.iter().all(|p| ctx.pattern_type_eq(p, &ty, &mut BottomExtension)));

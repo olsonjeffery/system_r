@@ -2,7 +2,7 @@ use crate::dialect::{SystemRDialect, SystemRExtension};
 use crate::patterns::{Pattern, PatternCount};
 use crate::system_r_util::span::Span;
 use crate::terms::{Arm, Kind, Term};
-use crate::types::Type;
+use crate::type_check::Type;
 use crate::visit::{MutTermVisitor, MutTypeVisitor};
 
 pub struct Shift {
@@ -194,7 +194,7 @@ impl<TExtDialect: SystemRDialect>
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
     ) -> TyTermSubst<TExtDialect> {
-        use crate::types::visit::*;
+        use crate::type_check::visit::*;
         let mut ty = ty;
         Shift::new(1).visit(&mut ty, ext, ext_state);
         TyTermSubst { cutoff: 0, ty }
@@ -206,7 +206,7 @@ impl<TExtDialect: SystemRDialect>
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
     ) {
-        let mut s = crate::types::visit::Subst {
+        let mut s = crate::type_check::visit::Subst {
             cutoff: self.cutoff,
             ty: self.ty.clone(),
         };
@@ -342,7 +342,7 @@ impl<
         match &mut term.kind {
             Kind::Injection(label, val, ty) => {
                 if let Type::Rec(inner) = *ty.clone() {
-                    let ty_prime = crate::types::subst(*ty.clone(), *inner.clone(), ext, ext_state);
+                    let ty_prime = crate::type_check::subst(*ty.clone(), *inner.clone(), ext, ext_state);
                     let rewrite_ty = Term::new(
                         Kind::Injection(label.clone(), val.clone(), Box::new(ty_prime)),
                         term.span,

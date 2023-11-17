@@ -18,10 +18,10 @@ use crate::bottom::BottomDialect;
 use crate::dialect::SystemRDialect;
 use crate::system_r_util::span::Span;
 use crate::terms::Term;
-use crate::types::Variant;
+use crate::type_check::Variant;
 use crate::{
     diagnostics::Diagnostic,
-    types::{Context, Type},
+    type_check::{TypeChecker, Type},
 };
 
 pub type WrappedFn = fn(input: Term<BottomDialect>, span: &Span) -> Result<Term<BottomDialect>, Diagnostic>;
@@ -135,7 +135,7 @@ fn resolve_pb_type<
 }
 
 impl<TExtDialect: SystemRDialect>
-    Context<TExtDialect>
+    TypeChecker<TExtDialect>
 {
     pub(crate) fn type_check_platform_binding(
         &mut self,

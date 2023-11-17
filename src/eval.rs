@@ -43,16 +43,16 @@ use crate::patterns::Pattern;
 use crate::platform_bindings::PlatformBindings;
 use crate::terms::visit::{Shift, Subst, TyTermSubst};
 use crate::terms::{Kind, Literal, Primitive, Term};
-use crate::types::{Context, Type};
+use crate::type_check::{TypeChecker, Type};
 use crate::visit::MutTermVisitor;
 
 pub struct Eval<'ctx> {
-    _context: &'ctx Context<BottomDialect>,
+    _context: &'ctx TypeChecker<BottomDialect>,
     platform_bindings: PlatformBindings,
 }
 
 impl<'ctx> Eval<'ctx> {
-    pub fn with_context(_context: &Context<BottomDialect>) -> Eval<'_> {
+    pub fn with_context(_context: &TypeChecker<BottomDialect>) -> Eval<'_> {
         let platform_bindings = _context.platform_bindings.clone();
         Eval {
             _context,
@@ -364,14 +364,14 @@ mod test {
 
     #[test]
     fn literal() {
-        let ctx = crate::types::Context::default();
+        let ctx = crate::type_check::TypeChecker::default();
         let eval = Eval::with_context(&ctx);
         assert_eq!(eval.small_step(lit!(false)).unwrap(), None);
     }
 
     #[test]
     fn application() {
-        let ctx = crate::types::Context::default();
+        let ctx = crate::type_check::TypeChecker::default();
         let eval = Eval::with_context(&ctx);
         let tm = app!(abs!(Type::Nat, app!(prim!(Primitive::Succ), var!(0))), nat!(1));
 
@@ -385,7 +385,7 @@ mod test {
 
     #[test]
     fn type_application() {
-        let ctx = crate::types::Context::default();
+        let ctx = crate::type_check::TypeChecker::default();
         let eval = Eval::with_context(&ctx);
         let tm = tyapp!(
             tyabs!(abs!(Type::Var(0), app!(prim!(Primitive::Succ), var!(0)))),
@@ -400,7 +400,7 @@ mod test {
 
     #[test]
     fn projection() {
-        let ctx = crate::types::Context::default();
+        let ctx = crate::type_check::TypeChecker::default();
         let eval = Eval::with_context(&ctx);
         let product = Term::new(Kind::Product(vec![nat!(5), nat!(6), nat!(29)]), Span::zero());
         let projection = Term::new(Kind::Projection(Box::new(product), 2), Span::zero());
