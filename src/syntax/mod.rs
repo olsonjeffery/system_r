@@ -3,7 +3,7 @@ pub mod debruijn;
 pub mod error;
 pub mod lexer;
 pub mod parser;
-use crate::system_r_util::span::Span;
+use crate::{system_r_util::span::Span, dialect::ExtendedTokenKind};
 
 #[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
 pub enum ExtTokenKind<TExtTokenKind: PartialEq> {
@@ -60,12 +60,12 @@ pub enum ExtTokenKind<TExtTokenKind: PartialEq> {
 }
 
 #[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
-pub struct Token<TExtTokenKind: Sized + Clone + Default + PartialEq> {
+pub struct Token<TExtTokenKind: ExtendedTokenKind> {
     pub kind: ExtTokenKind<TExtTokenKind>,
     pub span: Span,
 }
 
-impl<TExtTokenKind: Default + PartialEq + Sized + Clone> Token<TExtTokenKind> {
+impl<TExtTokenKind: ExtendedTokenKind> Token<TExtTokenKind> {
     pub const fn dummy() -> Token<TExtTokenKind> {
         Token {
             kind: ExtTokenKind::Dummy,

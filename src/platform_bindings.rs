@@ -12,14 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-use core::fmt;
 use std::collections::HashMap;
-use std::hash;
 
 use crate::bottom::BottomDialect;
 use crate::dialect::SystemRDialect;
 use crate::system_r_util::span::Span;
-
 use crate::terms::Term;
 use crate::types::Variant;
 use crate::{
@@ -89,7 +86,7 @@ impl<'a> PlatformBindings {
 }
 
 fn resolve_pb_type<
-    TExtDialect: Eq + SystemRDialect + Clone + Default + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
+    TExtDialect: SystemRDialect,
 >(
     ty_in: Type<BottomDialect>,
 ) -> Result<Type<TExtDialect>, Diagnostic> {
@@ -137,7 +134,7 @@ fn resolve_pb_type<
     }
 }
 
-impl<TExtDialect: Eq + hash::Hash + PartialEq + PartialOrd + SystemRDialect + Clone + fmt::Debug + Default>
+impl<TExtDialect: SystemRDialect>
     Context<TExtDialect>
 {
     pub(crate) fn type_check_platform_binding(

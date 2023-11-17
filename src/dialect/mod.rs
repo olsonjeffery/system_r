@@ -15,48 +15,51 @@ use crate::{
 
 pub mod type_alias;
 
-pub trait SystemRDialect {
-    type TExtTokenKind: fmt::Debug + PartialEq + PartialOrd + Default + Clone;
-    type TExtKind: fmt::Debug + PartialEq + PartialOrd + Default + Clone;
-    type TExtPat: fmt::Debug + PartialEq + PartialOrd + Default + Clone;
-    type TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash;
-    type TExtDialectState: fmt::Debug + Default + Clone;
+pub trait ExtendedTokenKind: fmt::Debug + PartialEq + PartialOrd + Default + Clone {}
+pub trait ExtendedKind: fmt::Debug + PartialEq + PartialOrd + Default + Clone {}
+pub trait ExtendedPattern: fmt::Debug + PartialEq + PartialOrd + Default + Clone {}
+pub trait ExtendedType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash {}
+pub trait ExtendedDialectState: fmt::Debug + Default + Clone {}
+
+pub trait SystemRDialect: hash::Hash + Eq + Default + fmt::Debug + Clone + PartialEq + PartialOrd {
+    type TokenKind: ExtendedTokenKind;
+    type Kind: ExtendedKind;
+    type Pattern: ExtendedPattern;
+    type Type: ExtendedType;
+    type DialectState: ExtendedDialectState;
 }
 
-pub trait SystemRExtension<
-    TExtDialect: hash::Hash + Eq + SystemRDialect + Default + fmt::Debug + Clone + PartialEq + PartialOrd,
->
-{
+pub trait SystemRExtension<TExtDialect: SystemRDialect>: Copy + Clone + Default + fmt::Debug {
     fn lex_is_ext_single(&self, x: char) -> bool;
     fn lex_is_extended_single_pred(&self, x: char) -> bool;
     fn lex_is_ext_keyword(&self, data: &str) -> bool;
-    fn lex_extended_single(&mut self, data: &str) -> TExtDialect::TExtTokenKind;
-    fn lex_ext_keyword(&mut self, data: &str) -> TExtDialect::TExtTokenKind;
-    fn parser_has_ext_parse(&self, tk: &TExtDialect::TExtTokenKind) -> bool;
+    fn lex_extended_single(&mut self, data: &str) -> TExtDialect::TokenKind;
+    fn lex_ext_keyword(&mut self, data: &str) -> TExtDialect::TokenKind;
+    fn parser_has_ext_parse(&self, tk: &TExtDialect::TokenKind) -> bool;
     fn parser_ext_parse<'s>(
         &mut self,
         ps: &mut ParserState<TExtDialect>,
-    ) -> Result<Term<TExtDialect>, Error<TExtDialect::TExtTokenKind>>;
-    fn parser_has_ext_atom(&self, tk: &TExtDialect::TExtTokenKind) -> bool;
+    ) -> Result<Term<TExtDialect>, Error<TExtDialect::TokenKind>>;
+    fn parser_has_ext_atom(&self, tk: &TExtDialect::TokenKind) -> bool;
     fn parser_ext_atom<'s>(
         &mut self,
         ps: &mut ParserState<TExtDialect>,
-    ) -> Result<Term<TExtDialect>, Error<TExtDialect::TExtTokenKind>>;
+    ) -> Result<Term<TExtDialect>, Error<TExtDialect::TokenKind>>;
     fn parser_ty(
         &mut self,
         ps: &mut ParserState<TExtDialect>,
-    ) -> Result<Type<TExtDialect>, Error<TExtDialect::TExtTokenKind>>;
+    ) -> Result<Type<TExtDialect>, Error<TExtDialect::TokenKind>>;
     fn parser_ty_bump_if(&mut self, ps: &mut ParserState<TExtDialect>) -> bool;
     fn pat_add_ext_pattern<'a>(
         &'a self,
         parent: &crate::types::patterns::Matrix<'a, TExtDialect>,
         ext_pattern: &Pattern<TExtDialect>,
     ) -> bool;
-    fn pat_ext_matches(&self, pat: &TExtDialect::TExtPat, term: &Term<TExtDialect>) -> bool;
+    fn pat_ext_matches(&self, pat: &TExtDialect::Pattern, term: &Term<TExtDialect>) -> bool;
     fn pat_ext_pattern_type_eq(
         &self,
         ctx: &Context<TExtDialect>,
-        pat: &TExtDialect::TExtPat,
+        pat: &TExtDialect::Pattern,
         ty: &Type<TExtDialect>,
     ) -> bool;
     fn pat_ctor_eq_within(
@@ -64,70 +67,62 @@ pub trait SystemRExtension<
         ctx: &mut Context<TExtDialect>,
         label: &str,
         inner: &Pattern<TExtDialect>,
-        target: &TExtDialect::TExtType,
+        target: &TExtDialect::Type,
     ) -> bool;
     fn type_check_injection_to_ext(
         &mut self,
         ctx: &mut Context<TExtDialect>,
         label: &str,
-        target: &TExtDialect::TExtType,
+        target: &TExtDialect::Type,
         tm: &Term<TExtDialect>,
-    ) -> Result<Type<TExtDialect>, Diagnostic>;
-    fn type_check_application_of_ext(
-        &mut self,
-        ctx: &mut Context<TExtDialect>,
-        t1: &Term<TExtDialect>,
-        ty1: &Type<TExtDialect>,
-        t2: &Term<TExtDialect>,
-        ty2: &Type<TExtDialect>,
     ) -> Result<Type<TExtDialect>, Diagnostic>;
     fn pat_visit_constructor_of_ext(
         &mut self,
-        ext_state: &TExtDialect::TExtDialectState,
+        ext_state: &TExtDialect::DialectState,
         pts: &mut PatTyStack<TExtDialect>,
         label: &str,
         pat: &Pattern<TExtDialect>,
-        ext_ty: &TExtDialect::TExtType,
+        ext_ty: &TExtDialect::Type,
     );
     fn exhaustive_for_ext(
         &mut self,
         matrix: &Matrix<TExtDialect>,
-        ext_state: &mut TExtDialect::TExtDialectState,
+        ext_state: &mut TExtDialect::DialectState,
     ) -> bool;
     fn ty_shift_visit_ext(
         &mut self,
         shift: &mut Shift,
         ext_ty: &mut Type<TExtDialect>,
-        ext_state: &TExtDialect::TExtDialectState,
+        ext_state: &TExtDialect::DialectState,
     );
     fn ty_aliaser_visit_ext(
         &mut self,
         aliaser: &mut Aliaser<TExtDialect>,
         ext_ty: &mut Type<TExtDialect>,
-        ext_state: &TExtDialect::TExtDialectState,
+        ext_state: &TExtDialect::DialectState,
     );
     fn ty_subst_visit_ext(
         &mut self,
         subst_visitor: &mut Subst<TExtDialect>,
         ext_ty: &mut Type<TExtDialect>,
-        ext_state: &TExtDialect::TExtDialectState,
+        ext_state: &TExtDialect::DialectState,
     );
     fn type_check_ext_equals_ty(
         &mut self,
         ctx: &mut Context<TExtDialect>,
-        ext_ty: &mut TExtDialect::TExtType,
+        ext_ty: &mut TExtDialect::Type,
         other_ty: &mut Type<TExtDialect>,
     ) -> bool;
 }
 
 pub trait SystemRResolver<
-    InDialect: Eq + SystemRDialect + Clone + PartialEq + PartialOrd + fmt::Debug + Default,
-    OutDialect: Eq + SystemRDialect + Clone + PartialEq + PartialOrd + fmt::Debug + Default,
+    InDialect: SystemRDialect,
+    OutDialect: SystemRDialect,
 >
 {
     fn resolve(
         &self,
-        ext_state: InDialect::TExtDialectState,
+        ext_state: InDialect::DialectState,
         tm: Term<InDialect>,
     ) -> Result<Term<OutDialect>, Diagnostic>;
 }

@@ -7,7 +7,7 @@ use std::fmt;
 pub mod visit;
 
 #[derive(Clone, Default, PartialEq, PartialOrd)]
-pub struct Term<TExtDialect: Eq + SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone> {
+pub struct Term<TExtDialect: SystemRDialect> {
     pub span: Span,
     pub kind: Kind<TExtDialect>,
 }
@@ -22,7 +22,7 @@ pub enum Primitive {
 
 /// Abstract syntax of the parametric polymorphic lambda calculus
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
-pub enum Kind<TExtDialect: Eq + SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone> {
+pub enum Kind<TExtDialect: SystemRDialect> {
     /// A literal value
     Lit(Literal),
     /// A bound variable, represented by it's de Bruijn index
@@ -75,10 +75,10 @@ pub enum Kind<TExtDialect: Eq + SystemRDialect + PartialEq + PartialOrd + Defaul
     Unpack(Box<Term<TExtDialect>>, Box<Term<TExtDialect>>),
 
     /// Extension
-    Extended(TExtDialect::TExtKind),
+    Extended(TExtDialect::Kind),
 }
 
-impl<TExtDialect: Eq + SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone> Default
+impl<TExtDialect: SystemRDialect> Default
     for Kind<TExtDialect>
 {
     fn default() -> Self {
@@ -88,7 +88,7 @@ impl<TExtDialect: Eq + SystemRDialect + PartialEq + PartialOrd + Default + fmt::
 
 /// Arm of a case expression
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
-pub struct Arm<TExtDialect: Eq + SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone> {
+pub struct Arm<TExtDialect: SystemRDialect> {
     pub span: Span,
     pub pat: Pattern<TExtDialect>,
     pub term: Box<Term<TExtDialect>>,
@@ -105,7 +105,7 @@ pub enum Literal {
     Bytes(Vec<u8>),
 }
 
-impl<TExtDialect: Eq + SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone> Term<TExtDialect> {
+impl<TExtDialect: SystemRDialect> Term<TExtDialect> {
     pub fn new(kind: Kind<TExtDialect>, span: Span) -> Term<TExtDialect> {
         Term { span, kind }
     }
@@ -142,7 +142,7 @@ impl fmt::Display for Literal {
     }
 }
 
-impl<TExtDialect: Eq + SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone> fmt::Display
+impl<TExtDialect: SystemRDialect> fmt::Display
     for Term<TExtDialect>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -184,7 +184,7 @@ impl<TExtDialect: Eq + SystemRDialect + PartialEq + PartialOrd + Default + fmt::
     }
 }
 
-impl<TExtDialect: Eq + SystemRDialect + PartialEq + PartialOrd + Default + fmt::Debug + Clone> fmt::Debug
+impl<TExtDialect: SystemRDialect> fmt::Debug
     for Term<TExtDialect>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

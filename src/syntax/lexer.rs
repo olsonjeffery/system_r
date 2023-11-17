@@ -1,26 +1,22 @@
 use super::{ExtTokenKind, Token};
-use crate::bottom::BottomDialect;
 use crate::dialect::SystemRDialect;
 use crate::dialect::SystemRExtension;
 use crate::system_r_util::span::{Location, Span};
-use core::fmt;
 use std::iter::Peekable;
 use std::str::Chars;
-use std::{char, hash};
-
-pub type Lexer<'s> = ExtLexer<'s, BottomDialect>;
+use std::char;
 
 #[derive(Clone, Debug)]
-pub struct ExtLexer<'s, TExtDialect: Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd> {
+pub struct Lexer<'s, TExtDialect: SystemRDialect> {
     input: Peekable<Chars<'s>>,
     current: Location,
-    _token: TExtDialect::TExtTokenKind,
-    _kind: TExtDialect::TExtKind,
-    _pat: TExtDialect::TExtPat,
+    _token: TExtDialect::TokenKind,
+    _kind: TExtDialect::Kind,
+    _pat: TExtDialect::Pattern,
 }
 
-impl<'s, TExtDialect: Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd> Default
-    for ExtLexer<'s, TExtDialect>
+impl<'s, TExtDialect: SystemRDialect> Default
+    for Lexer<'s, TExtDialect>
 {
     fn default() -> Self {
         Self {
@@ -40,11 +36,11 @@ fn is_tag(x: char) -> bool {
     false
 }
 
-impl<'s, TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd>
-    ExtLexer<'s, TExtDialect>
+impl<'s, TExtDialect: SystemRDialect>
+    Lexer<'s, TExtDialect>
 {
-    pub fn new(input: Chars<'s>) -> ExtLexer<'s, TExtDialect> {
-        ExtLexer {
+    pub fn new(input: Chars<'s>) -> Lexer<'s, TExtDialect> {
+        Lexer {
             input: input.peekable(),
             current: Location {
                 line: 0,
@@ -111,7 +107,7 @@ impl<'s, TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + De
     }
 
     /// Lex a natural number
-    fn number(&mut self) -> Token<TExtDialect::TExtTokenKind> {
+    fn number(&mut self) -> Token<TExtDialect::TokenKind> {
         // Since we peeked at least one numeric char, we should always
         // have a string containing at least 1 single digit, as such
         // it is safe to call unwrap() on str::parse<u32>
@@ -120,27 +116,26 @@ impl<'s, TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + De
         Token::new(ExtTokenKind::Nat(n), span)
     }
 
-    fn tag(&mut self) -> Token<TExtDialect::TExtTokenKind> {
+    fn tag(&mut self) -> Token<TExtDialect::TokenKind> {
         let (data, span) = self.consume_while(|ch| is_tag(ch) || ch.is_ascii_alphanumeric());
         let kind = ExtTokenKind::Tag(data);
         Token::new(kind, span)
     }
 
-    fn extended_single<TExt: Copy + Clone + SystemRExtension<TExtDialect>>(
+    fn extended_single<TExt: SystemRExtension<TExtDialect>>(
         &mut self,
         ext: &mut TExt,
-    ) -> Token<TExtDialect::TExtTokenKind> {
+    ) -> Token<TExtDialect::TokenKind> {
         let (data, span) = self.consume_while(|ch| ext.lex_is_extended_single_pred(ch));
         let kind = ext.lex_extended_single(&data);
         Token::new(ExtTokenKind::Extended(kind), span)
     }
-    //TLE: Default + SystemRExtension<TExtTokenKind, TExtKind, TExtPattern>,
 
     /// Lex a reserved keyword or an identifier
-    fn keyword<TExt: Copy + Clone + SystemRExtension<TExtDialect>>(
+    fn keyword<TExt: SystemRExtension<TExtDialect>>(
         &mut self,
         ext: &mut TExt,
-    ) -> Token<TExtDialect::TExtTokenKind> {
+    ) -> Token<TExtDialect::TokenKind> {
         let (data, span) = self.consume_while(|ch| ch.is_ascii_alphanumeric());
         let kind = match data.as_ref() {
             data if ext.lex_is_ext_keyword(data) => ExtTokenKind::Extended(ext.lex_ext_keyword(data)),
@@ -186,7 +181,7 @@ impl<'s, TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + De
     /// Consume the next input character, expecting to match `ch`.
     /// Return a [`ExtTokenKind::Invalid`] if the next character does not match,
     /// or the argument `kind` if it does
-    fn eat(&mut self, ch: char, kind: ExtTokenKind<TExtDialect::TExtTokenKind>) -> Token<TExtDialect::TExtTokenKind> {
+    fn eat(&mut self, ch: char, kind: ExtTokenKind<TExtDialect::TokenKind>) -> Token<TExtDialect::TokenKind> {
         let loc = self.current;
         // Lexer::eat() should only be called internally after calling peek()
         // so we know that it's safe to unwrap the result of Lexer::consume()
@@ -196,10 +191,10 @@ impl<'s, TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + De
     }
 
     /// Return the next lexeme in the input as a [`Token`]
-    pub fn lex<TExt: Copy + Clone + SystemRExtension<TExtDialect>>(
+    pub fn lex<TExt: SystemRExtension<TExtDialect>>(
         &mut self,
         ext: &mut TExt,
-    ) -> Token<TExtDialect::TExtTokenKind> {
+    ) -> Token<TExtDialect::TokenKind> {
         self.consume_delimiter();
         let next = match self.peek() {
             Some(ch) => ch,
@@ -237,16 +232,16 @@ impl<'s, TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + De
     }
 }
 
-impl<'s, TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd>
-    ExtLexer<'s, TExtDialect>
+impl<'s, TExtDialect: SystemRDialect>
+    Lexer<'s, TExtDialect>
 {
     /// FIXME Choosing to keep this, because if/when a move
     /// to a flat AST occurs, this will be handy
     #[allow(dead_code)]
-    fn next<TExt: fmt::Debug + Default + Copy + Clone + PartialEq + PartialOrd + SystemRExtension<TExtDialect>>(
+    fn next<TExt: SystemRExtension<TExtDialect>>(
         &mut self,
         ext: &mut TExt,
-    ) -> Option<Token<TExtDialect::TExtTokenKind>> {
+    ) -> Option<Token<TExtDialect::TokenKind>> {
         match self.lex(ext) {
             Token {
                 kind: ExtTokenKind::Eof,
@@ -267,7 +262,7 @@ mod test {
     fn get_tokens_from<'s>(input: &'s str) -> Vec<ExtTokenKind<BottomTokenKind>> {
         let mut stub_ext = BottomExtension;
         let mut ret_val = Vec::new();
-        let mut lexer: ExtLexer<'s, BottomDialect> = ExtLexer::new(input.chars());
+        let mut lexer: Lexer<'s, BottomDialect> = Lexer::new(input.chars());
 
         let mut next_token = lexer.next(&mut stub_ext);
         while next_token.is_some() {

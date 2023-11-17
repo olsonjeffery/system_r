@@ -10,11 +10,11 @@ use crate::terms::{Kind, Literal, Primitive, Term};
 use crate::visit::{MutTermVisitor, MutTypeVisitor};
 use std::collections::{HashMap, VecDeque};
 use std::hash::Hash;
-use std::{fmt, hash};
+use std::fmt;
 use visit::{Shift, Subst};
 
 #[derive(Default, Clone, PartialEq, PartialOrd, Eq, Hash)]
-pub enum Type<TExtDialect: Eq + SystemRDialect + Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq> {
+pub enum Type<TExtDialect: SystemRDialect> {
     #[default]
     Unit,
     Nat,
@@ -30,25 +30,24 @@ pub enum Type<TExtDialect: Eq + SystemRDialect + Default + Clone + fmt::Debug + 
     Universal(Box<Type<TExtDialect>>),
     Existential(Box<Type<TExtDialect>>),
     Rec(Box<Type<TExtDialect>>),
-    Extended(TExtDialect::TExtType),
+    Extended(TExtDialect::Type),
 }
 
 #[derive(Debug, Default, Clone, PartialEq, PartialOrd, Eq, Hash)]
-pub struct Variant<TExtDialect: Eq + SystemRDialect + Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq> {
+pub struct Variant<TExtDialect: SystemRDialect> {
     pub label: String,
     pub ty: Type<TExtDialect>,
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
-pub struct TypeError<TExtDialect: Eq + SystemRDialect + Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq> {
+pub struct TypeError<TExtDialect: SystemRDialect> {
     pub span: Span,
     pub kind: TypeErrorKind<TExtDialect>,
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
-pub enum TypeErrorKind<TExtDialect: Eq + SystemRDialect + Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq> {
+pub enum TypeErrorKind<TExtDialect: SystemRDialect> {
     ParameterMismatch(Box<Type<TExtDialect>>, Box<Type<TExtDialect>>, Span),
-
     InvalidProjection,
     NotArrow,
     NotUniversal,
@@ -63,15 +62,14 @@ pub enum TypeErrorKind<TExtDialect: Eq + SystemRDialect + Default + Clone + fmt:
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Context<TExtDialect: Eq + PartialEq + PartialOrd + SystemRDialect + Clone + fmt::Debug + Default> {
+pub struct Context<TExtDialect: SystemRDialect> {
     pub stack: VecDeque<Type<TExtDialect>>,
     pub map: HashMap<String, Type<TExtDialect>>,
     pub platform_bindings: PlatformBindings,
-    _d: TExtDialect,
-    pub ext_state: TExtDialect::TExtDialectState,
+    pub ext_state: TExtDialect::DialectState,
 }
 
-impl<TExtDialect: Eq + SystemRDialect + Clone + fmt::Debug + PartialEq + PartialOrd + Default> Default
+impl<TExtDialect: SystemRDialect> Default
     for Context<TExtDialect>
 {
     fn default() -> Self {
@@ -79,13 +77,12 @@ impl<TExtDialect: Eq + SystemRDialect + Clone + fmt::Debug + PartialEq + Partial
             stack: Default::default(),
             map: Default::default(),
             platform_bindings: Default::default(),
-            _d: Default::default(),
             ext_state: Default::default(),
         }
     }
 }
 
-impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug + Default>
+impl<TExtDialect: SystemRDialect>
     Context<TExtDialect>
 {
     fn push(&mut self, ty: Type<TExtDialect>) {
@@ -108,7 +105,7 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
         Aliaser { map: &self.map }
     }
 
-    pub fn de_alias<TExt: SystemRExtension<TExtDialect> + fmt::Debug + Default + Clone>(
+    pub fn de_alias<TExt: SystemRExtension<TExtDialect>>(
         &mut self,
         term: &mut Term<TExtDialect>,
         ext: &mut TExt,
@@ -116,13 +113,13 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
         crate::visit::MutTermVisitor::visit(self, term, ext, &mut self.ext_state.clone())
     }
 
-    pub fn to_ext_state(self) -> TExtDialect::TExtDialectState {
+    pub fn to_ext_state(self) -> TExtDialect::DialectState {
         self.ext_state
     }
 }
 
 /// Helper function for extracting type from a variant
-pub fn variant_field<'vs, TExtDialect: Eq + SystemRDialect + PartialEq + PartialOrd + Clone + Default + fmt::Debug>(
+pub fn variant_field<'vs, TExtDialect: SystemRDialect>(
     var: &'vs [Variant<TExtDialect>],
     label: &str,
     span: Span,
@@ -143,10 +140,10 @@ pub fn variant_field<'vs, TExtDialect: Eq + SystemRDialect + PartialEq + Partial
     // })
 }
 
-impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug + Default>
+impl<TExtDialect: SystemRDialect>
     Context<TExtDialect>
 {
-    pub fn type_check<TExt: Clone + fmt::Debug + Default + SystemRExtension<TExtDialect>>(
+    pub fn type_check<TExt: SystemRExtension<TExtDialect>>(
         &mut self,
         term: &Term<TExtDialect>,
         ext: &mut TExt,
@@ -452,13 +449,13 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Cl
 }
 
 pub fn subst<
-    TExtDialect: SystemRDialect + Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + Hash,
-    TExt: SystemRExtension<TExtDialect> + Default + Clone + fmt::Debug,
+    TExtDialect: SystemRDialect,
+    TExt: SystemRExtension<TExtDialect>,
 >(
     mut s: Type<TExtDialect>,
     mut t: Type<TExtDialect>,
     ext: &mut TExt,
-    ext_state: &TExtDialect::TExtDialectState,
+    ext_state: &TExtDialect::DialectState,
 ) -> Type<TExtDialect> {
     Shift::new(1).visit(&mut s, ext, ext_state);
     Subst::new(s).visit(&mut t, ext, ext_state);
@@ -466,26 +463,26 @@ pub fn subst<
     t
 }
 
-pub struct Aliaser<'ctx, TExtDialect: SystemRDialect + Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq> {
+pub struct Aliaser<'ctx, TExtDialect: SystemRDialect> {
     map: &'ctx HashMap<String, Type<TExtDialect>>,
 }
 
 impl<
         'ctx,
-        TExtDialect: SystemRDialect + Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-        TExt: SystemRExtension<TExtDialect> + Clone + Default + fmt::Debug,
+        TExtDialect: SystemRDialect,
+        TExt: SystemRExtension<TExtDialect>,
     > MutTypeVisitor<TExtDialect, TExt> for Aliaser<'ctx, TExtDialect>
 {
     fn visit_ext(
         &mut self,
         ty: &mut Type<TExtDialect>,
         ext: &mut TExt,
-        ext_state: &<TExtDialect as SystemRDialect>::TExtDialectState,
+        ext_state: &<TExtDialect as SystemRDialect>::DialectState,
     ) {
         ext.ty_aliaser_visit_ext(self, ty, ext_state);
     }
 
-    fn visit(&mut self, ty: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::TExtDialectState) {
+    fn visit(&mut self, ty: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
         match ty {
             Type::Unit | Type::Bool | Type::Nat | Type::Tag(_) | Type::Bytes => {}
             Type::Var(v) => {}
@@ -508,8 +505,8 @@ impl<
 }
 
 impl<
-        TExtDialect: hash::Hash + Eq + SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug + Default,
-        TExt: SystemRExtension<TExtDialect> + fmt::Debug + Default + Clone,
+        TExtDialect: SystemRDialect,
+        TExt: SystemRExtension<TExtDialect>,
     > MutTermVisitor<TExtDialect, TExt> for Context<TExtDialect>
 {
     fn visit_abs(
@@ -518,7 +515,7 @@ impl<
         ty: &mut Type<TExtDialect>,
         term: &mut Term<TExtDialect>,
         ext: &mut TExt,
-        ext_state: &TExtDialect::TExtDialectState,
+        ext_state: &TExtDialect::DialectState,
     ) {
         self.aliaser().visit(ty, ext, ext_state);
         self.visit(term, ext, ext_state);
@@ -530,7 +527,7 @@ impl<
         term: &mut Term<TExtDialect>,
         ty: &mut Type<TExtDialect>,
         ext: &mut TExt,
-        ext_state: &TExtDialect::TExtDialectState,
+        ext_state: &TExtDialect::DialectState,
     ) {
         self.aliaser().visit(ty, ext, ext_state);
         self.visit(term, ext, ext_state);
@@ -543,7 +540,7 @@ impl<
         term: &mut Term<TExtDialect>,
         ty: &mut Type<TExtDialect>,
         ext: &mut TExt,
-        ext_state: &TExtDialect::TExtDialectState,
+        ext_state: &TExtDialect::DialectState,
     ) {
         self.aliaser().visit(ty, ext, ext_state);
         self.visit(term, ext, ext_state);
@@ -555,7 +552,7 @@ impl<
         ty: &mut Type<TExtDialect>,
         tm: &mut Term<TExtDialect>,
         ext: &mut TExt,
-        ext_state: &TExtDialect::TExtDialectState,
+        ext_state: &TExtDialect::DialectState,
     ) {
         self.aliaser().visit(ty, ext, ext_state);
         self.visit(tm, ext, ext_state);
@@ -567,14 +564,14 @@ impl<
         ty: &mut Type<TExtDialect>,
         tm: &mut Term<TExtDialect>,
         ext: &mut TExt,
-        ext_state: &TExtDialect::TExtDialectState,
+        ext_state: &TExtDialect::DialectState,
     ) {
         self.aliaser().visit(ty, ext, ext_state);
         self.visit(tm, ext, ext_state);
     }
 }
 
-impl<TExtDialect: SystemRDialect + Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq> fmt::Debug
+impl<TExtDialect: SystemRDialect> fmt::Debug
     for Type<TExtDialect>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

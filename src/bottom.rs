@@ -1,6 +1,6 @@
 use crate::{
     diagnostics::Diagnostic,
-    dialect::{SystemRDialect, SystemRExtension},
+    dialect::{SystemRDialect, SystemRExtension, ExtendedTokenKind, ExtendedKind, ExtendedPattern, ExtendedType, ExtendedDialectState},
     patterns::Pattern,
     syntax::error::Error,
     terms::Term,
@@ -11,39 +11,44 @@ use crate::{
 pub struct BottomDialect;
 
 impl SystemRDialect for BottomDialect {
-    type TExtDialectState = BottomState;
-    type TExtKind = BottomKind;
-    type TExtPat = BottomPattern;
-    type TExtTokenKind = BottomTokenKind;
-    type TExtType = BottomType;
+    type DialectState = BottomState;
+    type Kind = BottomKind;
+    type Pattern = BottomPattern;
+    type TokenKind = BottomTokenKind;
+    type Type = BottomType;
 }
 
 #[derive(Default, Debug, Clone)]
 pub struct BottomState;
+impl ExtendedDialectState for BottomState {}
 
 #[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
 pub enum BottomTokenKind {
     #[default]
     Placeholder,
 }
+impl ExtendedTokenKind for BottomTokenKind {}
 
 #[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
 pub enum BottomKind {
     #[default]
     Placeholder,
 }
+impl ExtendedKind for BottomKind {}
 
 #[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
 pub enum BottomPattern {
     #[default]
     Placeholder,
 }
-//TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq
+impl ExtendedPattern for BottomPattern {}
+
 #[derive(Clone, Debug, Default, PartialEq, PartialOrd, Eq, Hash)]
 pub enum BottomType {
     #[default]
     Placeholder,
 }
+impl ExtendedType for BottomType {}
 
 #[derive(Copy, Clone, Default, Debug, PartialEq, PartialOrd)]
 pub struct BottomExtension;
@@ -128,7 +133,7 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
         ctx: &mut Context<BottomDialect>,
         label: &str,
         inner: &Pattern<BottomDialect>,
-        target: &<BottomDialect as SystemRDialect>::TExtType,
+        target: &<BottomDialect as SystemRDialect>::Type,
     ) -> bool {
         false
     }
@@ -137,21 +142,10 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
         &mut self,
         ctx: &mut Context<BottomDialect>,
         label: &str,
-        target: &<BottomDialect as SystemRDialect>::TExtType,
+        target: &<BottomDialect as SystemRDialect>::Type,
         tm: &Term<BottomDialect>,
     ) -> Result<crate::types::Type<BottomDialect>, Diagnostic> {
         panic!("type_check_injection_to_ext for BottomDialect; should never be called")
-    }
-
-    fn type_check_application_of_ext(
-        &mut self,
-        ctx: &mut Context<BottomDialect>,
-        t1: &Term<BottomDialect>,
-        ty1: &crate::types::Type<BottomDialect>,
-        t2: &Term<BottomDialect>,
-        ty2: &crate::types::Type<BottomDialect>,
-    ) -> Result<crate::types::Type<BottomDialect>, Diagnostic> {
-        panic!("type_check_application_of_ext for BottomDialect; should never be called")
     }
 
     fn pat_visit_constructor_of_ext(
@@ -160,14 +154,14 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
         pts: &mut crate::patterns::PatTyStack<BottomDialect>,
         label: &str,
         pat: &Pattern<BottomDialect>,
-        ext_ty: &<BottomDialect as SystemRDialect>::TExtType,
+        ext_ty: &<BottomDialect as SystemRDialect>::Type,
     ) {
     }
 
     fn exhaustive_for_ext(
         &mut self,
         matrix: &crate::types::patterns::Matrix<BottomDialect>,
-        ext_state: &mut <BottomDialect as SystemRDialect>::TExtDialectState,
+        ext_state: &mut <BottomDialect as SystemRDialect>::DialectState,
     ) -> bool {
         false
     }
@@ -176,7 +170,7 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
         &mut self,
         subst_visitor: &mut crate::types::visit::Subst<BottomDialect>,
         ty: &mut Type<BottomDialect>,
-        ext_state: &<BottomDialect as SystemRDialect>::TExtDialectState,
+        ext_state: &<BottomDialect as SystemRDialect>::DialectState,
     ) {
     }
 
@@ -184,7 +178,7 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
         &mut self,
         aliaser: &mut crate::types::Aliaser<BottomDialect>,
         ext_ty: &mut Type<BottomDialect>,
-        ext_state: &<BottomDialect as SystemRDialect>::TExtDialectState,
+        ext_state: &<BottomDialect as SystemRDialect>::DialectState,
     ) {
     }
 
@@ -192,14 +186,14 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
         &mut self,
         shift: &mut crate::types::visit::Shift,
         ext_ty: &mut Type<BottomDialect>,
-        ext_state: &<BottomDialect as SystemRDialect>::TExtDialectState,
+        ext_state: &<BottomDialect as SystemRDialect>::DialectState,
     ) {
     }
 
     fn type_check_ext_equals_ty(
         &mut self,
         ctx: &mut Context<BottomDialect>,
-        ext_ty: &mut <BottomDialect as SystemRDialect>::TExtType,
+        ext_ty: &mut <BottomDialect as SystemRDialect>::Type,
         other_ty: &mut crate::types::Type<BottomDialect>,
     ) -> bool {
         false

@@ -14,8 +14,6 @@ limitations under the License.
 */
 use crate::syntax::parser::ParserState;
 use crate::system_r_util::span::Span;
-use core::fmt;
-use std::hash;
 
 use crate::bottom::BottomDialect;
 use crate::dialect::{SystemRDialect, SystemRExtension};
@@ -58,8 +56,8 @@ pub fn code_format(src: &str, diag: Diagnostic) -> String {
 
 pub fn type_check_term<
     's,
-    TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + PartialEq + PartialOrd + fmt::Debug + Default,
-    TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExtDialect: SystemRDialect,
+    TExt: SystemRExtension<TExtDialect>,
 >(
     ctx: &mut types::Context<TExtDialect>,
     term: &mut Term<TExtDialect>,
@@ -72,8 +70,8 @@ pub fn type_check_term<
 
 pub fn dealias_and_type_check_term<
     's,
-    TExtDialect: Eq + hash::Hash + SystemRDialect + PartialEq + PartialOrd + Clone + fmt::Debug + Default,
-    TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExtDialect: SystemRDialect,
+    TExt: SystemRExtension<TExtDialect>,
 >(
     ctx: &mut types::Context<TExtDialect>,
     term: &mut Term<TExtDialect>,
@@ -88,8 +86,8 @@ pub fn dealias_and_type_check_term<
 
 pub fn operate_parser_for<
     's,
-    TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: Default + Copy + fmt::Debug + Clone + SystemRExtension<TExtDialect>,
+    TExtDialect: SystemRDialect,
+    TExt: SystemRExtension<TExtDialect>,
 >(
     input: &str,
     ps: &mut ParserState<'s, TExtDialect>,
@@ -177,8 +175,8 @@ pub fn type_check_and_eval_single_block(
 
 pub fn do_type_check<
     's,
-    TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd,
-    TExt: fmt::Debug + Default + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExtDialect: SystemRDialect,
+    TExt: SystemRExtension<TExtDialect>,
 >(
     ctx: &mut types::Context<TExtDialect>,
     term: &mut Term<TExtDialect>,

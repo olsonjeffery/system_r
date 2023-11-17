@@ -2,7 +2,7 @@
 Feature: Technical Debt
     #
     # Incomplete list:
-    # - Supertraits to clean up signatures
+    # - DONE Supertraits to clean up signatures
     # - clone->Rc, audit for removal
     # - Rationalize state & functionality across system_r
     #    - Parser is broken into functions and ParserState; can it be re-unified into struct-state + impl? tried once and failed

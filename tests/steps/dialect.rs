@@ -1,8 +1,5 @@
 extern crate cucumber;
 
-use core::fmt;
-use std::hash;
-
 use cucumber::{given, then, when};
 
 use system_r::{
@@ -29,8 +26,8 @@ static TYPE_ALIAS_CTX_NAME: &'static str = "TypeAlias";
 
 pub fn parse_for_extension<
     's,
-    TExtDialect: hash::Hash + Eq + SystemRDialect + fmt::Debug + Default + Clone + PartialEq + PartialOrd,
-    TLE: Default + fmt::Debug + Copy + Clone + SystemRExtension<TExtDialect>,
+    TExtDialect: SystemRDialect,
+    TLE: SystemRExtension<TExtDialect>,
 >(
     input: &str,
     ps: &mut ParserState<'s, TExtDialect>,
@@ -41,8 +38,8 @@ pub fn parse_for_extension<
 
 pub fn type_check_for_extension<
     's,
-    TExtDialect: hash::Hash + Eq + SystemRDialect + fmt::Debug + Default + Clone + PartialEq + PartialOrd + Eq,
-    TLE: Default + Copy + Clone + SystemRExtension<TExtDialect> + fmt::Debug,
+    TExtDialect: SystemRDialect,
+    TLE: SystemRExtension<TExtDialect>,
 >(
     ctx: &mut Context<TExtDialect>,
     term: &mut Term<TExtDialect>,

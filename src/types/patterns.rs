@@ -21,7 +21,7 @@ use std::collections::HashSet;
 
 /// Return true if `existing` covers `new`, i.e. if new is a useful pattern
 /// then `overlap` will return `false`
-pub fn overlap<TExtDialect: Eq + SystemRDialect + Clone + fmt::Debug + PartialEq + PartialOrd + Default>(
+pub fn overlap<TExtDialect: SystemRDialect>(
     existing: &Pattern<TExtDialect>,
     new: &Pattern<TExtDialect>,
 ) -> bool {
@@ -45,14 +45,14 @@ pub fn overlap<TExtDialect: Eq + SystemRDialect + Clone + fmt::Debug + PartialEq
 #[derive(Clone, Debug, PartialEq, PartialOrd, Default)]
 pub struct Matrix<
     'pat,
-    TExtDialect: PartialEq + PartialOrd + hash::Hash + Eq + SystemRDialect + Clone + fmt::Debug + Default,
+    TExtDialect: SystemRDialect,
 > {
     pub expr_ty: Type<TExtDialect>,
     len: usize,
     pub inner_matrix: Vec<Vec<&'pat Pattern<TExtDialect>>>,
 }
 
-impl<'pat, TExtDialect: Eq + hash::Hash + PartialOrd + PartialEq + SystemRDialect + Clone + fmt::Debug + Default>
+impl<'pat, TExtDialect: SystemRDialect>
     Matrix<'pat, TExtDialect>
 {
     /// Create a new [`Matrix`] for a given type
@@ -84,10 +84,10 @@ impl<'pat, TExtDialect: Eq + hash::Hash + PartialOrd + PartialEq + SystemRDialec
     /// For a sum type, a dummy constructor of pattern `Const_i _` is generated
     /// for all `i` of the possible constructors of the type. If none of the
     /// dummy constructors are useful, then the current patterns are exhaustive
-    pub fn exhaustive<TExt: SystemRExtension<TExtDialect> + Clone + Default + fmt::Debug>(
+    pub fn exhaustive<TExt: SystemRExtension<TExtDialect>>(
         &self,
         ext: &mut TExt,
-        ext_state: &mut TExtDialect::TExtDialectState,
+        ext_state: &mut TExtDialect::DialectState,
     ) -> bool {
         match &self.expr_ty {
             Type::Variant(v) => v.iter().all(|variant| {
@@ -168,11 +168,11 @@ impl<'pat, TExtDialect: Eq + hash::Hash + PartialOrd + PartialEq + SystemRDialec
     ///
     /// Returns true on success, and false if the new pattern is
     /// unreachable
-    pub fn add_pattern<TExt: Clone + fmt::Debug + Default + SystemRExtension<TExtDialect>>(
+    pub fn add_pattern<TExt: SystemRExtension<TExtDialect>>(
         &mut self,
         pat: &'pat Pattern<TExtDialect>,
         ext: &mut TExt,
-        ext_state: &mut TExtDialect::TExtDialectState,
+        ext_state: &mut TExtDialect::DialectState,
     ) -> bool {
         match pat {
             Pattern::Any | Pattern::Variable(_) => {
@@ -193,7 +193,7 @@ impl<'pat, TExtDialect: Eq + hash::Hash + PartialOrd + PartialEq + SystemRDialec
     }
 }
 
-impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + PartialEq + PartialOrd + fmt::Debug + Default>
+impl<TExtDialect: SystemRDialect>
     Context<TExtDialect>
 {
     /// Type check a case expression, returning the Type of the arms, assuming
@@ -220,7 +220,7 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + PartialEq + Partial
     /// the shared type of all of the case arms - the term associated with each
     /// arm should have one type, and that type should be the same for all of
     /// the arms.
-    pub(crate) fn type_check_case<TExt: Clone + fmt::Debug + Default + SystemRExtension<TExtDialect>>(
+    pub(crate) fn type_check_case<TExt: SystemRExtension<TExtDialect>>(
         &mut self,
         expr: &Term<TExtDialect>,
         arms: &[Arm<TExtDialect>],
@@ -295,7 +295,7 @@ impl<TExtDialect: hash::Hash + Eq + SystemRDialect + Clone + PartialEq + Partial
     ///
     /// This function is primarily used as a first pass to ensure that a pattern
     /// is valid for a given case expression
-    pub(crate) fn pattern_type_eq<TExt: Clone + Default + fmt::Debug + SystemRExtension<TExtDialect>>(
+    pub(crate) fn pattern_type_eq<TExt: SystemRExtension<TExtDialect>>(
         &mut self,
         pat: &Pattern<TExtDialect>,
         ty: &Type<TExtDialect>,

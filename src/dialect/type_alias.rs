@@ -19,7 +19,7 @@ use crate::{
     },
 };
 
-use super::{SystemRDialect, SystemRExtension, SystemRResolver};
+use super::{SystemRDialect, SystemRExtension, SystemRResolver, ExtendedTokenKind, ExtendedKind, ExtendedPattern, ExtendedType, ExtendedDialectState};
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct TypeAliasExtension;
@@ -42,6 +42,8 @@ pub enum TypeAliasTokenKind {
     Below(BottomTokenKind),
 }
 
+impl ExtendedTokenKind for TypeAliasTokenKind {}
+
 #[derive(Clone, Debug, Default, PartialEq, PartialOrd)]
 pub enum TypeAliasKind {
     #[default]
@@ -57,6 +59,7 @@ pub enum TypeAliasKind {
     ),
     Below(BottomKind),
 }
+impl ExtendedKind for TypeAliasKind {}
 
 #[derive(Clone, Debug, Default, PartialEq, PartialOrd)]
 pub enum TypeAliasPattern {
@@ -64,8 +67,8 @@ pub enum TypeAliasPattern {
     Empty,
     Below(BottomPattern),
 }
+impl ExtendedPattern for TypeAliasPattern {}
 
-// TExtType: Default + Clone + fmt::Debug + PartialEq + PartialOrd + Eq,
 #[derive(Clone, Debug, Default, PartialEq, PartialOrd, Eq, Hash)]
 pub enum TypeAliasType {
     #[default]
@@ -73,21 +76,23 @@ pub enum TypeAliasType {
     TypeAliasApp(String, Vec<Type<TypeAliasDialect>>),
     VarWrap(usize),
 }
+impl ExtendedType for TypeAliasType {}
 
 #[derive(Clone, Default, Debug)]
 pub struct TypeAliasDialectState {
     type_map: HashMap<String, (usize, Type<TypeAliasDialect>)>,
 }
+impl ExtendedDialectState for TypeAliasDialectState {}
 
 #[derive(Hash, Clone, Debug, Default, PartialEq, PartialOrd, Eq)]
 pub struct TypeAliasDialect;
 
 impl SystemRDialect for TypeAliasDialect {
-    type TExtDialectState = TypeAliasDialectState;
-    type TExtKind = TypeAliasKind;
-    type TExtPat = TypeAliasPattern;
-    type TExtTokenKind = TypeAliasTokenKind;
-    type TExtType = TypeAliasType;
+    type DialectState = TypeAliasDialectState;
+    type Kind = TypeAliasKind;
+    type Pattern = TypeAliasPattern;
+    type TokenKind = TypeAliasTokenKind;
+    type Type = TypeAliasType;
 }
 
 pub const KEYWORD_TYPE: &str = "type";
@@ -256,7 +261,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         ctx: &mut Context<TypeAliasDialect>,
         ctor_label: &str,
         inner: &Pattern<TypeAliasDialect>,
-        aliased_target: &<TypeAliasDialect as SystemRDialect>::TExtType,
+        aliased_target: &<TypeAliasDialect as SystemRDialect>::Type,
     ) -> bool {
         let TypeAliasType::TypeAliasApp(type_alias_label, inner_types) = aliased_target else {
             return false;
@@ -286,7 +291,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         &mut self,
         ctx: &mut Context<TypeAliasDialect>,
         inj_label: &str,
-        target: &<TypeAliasDialect as SystemRDialect>::TExtType,
+        target: &<TypeAliasDialect as SystemRDialect>::Type,
         tm: &Term<TypeAliasDialect>,
     ) -> Result<Type<TypeAliasDialect>, Diagnostic> {
         let sp = tm.span.clone();
@@ -333,44 +338,13 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         };
     }
 
-    fn type_check_application_of_ext(
-        &mut self,
-        ctx: &mut Context<TypeAliasDialect>,
-        t1: &Term<TypeAliasDialect>,
-        ty1: &Type<TypeAliasDialect>,
-        t2: &Term<TypeAliasDialect>,
-        ty2: &Type<TypeAliasDialect>,
-    ) -> Result<Type<TypeAliasDialect>, Diagnostic> {
-        panic!("this shouldn't exist");
-        /*
-        let Type::Extended(TypeAliasType::TypeAliasApp(label, inner_types)) = ty1.clone() else {
-            return Err(Diagnostic::error(
-                t1.span,
-                format!("Expected to convert ext_ty1 to TypeAliasApp, instead was {:?}", ty1),
-            ));
-        };
-
-        let reified_ext_ty = match reify_type(&ctx.ext_state, &label, &inner_types) {
-            Ok(t) => t,
-            Err(e) => {
-                return Err(Diagnostic::error(
-                    t1.span,
-                    format!("Expected to reify ty1 to its TypeAlias repr, instead got error: {:?}", e),
-                ));
-            }
-        };
-        // FIXME this is gonna go away
-        panic!("type_check_application_of_ext got label {:?} reified type: {:?} ty2: {:?}", label, reified_ext_ty, ty2);
-        */
-    }
-
     fn pat_visit_constructor_of_ext(
         &mut self,
         ext_state: &TypeAliasDialectState,
         pts: &mut crate::patterns::PatTyStack<TypeAliasDialect>,
         label: &str,
         pat: &Pattern<TypeAliasDialect>,
-        ext_ty: &<TypeAliasDialect as SystemRDialect>::TExtType,
+        ext_ty: &<TypeAliasDialect as SystemRDialect>::Type,
     ) {
         // handle where this is Type::Extended; at which point
         // the extension needs to re-create the above logic (including variant_field())
@@ -397,7 +371,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
     fn exhaustive_for_ext(
         &mut self,
         matrix: &crate::types::patterns::Matrix<TypeAliasDialect>,
-        ext_state: &mut <TypeAliasDialect as SystemRDialect>::TExtDialectState,
+        ext_state: &mut <TypeAliasDialect as SystemRDialect>::DialectState,
     ) -> bool {
         let Type::Extended(TypeAliasType::TypeAliasApp(type_decl_key, applied_types)) = matrix.expr_ty.clone() else {
             return false;
@@ -430,7 +404,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         &mut self,
         subst_visitor: &mut Subst<TypeAliasDialect>,
         ext_ty: &mut Type<TypeAliasDialect>,
-        ext_state: &<TypeAliasDialect as SystemRDialect>::TExtDialectState,
+        ext_state: &<TypeAliasDialect as SystemRDialect>::DialectState,
     ) {
         let Type::Extended(TypeAliasType::TypeAliasApp(type_decl_key, applied_types)) = ext_ty else {
             return;
@@ -447,7 +421,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         &mut self,
         aliaser: &mut crate::types::Aliaser<TypeAliasDialect>,
         ext_ty: &mut Type<TypeAliasDialect>,
-        ext_state: &<TypeAliasDialect as SystemRDialect>::TExtDialectState,
+        ext_state: &<TypeAliasDialect as SystemRDialect>::DialectState,
     ) {
         let Type::Extended(TypeAliasType::TypeAliasApp(type_decl_key, applied_types)) = ext_ty.clone() else {
             return;
@@ -463,7 +437,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         &mut self,
         shift: &mut crate::types::visit::Shift,
         ext_ty: &mut Type<TypeAliasDialect>,
-        ext_state: &<TypeAliasDialect as SystemRDialect>::TExtDialectState,
+        ext_state: &<TypeAliasDialect as SystemRDialect>::DialectState,
     ) {
         let Type::Extended(TypeAliasType::TypeAliasApp(type_decl_key, applied_types)) = ext_ty.clone() else {
             return;
@@ -481,7 +455,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
     fn type_check_ext_equals_ty(
         &mut self,
         ctx: &mut Context<TypeAliasDialect>,
-        ext_ty: &mut <TypeAliasDialect as SystemRDialect>::TExtType,
+        ext_ty: &mut <TypeAliasDialect as SystemRDialect>::Type,
         other_ty: &mut Type<TypeAliasDialect>,
     ) -> bool {
         match ext_ty.clone() {
@@ -501,7 +475,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
 }
 
 pub fn has_holed_type_named(
-    ps: &<TypeAliasDialect as SystemRDialect>::TExtDialectState,
+    ps: &<TypeAliasDialect as SystemRDialect>::DialectState,
     key: &str,
 ) -> Result<bool, Error<TypeAliasTokenKind>> {
     Ok(get_holed_type_from(ps, key).is_ok())

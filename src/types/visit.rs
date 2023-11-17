@@ -3,8 +3,7 @@ use crate::{
     dialect::{SystemRDialect, SystemRExtension},
     visit::MutTypeVisitor,
 };
-use core::fmt;
-use std::{convert::TryFrom, hash};
+use std::convert::TryFrom;
 
 pub struct Shift {
     pub cutoff: usize,
@@ -18,19 +17,19 @@ impl Shift {
 }
 
 impl<
-        TExtDialect: SystemRDialect + Clone + Default + fmt::Debug + PartialEq + PartialOrd + Eq + hash::Hash,
-        TExt: SystemRExtension<TExtDialect> + Clone + Default + fmt::Debug,
+        TExtDialect: SystemRDialect,
+        TExt: SystemRExtension<TExtDialect>,
     > MutTypeVisitor<TExtDialect, TExt> for Shift
 {
     fn visit_ext(
         &mut self,
         ty: &mut Type<TExtDialect>,
         ext: &mut TExt,
-        ext_state: &<TExtDialect as SystemRDialect>::TExtDialectState,
+        ext_state: &<TExtDialect as SystemRDialect>::DialectState,
     ) {
         ext.ty_shift_visit_ext(self, ty, ext_state);
     }
-    fn visit_var(&mut self, var: &mut usize, ext: &mut TExt, ext_state: &TExtDialect::TExtDialectState) {
+    fn visit_var(&mut self, var: &mut usize, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
         if *var >= self.cutoff {
             *var = usize::try_from(*var as isize + self.shift).expect("Variable has been shifted below 0! Fatal bug");
         }
@@ -40,7 +39,7 @@ impl<
         &mut self,
         inner: &mut Type<TExtDialect>,
         ext: &mut TExt,
-        ext_state: &TExtDialect::TExtDialectState,
+        ext_state: &TExtDialect::DialectState,
     ) {
         self.cutoff += 1;
         self.visit(inner, ext, ext_state);
@@ -51,14 +50,14 @@ impl<
         &mut self,
         inner: &mut Type<TExtDialect>,
         ext: &mut TExt,
-        ext_state: &TExtDialect::TExtDialectState,
+        ext_state: &TExtDialect::DialectState,
     ) {
         self.cutoff += 1;
         self.visit(inner, ext, ext_state);
         self.cutoff -= 1;
     }
 
-    fn visit_rec(&mut self, ty: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::TExtDialectState) {
+    fn visit_rec(&mut self, ty: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
         self.cutoff += 1;
         self.visit(ty, ext, ext_state);
         self.cutoff -= 1;
@@ -69,13 +68,13 @@ impl<
 /// TmVar(0) position in the `&mut Type<TExtDialect>` provided to
 /// `visit()`
 pub struct Subst<
-    TExtDialect: Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash,
+    TExtDialect: SystemRDialect,
 > {
     pub cutoff: usize,
     pub ty: Type<TExtDialect>,
 }
 
-impl<TExtDialect: Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash>
+impl<TExtDialect: SystemRDialect>
     Subst<TExtDialect>
 {
     pub fn new(ty: Type<TExtDialect>) -> Subst<TExtDialect> {
@@ -84,15 +83,15 @@ impl<TExtDialect: Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq
 }
 
 impl<
-        TExtDialect: Eq + SystemRDialect + Clone + fmt::Debug + Default + PartialEq + PartialOrd + Eq + hash::Hash,
-        TExt: SystemRExtension<TExtDialect> + Clone + Default + fmt::Debug,
+        TExtDialect: SystemRDialect,
+        TExt: SystemRExtension<TExtDialect>,
     > MutTypeVisitor<TExtDialect, TExt> for Subst<TExtDialect>
 {
     fn visit_universal(
         &mut self,
         inner: &mut Type<TExtDialect>,
         ext: &mut TExt,
-        ext_state: &TExtDialect::TExtDialectState,
+        ext_state: &TExtDialect::DialectState,
     ) {
         self.cutoff += 1;
         self.visit(inner, ext, ext_state);
@@ -103,24 +102,24 @@ impl<
         &mut self,
         inner: &mut Type<TExtDialect>,
         ext: &mut TExt,
-        ext_state: &TExtDialect::TExtDialectState,
+        ext_state: &TExtDialect::DialectState,
     ) {
         self.cutoff += 1;
         self.visit(inner, ext, ext_state);
         self.cutoff -= 1;
     }
 
-    fn visit_rec(&mut self, ty: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::TExtDialectState) {
+    fn visit_rec(&mut self, ty: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
         self.cutoff += 1;
         self.visit(ty, ext, ext_state);
         self.cutoff -= 1;
     }
 
-    fn visit_ext(&mut self, ty: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::TExtDialectState) {
+    fn visit_ext(&mut self, ty: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
         ext.ty_subst_visit_ext(self, ty, ext_state);
     }
 
-    fn visit(&mut self, ty: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::TExtDialectState) {
+    fn visit(&mut self, ty: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
         match ty {
             Type::Unit | Type::Bool | Type::Nat | Type::Tag(_) | Type::Bytes => {}
             Type::PlatformBinding(i, r) => {}
