@@ -1,7 +1,7 @@
 use super::debruijn::DeBruijnIndexer;
 use super::error::Error;
 use super::lexer::Lexer;
-use super::{ExtTokenKind, Token};
+use super::{TokenKind, Token};
 use crate::bottom::{BottomDialect, BottomExtension};
 use crate::dialect::{SystemRDialect, SystemRExtension};
 
@@ -36,7 +36,7 @@ pub enum ErrorKind<TExtTokenKind: PartialEq> {
     ExpectedIdent,
     ExpectedType,
     ExpectedPattern,
-    ExpectedToken(ExtTokenKind<TExtTokenKind>),
+    ExpectedToken(TokenKind<TExtTokenKind>),
     UnboundTypeVar,
     Unknown,
     Eof,
@@ -94,7 +94,7 @@ pub fn once_or_more<
 >(
     ps: &mut ParserState<TExtDialect>,
     mut func: F,
-    delimiter: ExtTokenKind<TExtDialect::TokenKind>,
+    delimiter: TokenKind<TExtDialect::TokenKind>,
     ext: &mut TExt,
 ) -> Result<Vec<T>, Error<TExtDialect::TokenKind>> {
     let mut v = vec![func(ps)?];
@@ -156,7 +156,7 @@ pub fn bump<
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> ExtTokenKind<TExtDialect::TokenKind> {
+) -> TokenKind<TExtDialect::TokenKind> {
     let prev = std::mem::replace(&mut ps.token, ps.lexer.lex(ext));
     ps.span = prev.span;
     prev.kind
@@ -171,7 +171,7 @@ pub fn bump_if<
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-    kind: &ExtTokenKind<TExtDialect::TokenKind>,
+    kind: &TokenKind<TExtDialect::TokenKind>,
 ) -> bool {
     if &ps.token.kind == kind {
         bump(ps, ext);
@@ -190,7 +190,7 @@ pub fn expect<
 >(
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-    kind: ExtTokenKind<TExtDialect::TokenKind>,
+    kind: TokenKind<TExtDialect::TokenKind>,
 ) -> Result<(), Error<TExtDialect::TokenKind>> {
     if ps.token.kind == kind {
         bump(ps, ext);
@@ -208,7 +208,7 @@ pub fn kind<
     TExtDialect: SystemRDialect,
 >(
     ps: &'s ParserState<TExtDialect>,
-) -> &'s ExtTokenKind<TExtDialect::TokenKind> {
+) -> &'s TokenKind<TExtDialect::TokenKind> {
     &ps.token.kind
 }
 
@@ -235,11 +235,11 @@ pub fn ty_app<
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
 ) -> Result<Type<TExtDialect>, Error<TExtDialect::TokenKind>> {
-    if !bump_if(ps, ext, &ExtTokenKind::LSquare) {
-        return error(ps, ErrorKind::ExpectedToken(ExtTokenKind::LSquare));
+    if !bump_if(ps, ext, &TokenKind::LSquare) {
+        return error(ps, ErrorKind::ExpectedToken(TokenKind::LSquare));
     }
     let ty = ty(ps, ext)?;
-    expect(ps, ext, ExtTokenKind::RSquare)?;
+    expect(ps, ext, TokenKind::RSquare)?;
     Ok(ty)
 }
 
@@ -251,55 +251,55 @@ pub fn ty_atom<
     ext: &mut TExt,
 ) -> Result<Type<TExtDialect>, Error<TExtDialect::TokenKind>> {
     match kind(ps) {
-        ExtTokenKind::Tag(s) => {
+        TokenKind::Tag(s) => {
             let v = s.to_owned();
             bump(ps, ext);
             Ok(Type::Tag(v))
         }
-        ExtTokenKind::TyBool => {
+        TokenKind::TyBool => {
             bump(ps, ext);
             Ok(Type::Bool)
         }
-        ExtTokenKind::TyNat => {
+        TokenKind::TyNat => {
             bump(ps, ext);
             Ok(Type::Nat)
         }
-        ExtTokenKind::TyUnit => {
+        TokenKind::TyUnit => {
             bump(ps, ext);
             Ok(Type::Unit)
         }
-        ExtTokenKind::LParen => {
+        TokenKind::LParen => {
             bump(ps, ext);
             let r = ty(ps, ext)?;
-            expect(ps, ext, ExtTokenKind::RParen)?;
+            expect(ps, ext, TokenKind::RParen)?;
             Ok(r)
         }
-        ExtTokenKind::Forall => {
+        TokenKind::Forall => {
             bump(ps, ext);
             Ok(Type::Universal(Box::new(ty(ps, ext)?)))
         }
-        ExtTokenKind::Exists => {
+        TokenKind::Exists => {
             bump(ps, ext);
             let tvar = uppercase_id(ps, ext)?;
-            expect(ps, ext, ExtTokenKind::Proj)?;
+            expect(ps, ext, TokenKind::Proj)?;
             ps.tyvar.push(tvar);
             let xs = Type::Existential(Box::new(ty(ps, ext)?));
             ps.tyvar.pop();
             Ok(xs)
         }
-        ExtTokenKind::Uppercase(_) => {
+        TokenKind::Uppercase(_) => {
             let ty = uppercase_id(ps, ext)?;
             match ps.tyvar.lookup(&ty) {
                 Some(idx) => Ok(Type::Var(idx)),
                 None => Ok(Type::Alias(ty)),
             }
         }
-        ExtTokenKind::LBrace => {
+        TokenKind::LBrace => {
             bump(ps, ext);
             let mut ext2 = ext.clone();
             let mut ext3 = ext.clone();
-            let fields = once_or_more(ps, |p| ty_variant(p, &mut ext2), ExtTokenKind::Bar, &mut ext3)?;
-            expect(ps, ext, ExtTokenKind::RBrace)?;
+            let fields = once_or_more(ps, |p| ty_variant(p, &mut ext2), TokenKind::Bar, &mut ext3)?;
+            expect(ps, ext, TokenKind::RBrace)?;
             Ok(Type::Variant(fields))
         }
         v => error(
@@ -316,11 +316,11 @@ pub fn ty_tuple<
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
 ) -> Result<Type<TExtDialect>, Error<TExtDialect::TokenKind>> {
-    if bump_if(ps, ext, &ExtTokenKind::LParen) {
+    if bump_if(ps, ext, &TokenKind::LParen) {
         let mut ext2 = ext.clone();
         let mut ext3 = ext.clone();
-        let mut v = once_or_more(ps, |p| ty(p, &mut ext2), ExtTokenKind::Comma, &mut ext3)?;
-        expect(ps, ext, ExtTokenKind::RParen)?;
+        let mut v = once_or_more(ps, |p| ty(p, &mut ext2), TokenKind::Comma, &mut ext3)?;
+        expect(ps, ext, TokenKind::RParen)?;
 
         if v.len() > 1 {
             Ok(Type::Product(v))
@@ -350,9 +350,9 @@ pub fn ty<
         return ext.parser_ty(ps);
     }
 
-    if bump_if(ps, ext, &ExtTokenKind::Rec) {
+    if bump_if(ps, ext, &TokenKind::Rec) {
         let name = uppercase_id(ps, ext)?;
-        expect(ps, ext, ExtTokenKind::Equals)?;
+        expect(ps, ext, TokenKind::Equals)?;
         ps.tyvar.push(name);
         let ty = ty(ps, ext)?;
         ps.tyvar.pop();
@@ -360,11 +360,11 @@ pub fn ty<
     }
 
     let mut lhs = ty_tuple(ps, ext)?;
-    if let ExtTokenKind::TyArrow = kind(ps) {
+    if let TokenKind::TyArrow = kind(ps) {
         bump(ps, ext);
         while let Ok(rhs) = ty(ps, ext) {
             lhs = Type::Arrow(Box::new(lhs), Box::new(rhs));
-            if let ExtTokenKind::TyArrow = kind(ps) {
+            if let TokenKind::TyArrow = kind(ps) {
                 bump(ps, ext);
             } else {
                 break;
@@ -399,9 +399,9 @@ pub fn tmabs<
     let sp = ps.span;
     ps.tmvar.push(tmvar);
 
-    expect(ps, ext, ExtTokenKind::Colon)?;
+    expect(ps, ext, TokenKind::Colon)?;
     let ty = once(ps, |p| ty(p, ext), "type annotation required in abstraction")?;
-    expect(ps, ext, ExtTokenKind::Proj)?;
+    expect(ps, ext, TokenKind::Proj)?;
     let body = once(ps, |p| parse(p, ext), "abstraction body required")?;
     ps.tmvar.pop();
     Ok(Term::new(Kind::Abs(Box::new(ty), Box::new(body)), sp + ps.span))
@@ -414,7 +414,7 @@ pub fn fold<
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
 ) -> Result<Term<TExtDialect>, Error<TExtDialect::TokenKind>> {
-    expect(ps, ext, ExtTokenKind::Fold)?;
+    expect(ps, ext, TokenKind::Fold)?;
     let sp = ps.span;
     let ty = once(ps, |p| ty(p, ext), "type annotation required after `fold`")?;
     let tm = once(ps, |p| parse(p, ext), "term required after `fold`")?;
@@ -428,7 +428,7 @@ pub fn unfold<
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
 ) -> Result<Term<TExtDialect>, Error<TExtDialect::TokenKind>> {
-    expect(ps, ext, ExtTokenKind::Unfold)?;
+    expect(ps, ext, TokenKind::Unfold)?;
     let sp = ps.span;
     let ty = once(ps, |p| ty(p, ext), "type annotation required after `unfold`")?;
     let tm = once(ps, |p| parse(p, ext), "term required after `unfold`")?;
@@ -443,7 +443,7 @@ pub fn fix<
     ext: &mut TExt,
 ) -> Result<Term<TExtDialect>, Error<TExtDialect::TokenKind>> {
     let sp = ps.span;
-    expect(ps, ext, ExtTokenKind::Fix)?;
+    expect(ps, ext, TokenKind::Fix)?;
     let t = parse(ps, ext)?;
     Ok(Term::new(Kind::Fix(Box::new(t)), sp + ps.span))
 }
@@ -456,10 +456,10 @@ pub fn letexpr<
     ext: &mut TExt,
 ) -> Result<Term<TExtDialect>, Error<TExtDialect::TokenKind>> {
     let sp = ps.span;
-    expect(ps, ext, ExtTokenKind::Let)?;
+    expect(ps, ext, TokenKind::Let)?;
     let pat = once(ps, |p| pattern(p, ext), "missing pattern")?;
 
-    expect(ps, ext, ExtTokenKind::Equals)?;
+    expect(ps, ext, TokenKind::Equals)?;
 
     let t1 = once(ps, |p| parse(p, ext), "let binder required")?;
     let len = ps.tmvar.len();
@@ -469,7 +469,7 @@ pub fn letexpr<
     {
         ps.tmvar.push(var);
     }
-    expect(ps, ext, ExtTokenKind::In)?;
+    expect(ps, ext, TokenKind::In)?;
     let t2 = once(ps, |p| parse(p, ext), "let body required")?;
     while ps.tmvar.len() > len {
         ps.tmvar.pop();
@@ -487,10 +487,10 @@ pub fn lambda<
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
 ) -> Result<Term<TExtDialect>, Error<TExtDialect::TokenKind>> {
-    expect(ps, ext, ExtTokenKind::Lambda)?;
+    expect(ps, ext, TokenKind::Lambda)?;
     match kind(ps) {
-        ExtTokenKind::Uppercase(_) => tyabs(ps, ext),
-        ExtTokenKind::Lowercase(_) => tmabs(ps, ext),
+        TokenKind::Uppercase(_) => tyabs(ps, ext),
+        TokenKind::Lowercase(_) => tmabs(ps, ext),
         _ => {
             ps.diagnostic
                 .push("expected identifier after lambda, found".to_string(), ps.span);
@@ -506,13 +506,13 @@ pub fn paren<
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
 ) -> Result<Term<TExtDialect>, Error<TExtDialect::TokenKind>> {
-    expect(ps, ext, ExtTokenKind::LParen)?;
+    expect(ps, ext, TokenKind::LParen)?;
     let span = ps.span;
 
     let mut ext2 = ext.clone();
     let mut ext3 = ext.clone();
-    let mut n = once_or_more(ps, |p| parse(p, &mut ext2), ExtTokenKind::Comma, &mut ext3)?;
-    expect(ps, ext, ExtTokenKind::RParen)?;
+    let mut n = once_or_more(ps, |p| parse(p, &mut ext2), TokenKind::Comma, &mut ext3)?;
+    expect(ps, ext, TokenKind::RParen)?;
     if n.len() > 1 {
         Ok(Term::new(Kind::Product(n), span + ps.span))
     } else {
@@ -529,7 +529,7 @@ pub fn uppercase_id<
     ext: &mut TExt,
 ) -> Result<String, Error<TExtDialect::TokenKind>> {
     match bump(ps, ext) {
-        ExtTokenKind::Uppercase(s) => Ok(s),
+        TokenKind::Uppercase(s) => Ok(s),
         tk => {
             ps.diagnostic
                 .push(format!("expected uppercase identifier, found {:?}", tk), ps.span);
@@ -546,7 +546,7 @@ pub fn lowercase_id<
     ext: &mut TExt,
 ) -> Result<String, Error<TExtDialect::TokenKind>> {
     match bump(ps, ext) {
-        ExtTokenKind::Lowercase(s) => Ok(s),
+        TokenKind::Lowercase(s) => Ok(s),
         tk => {
             ps.diagnostic
                 .push(format!("expected lowercase identifier, found {:?}", tk), ps.span);
@@ -563,11 +563,11 @@ pub fn literal<
     ext: &mut TExt,
 ) -> Result<Term<TExtDialect>, Error<TExtDialect::TokenKind>> {
     let lit = match bump(ps, ext) {
-        ExtTokenKind::Nat(x) => Literal::Nat(x),
-        ExtTokenKind::True => Literal::Bool(true),
-        ExtTokenKind::False => Literal::Bool(false),
-        ExtTokenKind::Unit => Literal::Unit,
-        ExtTokenKind::Tag(s) => Literal::Tag(s),
+        TokenKind::Nat(x) => Literal::Nat(x),
+        TokenKind::True => Literal::Bool(true),
+        TokenKind::False => Literal::Bool(false),
+        TokenKind::Unit => Literal::Unit,
+        TokenKind::Tag(s) => Literal::Tag(s),
         _ => return error(ps, ErrorKind::Unknown),
     };
     Ok(Term::new(Kind::Lit(lit), ps.span))
@@ -581,9 +581,9 @@ pub fn primitive<
     ext: &mut TExt,
 ) -> Result<Term<TExtDialect>, Error<TExtDialect::TokenKind>> {
     let p = match bump(ps, ext) {
-        ExtTokenKind::IsZero => Primitive::IsZero,
-        ExtTokenKind::Succ => Primitive::Succ,
-        ExtTokenKind::Pred => Primitive::Pred,
+        TokenKind::IsZero => Primitive::IsZero,
+        TokenKind::Succ => Primitive::Succ,
+        TokenKind::Pred => Primitive::Pred,
         _ => return error(ps, ErrorKind::Unknown),
     };
     Ok(Term::new(Kind::Primitive(p), ps.span))
@@ -600,12 +600,12 @@ pub fn pat_atom<
     ext: &mut TExt,
 ) -> Result<Pattern<TExtDialect>, Error<TExtDialect::TokenKind>> {
     match kind(ps) {
-        ExtTokenKind::LParen => pattern(ps, ext),
-        ExtTokenKind::Wildcard => {
+        TokenKind::LParen => pattern(ps, ext),
+        TokenKind::Wildcard => {
             bump(ps, ext);
             Ok(Pattern::Any)
         }
-        ExtTokenKind::Uppercase(_) => {
+        TokenKind::Uppercase(_) => {
             let tycon = uppercase_id(ps, ext)?;
             let inner = match pattern(ps, ext) {
                 Ok(pat) => pat,
@@ -613,30 +613,30 @@ pub fn pat_atom<
             };
             Ok(Pattern::Constructor(tycon, Box::new(inner)))
         }
-        ExtTokenKind::Lowercase(_) => {
+        TokenKind::Lowercase(_) => {
             let var = lowercase_id(ps, ext)?;
             // ps.tmvar.push(var.clone());
             Ok(Pattern::Variable(var))
         }
-        ExtTokenKind::True => {
+        TokenKind::True => {
             bump(ps, ext);
             Ok(Pattern::Literal(Literal::Bool(true)))
         }
-        ExtTokenKind::False => {
+        TokenKind::False => {
             bump(ps, ext);
             Ok(Pattern::Literal(Literal::Bool(false)))
         }
-        ExtTokenKind::Unit => {
+        TokenKind::Unit => {
             bump(ps, ext);
             Ok(Pattern::Literal(Literal::Unit))
         }
-        ExtTokenKind::Nat(n) => {
+        TokenKind::Nat(n) => {
             // O great borrowck, may this humble offering appease thee
             let n = *n;
             bump(ps, ext);
             Ok(Pattern::Literal(Literal::Nat(n)))
         }
-        ExtTokenKind::Tag(s) => {
+        TokenKind::Tag(s) => {
             let s = s.clone();
             bump(ps, ext);
             Ok(Pattern::Literal(Literal::Tag(s)))
@@ -653,12 +653,12 @@ pub fn pattern<
     ext: &mut TExt,
 ) -> Result<Pattern<TExtDialect>, Error<TExtDialect::TokenKind>> {
     match kind(ps) {
-        ExtTokenKind::LParen => {
+        TokenKind::LParen => {
             bump(ps, ext);
             let mut ext2 = ext.clone();
             let mut ext3 = ext.clone();
-            let mut v = once_or_more(ps, |p| pat_atom(p, &mut ext2), ExtTokenKind::Comma, &mut ext3)?;
-            expect(ps, ext, ExtTokenKind::RParen)?;
+            let mut v = once_or_more(ps, |p| pat_atom(p, &mut ext2), TokenKind::Comma, &mut ext3)?;
+            expect(ps, ext, TokenKind::RParen)?;
             if v.len() > 1 {
                 Ok(Pattern::Product(v))
             } else {
@@ -699,12 +699,12 @@ pub fn case_arm<
         ps.tmvar.push(var);
     }
 
-    expect(ps, ext, ExtTokenKind::Equals)?;
-    expect(ps, ext, ExtTokenKind::Gt)?;
+    expect(ps, ext, TokenKind::Equals)?;
+    expect(ps, ext, TokenKind::Gt)?;
 
     let term = Box::new(once(ps, |p| application(p, ext), "missing case term")?);
 
-    bump_if(ps, ext, &ExtTokenKind::Comma);
+    bump_if(ps, ext, &TokenKind::Comma);
 
     // Unbind any variables from the parsing context
     while ps.tmvar.len() > len {
@@ -723,16 +723,16 @@ pub fn case<
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
 ) -> Result<Term<TExtDialect>, Error<TExtDialect::TokenKind>> {
-    expect(ps, ext, ExtTokenKind::Case)?;
+    expect(ps, ext, TokenKind::Case)?;
     let span = ps.span;
     let expr = once(ps, |p| parse(p, ext), "missing case expression")?;
-    expect(ps, ext, ExtTokenKind::Of)?;
+    expect(ps, ext, TokenKind::Of)?;
 
-    bump_if(ps, ext, &ExtTokenKind::Bar);
+    bump_if(ps, ext, &TokenKind::Bar);
 
     let mut ext2 = ext.clone();
     let mut ext3 = ext.clone();
-    let arms = once_or_more(ps, |p| case_arm(p, &mut ext3), ExtTokenKind::Bar, &mut ext2)?;
+    let arms = once_or_more(ps, |p| case_arm(p, &mut ext3), TokenKind::Bar, &mut ext2)?;
 
     Ok(Term::new(Kind::Case(Box::new(expr), arms), span + ps.span))
 }
@@ -751,7 +751,7 @@ pub fn injection<
         _ => Term::new(Kind::Lit(Literal::Unit), ps.span),
     };
 
-    expect(ps, ext, ExtTokenKind::Of)?;
+    expect(ps, ext, TokenKind::Of)?;
     let ty = ty(ps, ext)?;
     Ok(Term::new(
         Kind::Injection(label, Box::new(term), Box::new(ty)),
@@ -766,12 +766,12 @@ pub fn pack<
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
 ) -> Result<Term<TExtDialect>, Error<TExtDialect::TokenKind>> {
-    expect(ps, ext, ExtTokenKind::Pack)?;
+    expect(ps, ext, TokenKind::Pack)?;
     let sp = ps.span;
     let witness = ty(ps, ext)?;
-    expect(ps, ext, ExtTokenKind::Comma)?;
+    expect(ps, ext, TokenKind::Comma)?;
     let evidence = parse(ps, ext)?;
-    expect(ps, ext, ExtTokenKind::As)?;
+    expect(ps, ext, TokenKind::As)?;
     let signature = ty(ps, ext)?;
 
     Ok(Term::new(
@@ -787,17 +787,17 @@ pub fn unpack<
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
 ) -> Result<Term<TExtDialect>, Error<TExtDialect::TokenKind>> {
-    expect(ps, ext, ExtTokenKind::Unpack)?;
+    expect(ps, ext, TokenKind::Unpack)?;
     let sp = ps.span;
     let package = parse(ps, ext)?;
-    expect(ps, ext, ExtTokenKind::As)?;
+    expect(ps, ext, TokenKind::As)?;
 
     let tyvar = uppercase_id(ps, ext)?;
-    expect(ps, ext, ExtTokenKind::Comma)?;
+    expect(ps, ext, TokenKind::Comma)?;
     let name = lowercase_id(ps, ext)?;
     ps.tyvar.push(tyvar);
     ps.tmvar.push(name);
-    expect(ps, ext, ExtTokenKind::In)?;
+    expect(ps, ext, TokenKind::In)?;
     let expr = parse(ps, ext)?;
     ps.tmvar.pop();
     ps.tyvar.pop();
@@ -817,7 +817,7 @@ pub fn numeric_bytes_arr<
     bump(ps, ext);
 
     let mut ext_2 = ext.clone();
-    let nats = once_or_more(ps, |p| atom(p, &mut ext_2), ExtTokenKind::Comma, ext)?;
+    let nats = once_or_more(ps, |p| atom(p, &mut ext_2), TokenKind::Comma, ext)?;
     let mut out_bytes: Vec<u8> = Vec::new();
     for n in nats {
         match n.kind {
@@ -836,7 +836,7 @@ pub fn numeric_bytes_arr<
     }
 
     // lastly we should expect a closing RSquare, no trailing comma!
-    expect(ps, ext, ExtTokenKind::RSquare)?;
+    expect(ps, ext, TokenKind::RSquare)?;
 
     let mut bytes = Term::unit();
     bytes.span = Span {start: start_span.start, end: ps.span.end};
@@ -852,17 +852,17 @@ pub fn atom<
     ext: &mut TExt,
 ) -> Result<Term<TExtDialect>, Error<TExtDialect::TokenKind>> {
     match kind(ps) {
-        ExtTokenKind::Extended(tk) => ext_atom(ps, ext),
-        ExtTokenKind::LSquare => numeric_bytes_arr(ps, ext),
-        ExtTokenKind::LParen => paren(ps, ext),
-        ExtTokenKind::Fix => fix(ps, ext),
-        ExtTokenKind::Fold => fold(ps, ext),
-        ExtTokenKind::Unfold => unfold(ps, ext),
-        ExtTokenKind::Pack => pack(ps, ext),
-        ExtTokenKind::Unpack => unpack(ps, ext),
-        ExtTokenKind::IsZero | ExtTokenKind::Succ | ExtTokenKind::Pred => primitive(ps, ext),
-        ExtTokenKind::Uppercase(_) => injection(ps, ext),
-        ExtTokenKind::Lowercase(s) => {
+        TokenKind::Extended(tk) => ext_atom(ps, ext),
+        TokenKind::LSquare => numeric_bytes_arr(ps, ext),
+        TokenKind::LParen => paren(ps, ext),
+        TokenKind::Fix => fix(ps, ext),
+        TokenKind::Fold => fold(ps, ext),
+        TokenKind::Unfold => unfold(ps, ext),
+        TokenKind::Pack => pack(ps, ext),
+        TokenKind::Unpack => unpack(ps, ext),
+        TokenKind::IsZero | TokenKind::Succ | TokenKind::Pred => primitive(ps, ext),
+        TokenKind::Uppercase(_) => injection(ps, ext),
+        TokenKind::Lowercase(s) => {
             let var = lowercase_id(ps, ext)?;
             match ps.tmvar.lookup(&var) {
                 Some(idx) => Ok(Term::new(Kind::Var(idx), ps.span)),
@@ -875,11 +875,11 @@ pub fn atom<
                 }
             }
         }
-        ExtTokenKind::Nat(_) | ExtTokenKind::True | ExtTokenKind::False | ExtTokenKind::Unit | ExtTokenKind::Tag(_) => {
+        TokenKind::Nat(_) | TokenKind::True | TokenKind::False | TokenKind::Unit | TokenKind::Tag(_) => {
             literal(ps, ext)
         }
-        ExtTokenKind::Eof => error(ps, ErrorKind::Eof),
-        ExtTokenKind::Semicolon => {
+        TokenKind::Eof => error(ps, ErrorKind::Eof),
+        TokenKind::Semicolon => {
             bump(ps, ext);
             error(ps, ErrorKind::ExpectedAtom)
         }
@@ -898,13 +898,13 @@ pub fn projection<
     ext: &mut TExt,
 ) -> Result<Term<TExtDialect>, Error<TExtDialect::TokenKind>> {
     let atom = atom(ps, ext)?;
-    if bump_if(ps, ext, &ExtTokenKind::Proj) {
+    if bump_if(ps, ext, &TokenKind::Proj) {
         let idx = match bump(ps, ext) {
-            ExtTokenKind::Nat(idx) => idx,
+            TokenKind::Nat(idx) => idx,
             _ => {
                 ps.diagnostic
                     .push(format!("expected integer index after {}", atom), ps.span);
-                return error(ps, ErrorKind::ExpectedToken(ExtTokenKind::Proj));
+                return error(ps, ErrorKind::ExpectedToken(TokenKind::Proj));
             }
         };
         let sp = atom.span + ps.span;
@@ -990,10 +990,10 @@ pub fn parse<
     ext: &mut TExt,
 ) -> Result<Term<TExtDialect>, Error<TExtDialect::TokenKind>> {
     match kind(ps).clone() {
-        ExtTokenKind::Case => case(ps, ext),
-        ExtTokenKind::Lambda => lambda(ps, ext),
-        ExtTokenKind::Let => letexpr(ps, ext),
-        ExtTokenKind::Extended(tk) if ext.parser_has_ext_parse(&tk) => ext_parse(ps, ext),
+        TokenKind::Case => case(ps, ext),
+        TokenKind::Lambda => lambda(ps, ext),
+        TokenKind::Let => letexpr(ps, ext),
+        TokenKind::Extended(tk) if ext.parser_has_ext_parse(&tk) => ext_parse(ps, ext),
         _ => application(ps, ext),
     }
 }

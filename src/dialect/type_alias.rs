@@ -9,7 +9,7 @@ use crate::{
         error::Error,
         parser,
         parser::{ErrorKind, ParserState},
-        ExtTokenKind,
+        TokenKind,
     },
     terms::{Kind, Term},
     type_check::{patterns::overlap, visit::Subst, TypeChecker, Type},
@@ -151,7 +151,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         ps: &mut ParserState<TypeAliasDialect>,
     ) -> Result<Term<TypeAliasDialect>, Error<TypeAliasTokenKind>> {
         let sp = ps.span;
-        parser::expect(ps, self, ExtTokenKind::Extended(TypeAliasTokenKind::TypeAliasKeyword))?;
+        parser::expect(ps, self, TokenKind::Extended(TypeAliasTokenKind::TypeAliasKeyword))?;
 
         let struct_ident = parser::once(ps, |p| parser::atom(p, self), "missing struct identifier $Binding")?;
         let struct_ident = match struct_ident.kind {
@@ -165,7 +165,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
             }
         };
 
-        parser::expect(ps, self, ExtTokenKind::Equals)?;
+        parser::expect(ps, self, TokenKind::Equals)?;
 
         // this should be a "holed-out" type specification (it should have
         // entries for where generic types can be substituted-in)
@@ -173,7 +173,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         set_holed_type_for(ps, &struct_ident, type_shape.clone())?;
 
         let len = ps.tmvar.len();
-        parser::expect(ps, self, ExtTokenKind::In)?;
+        parser::expect(ps, self, TokenKind::In)?;
 
         let t2 = parser::once(ps, |p| parser::parse(p, self), "type scope body required")?;
         while ps.tmvar.len() > len {
@@ -199,7 +199,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
     ) -> Result<Term<TypeAliasDialect>, Error<TypeAliasTokenKind>> {
         let name_tok = ps.token.clone();
         let name_val = match name_tok.kind.clone() {
-            ExtTokenKind::Extended(n) => match n {
+            TokenKind::Extended(n) => match n {
                 TypeAliasTokenKind::TypeBindingVar(name) => name,
                 v => {
                     return Err(Error {
@@ -226,7 +226,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
 
     fn parser_ty_bump_if(&mut self, ps: &mut ParserState<TypeAliasDialect>) -> bool {
         match &ps.token.kind {
-            ExtTokenKind::Extended(TypeAliasTokenKind::TypeBindingVar(_)) => true,
+            TokenKind::Extended(TypeAliasTokenKind::TypeBindingVar(_)) => true,
             _ => false,
         }
     }
@@ -237,7 +237,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
     ) -> Result<Type<TypeAliasDialect>, Error<TypeAliasTokenKind>> {
         let binding = ps.token.kind.clone();
 
-        let ExtTokenKind::Extended(TypeAliasTokenKind::TypeBindingVar(type_decl_key)) = binding else {
+        let TokenKind::Extended(TypeAliasTokenKind::TypeBindingVar(type_decl_key)) = binding else {
             return Err(Error {
                 span: ps.span,
                 tok: ps.token.clone(),
@@ -246,7 +246,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         };
         parser::bump(ps, self);
 
-        let applied_types = if ps.token.kind == ExtTokenKind::LSquare {
+        let applied_types = if ps.token.kind == TokenKind::LSquare {
             pulls_types_from_tyapp(ps, self)?
         } else {
             Vec::new()
@@ -557,17 +557,17 @@ pub fn pulls_types_from_tyapp(
     ps: &mut ParserState<TypeAliasDialect>,
     ext: &mut TypeAliasExtension,
 ) -> Result<Vec<Type<TypeAliasDialect>>, Error<TypeAliasTokenKind>> {
-    parser::expect(ps, ext, ExtTokenKind::LSquare)?;
+    parser::expect(ps, ext, TokenKind::LSquare)?;
 
     let mut ret_val = Vec::new();
     loop {
         let ty = parser::ty(ps, ext)?;
         ret_val.push(ty);
 
-        if ps.token.kind == ExtTokenKind::RSquare {
+        if ps.token.kind == TokenKind::RSquare {
             break;
         }
-        if ps.token.kind == ExtTokenKind::Comma {
+        if ps.token.kind == TokenKind::Comma {
             parser::bump(ps, ext);
             continue;
         }
@@ -578,7 +578,7 @@ pub fn pulls_types_from_tyapp(
         });
     }
 
-    parser::expect(ps, ext, ExtTokenKind::RSquare)?;
+    parser::expect(ps, ext, TokenKind::RSquare)?;
     Ok(ret_val)
 }
 
@@ -588,8 +588,8 @@ pub fn extract_tyabs_for_type_shape<'s>(
 ) -> Result<usize, Error<TypeAliasTokenKind>> {
     let mut ext_2 = ext.clone();
     let mut tyabs = Vec::new();
-    if ps.token.kind == ExtTokenKind::Lambda {
-        parser::expect(ps, ext, ExtTokenKind::Lambda)?;
+    if ps.token.kind == TokenKind::Lambda {
+        parser::expect(ps, ext, TokenKind::Lambda)?;
         tyabs = parser::once_or_more(
             ps,
             |p| {
@@ -597,7 +597,7 @@ pub fn extract_tyabs_for_type_shape<'s>(
                 p.tyvar.push(tyvar);
                 Ok(())
             },
-            ExtTokenKind::Lambda,
+            TokenKind::Lambda,
             &mut ext_2,
         )?;
     }

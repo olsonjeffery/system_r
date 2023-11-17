@@ -6,7 +6,7 @@ pub mod parser;
 use crate::{system_r_util::span::Span, dialect::ExtendedTokenKind};
 
 #[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
-pub enum ExtTokenKind<TExtTokenKind: PartialEq> {
+pub enum TokenKind<TExtTokenKind: PartialEq> {
     Uppercase(String),
     Lowercase(String),
     Nat(u64),
@@ -61,19 +61,19 @@ pub enum ExtTokenKind<TExtTokenKind: PartialEq> {
 
 #[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
 pub struct Token<TExtTokenKind: ExtendedTokenKind> {
-    pub kind: ExtTokenKind<TExtTokenKind>,
+    pub kind: TokenKind<TExtTokenKind>,
     pub span: Span,
 }
 
 impl<TExtTokenKind: ExtendedTokenKind> Token<TExtTokenKind> {
     pub const fn dummy() -> Token<TExtTokenKind> {
         Token {
-            kind: ExtTokenKind::Dummy,
+            kind: TokenKind::Dummy,
             span: Span::zero(),
         }
     }
 
-    pub const fn new(kind: ExtTokenKind<TExtTokenKind>, span: Span) -> Token<TExtTokenKind> {
+    pub const fn new(kind: TokenKind<TExtTokenKind>, span: Span) -> Token<TExtTokenKind> {
         Token { kind, span }
     }
 }

@@ -1,4 +1,4 @@
-use super::{ExtTokenKind, Token};
+use super::{TokenKind, Token};
 use crate::dialect::SystemRDialect;
 use crate::dialect::SystemRExtension;
 use crate::system_r_util::span::{Location, Span};
@@ -113,12 +113,12 @@ impl<'s, TExtDialect: SystemRDialect>
         // it is safe to call unwrap() on str::parse<u32>
         let (data, span) = self.consume_while(char::is_numeric);
         let n = data.parse::<u64>().unwrap();
-        Token::new(ExtTokenKind::Nat(n), span)
+        Token::new(TokenKind::Nat(n), span)
     }
 
     fn tag(&mut self) -> Token<TExtDialect::TokenKind> {
         let (data, span) = self.consume_while(|ch| is_tag(ch) || ch.is_ascii_alphanumeric());
-        let kind = ExtTokenKind::Tag(data);
+        let kind = TokenKind::Tag(data);
         Token::new(kind, span)
     }
 
@@ -128,7 +128,7 @@ impl<'s, TExtDialect: SystemRDialect>
     ) -> Token<TExtDialect::TokenKind> {
         let (data, span) = self.consume_while(|ch| ext.lex_is_extended_single_pred(ch));
         let kind = ext.lex_extended_single(&data);
-        Token::new(ExtTokenKind::Extended(kind), span)
+        Token::new(TokenKind::Extended(kind), span)
     }
 
     /// Lex a reserved keyword or an identifier
@@ -138,40 +138,40 @@ impl<'s, TExtDialect: SystemRDialect>
     ) -> Token<TExtDialect::TokenKind> {
         let (data, span) = self.consume_while(|ch| ch.is_ascii_alphanumeric());
         let kind = match data.as_ref() {
-            data if ext.lex_is_ext_keyword(data) => ExtTokenKind::Extended(ext.lex_ext_keyword(data)),
-            "if" => ExtTokenKind::If,
-            "then" => ExtTokenKind::Then,
-            "else" => ExtTokenKind::Else,
-            "true" => ExtTokenKind::True,
-            "false" => ExtTokenKind::False,
-            "succ" => ExtTokenKind::Succ,
-            "pred" => ExtTokenKind::Pred,
-            "iszero" => ExtTokenKind::IsZero,
-            "zero" => ExtTokenKind::Nat(0),
-            "Bool" => ExtTokenKind::TyBool,
-            "Nat" => ExtTokenKind::TyNat,
-            "Unit" => ExtTokenKind::TyUnit,
-            "unit" => ExtTokenKind::Unit,
-            "let" => ExtTokenKind::Let,
-            "in" => ExtTokenKind::In,
-            "fix" => ExtTokenKind::Fix,
-            "case" => ExtTokenKind::Case,
-            "of" => ExtTokenKind::Of,
-            "fold" => ExtTokenKind::Fold,
-            "unfold" => ExtTokenKind::Unfold,
-            "rec" => ExtTokenKind::Rec,
-            "lambda" => ExtTokenKind::Lambda,
-            "forall" => ExtTokenKind::Forall,
-            "exists" => ExtTokenKind::Exists,
-            "pack" => ExtTokenKind::Pack,
-            "unpack" => ExtTokenKind::Unpack,
-            "as" => ExtTokenKind::As,
+            data if ext.lex_is_ext_keyword(data) => TokenKind::Extended(ext.lex_ext_keyword(data)),
+            "if" => TokenKind::If,
+            "then" => TokenKind::Then,
+            "else" => TokenKind::Else,
+            "true" => TokenKind::True,
+            "false" => TokenKind::False,
+            "succ" => TokenKind::Succ,
+            "pred" => TokenKind::Pred,
+            "iszero" => TokenKind::IsZero,
+            "zero" => TokenKind::Nat(0),
+            "Bool" => TokenKind::TyBool,
+            "Nat" => TokenKind::TyNat,
+            "Unit" => TokenKind::TyUnit,
+            "unit" => TokenKind::Unit,
+            "let" => TokenKind::Let,
+            "in" => TokenKind::In,
+            "fix" => TokenKind::Fix,
+            "case" => TokenKind::Case,
+            "of" => TokenKind::Of,
+            "fold" => TokenKind::Fold,
+            "unfold" => TokenKind::Unfold,
+            "rec" => TokenKind::Rec,
+            "lambda" => TokenKind::Lambda,
+            "forall" => TokenKind::Forall,
+            "exists" => TokenKind::Exists,
+            "pack" => TokenKind::Pack,
+            "unpack" => TokenKind::Unpack,
+            "as" => TokenKind::As,
 
             _ => {
                 if data.starts_with(|ch: char| ch.is_ascii_uppercase()) {
-                    ExtTokenKind::Uppercase(data)
+                    TokenKind::Uppercase(data)
                 } else {
-                    ExtTokenKind::Lowercase(data)
+                    TokenKind::Lowercase(data)
                 }
             }
         };
@@ -181,12 +181,12 @@ impl<'s, TExtDialect: SystemRDialect>
     /// Consume the next input character, expecting to match `ch`.
     /// Return a [`ExtTokenKind::Invalid`] if the next character does not match,
     /// or the argument `kind` if it does
-    fn eat(&mut self, ch: char, kind: ExtTokenKind<TExtDialect::TokenKind>) -> Token<TExtDialect::TokenKind> {
+    fn eat(&mut self, ch: char, kind: TokenKind<TExtDialect::TokenKind>) -> Token<TExtDialect::TokenKind> {
         let loc = self.current;
         // Lexer::eat() should only be called internally after calling peek()
         // so we know that it's safe to unwrap the result of Lexer::consume()
         let n = self.consume().unwrap();
-        let kind = if n == ch { kind } else { ExtTokenKind::Invalid(n) };
+        let kind = if n == ch { kind } else { TokenKind::Invalid(n) };
         Token::new(kind, Span::new(loc, self.current))
     }
 
@@ -198,36 +198,36 @@ impl<'s, TExtDialect: SystemRDialect>
         self.consume_delimiter();
         let next = match self.peek() {
             Some(ch) => ch,
-            None => return Token::new(ExtTokenKind::Eof, Span::new(self.current, self.current)),
+            None => return Token::new(TokenKind::Eof, Span::new(self.current, self.current)),
         };
         match next {
             x if ext.lex_is_ext_single(x) => self.extended_single(ext),
             x if is_tag(x) => self.tag(),
             x if x.is_ascii_alphabetic() => self.keyword(ext),
             x if x.is_numeric() => self.number(),
-            '(' => self.eat('(', ExtTokenKind::LParen),
-            ')' => self.eat(')', ExtTokenKind::RParen),
-            ';' => self.eat(';', ExtTokenKind::Semicolon),
-            ':' => self.eat(':', ExtTokenKind::Colon),
-            ',' => self.eat(',', ExtTokenKind::Comma),
-            '{' => self.eat('{', ExtTokenKind::LBrace),
-            '}' => self.eat('}', ExtTokenKind::RBrace),
-            '[' => self.eat('[', ExtTokenKind::LSquare),
-            ']' => self.eat(']', ExtTokenKind::RSquare),
-            '\\' => self.eat('\\', ExtTokenKind::Lambda),
-            'λ' => self.eat('λ', ExtTokenKind::Lambda),
-            '∀' => self.eat('∀', ExtTokenKind::Forall),
-            '∃' => self.eat('∃', ExtTokenKind::Exists),
-            '.' => self.eat('.', ExtTokenKind::Proj),
-            '=' => self.eat('=', ExtTokenKind::Equals),
-            '|' => self.eat('|', ExtTokenKind::Bar),
-            '_' => self.eat('_', ExtTokenKind::Wildcard),
-            '>' => self.eat('>', ExtTokenKind::Gt),
+            '(' => self.eat('(', TokenKind::LParen),
+            ')' => self.eat(')', TokenKind::RParen),
+            ';' => self.eat(';', TokenKind::Semicolon),
+            ':' => self.eat(':', TokenKind::Colon),
+            ',' => self.eat(',', TokenKind::Comma),
+            '{' => self.eat('{', TokenKind::LBrace),
+            '}' => self.eat('}', TokenKind::RBrace),
+            '[' => self.eat('[', TokenKind::LSquare),
+            ']' => self.eat(']', TokenKind::RSquare),
+            '\\' => self.eat('\\', TokenKind::Lambda),
+            'λ' => self.eat('λ', TokenKind::Lambda),
+            '∀' => self.eat('∀', TokenKind::Forall),
+            '∃' => self.eat('∃', TokenKind::Exists),
+            '.' => self.eat('.', TokenKind::Proj),
+            '=' => self.eat('=', TokenKind::Equals),
+            '|' => self.eat('|', TokenKind::Bar),
+            '_' => self.eat('_', TokenKind::Wildcard),
+            '>' => self.eat('>', TokenKind::Gt),
             '-' => {
                 self.consume();
-                self.eat('>', ExtTokenKind::TyArrow)
+                self.eat('>', TokenKind::TyArrow)
             }
-            ch => self.eat(' ', ExtTokenKind::Invalid(ch)),
+            ch => self.eat(' ', TokenKind::Invalid(ch)),
         }
     }
 }
@@ -244,7 +244,7 @@ impl<'s, TExtDialect: SystemRDialect>
     ) -> Option<Token<TExtDialect::TokenKind>> {
         match self.lex(ext) {
             Token {
-                kind: ExtTokenKind::Eof,
+                kind: TokenKind::Eof,
                 ..
             } => None,
             tok => Some(tok),
@@ -257,9 +257,9 @@ mod test {
     use crate::bottom::{BottomDialect, BottomExtension, BottomTokenKind};
 
     use super::*;
-    use ExtTokenKind::*;
+    use TokenKind::*;
 
-    fn get_tokens_from<'s>(input: &'s str) -> Vec<ExtTokenKind<BottomTokenKind>> {
+    fn get_tokens_from<'s>(input: &'s str) -> Vec<TokenKind<BottomTokenKind>> {
         let mut stub_ext = BottomExtension;
         let mut ret_val = Vec::new();
         let mut lexer: Lexer<'s, BottomDialect> = Lexer::new(input.chars());
