@@ -2,8 +2,8 @@
 Feature: Add new SystemRDialect implementations
     # Add structural type/data-shape capture (with arity-based TyAbs) with the `type`
     # keyword, all TypeAlias application with $TypeName[Of V]
-    # where V is a TyAbs in the StructData value
-    # StructData $TypeAlias = \V. \K {Left V | Right K} in body
+    # where V is a TyAbs in the type value
+    # type $TypeAlias = \V \K {Left V | Right K} in body
     #
     # For this scenario, the below code will convert to
     # vanilla system_r equiv to:
