@@ -207,6 +207,7 @@ fn then_the_evaluated_term_should_be_boolean_false(world: &mut common::SpecsWorl
     );
 }
 
+#[then("the result should be Boolean true")]
 #[then("the resulting eval Kind should be Boolean true")]
 #[then("the resulting sr eval Kind should be Boolean true")]
 fn then_the_evaluated_term_should_be_boolean_true(world: &mut common::SpecsWorld) {

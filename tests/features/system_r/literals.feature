@@ -84,6 +84,18 @@ let f = \x: (Nat, @Foo).
     # Scenario: zero-length Bytes with []
 
     # Scenario: Boolean
+    Scenario: Boolean hello world
+        Given a new system_r context
+        Given a srpt block:
+        """
+        let id = \T \x: T. x in
+        id [Bool] true
+        """
+        When it is parsed
+        When eval is ran
+        Then the last parse should be successful
+        Then the last eval should be successful
+        Then the result should be Boolean true
 
     # Scenario: Float
 
