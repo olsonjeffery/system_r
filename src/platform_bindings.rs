@@ -113,7 +113,7 @@ fn resolve_pb_type<
             for i in v {
                 result.push(resolve_pb_type(i)?);
             }
-            return Ok(Type::Product(result));
+            Ok(Type::Product(result))
         }
         Type::Rec(r) => Ok(Type::Rec(Box::new(resolve_pb_type(*r)?))),
         Type::Tag(t) => Ok(Type::Tag(t)),
@@ -128,7 +128,7 @@ fn resolve_pb_type<
                 };
                 result.push(variant);
             }
-            return Ok(Type::Variant(result));
+            Ok(Type::Variant(result))
         }
         Type::Universal(r) => Ok(Type::Universal(Box::new(resolve_pb_type(*r)?))),
     }
@@ -146,7 +146,7 @@ impl<TExtDialect: SystemRDialect>
             Some(wc) => {
                 let args_resolved = resolve_pb_type(wc.1.clone())?;
                 let ret_resolved = resolve_pb_type(wc.2.clone())?;
-                return Ok(Type::PlatformBinding(Box::new(args_resolved), Box::new(ret_resolved)));
+                Ok(Type::PlatformBinding(Box::new(args_resolved), Box::new(ret_resolved)))
             }
             None => Err(Diagnostic::error(
                 *span,

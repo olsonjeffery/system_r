@@ -110,7 +110,7 @@ impl<TExtDialect: SystemRDialect>
         term: &mut Term<TExtDialect>,
         ext: &mut TExt,
     ) {
-        crate::visit::MutTermVisitor::visit(self, term, ext, &mut self.ext_state.clone())
+        crate::visit::MutTermVisitor::visit(self, term, ext, &self.ext_state.clone())
     }
 
     pub fn to_ext_state(self) -> TExtDialect::DialectState {
@@ -161,21 +161,19 @@ impl<TExtDialect: SystemRDialect>
                     .find(*idx)
                     .cloned()
                     .ok_or_else(|| Diagnostic::error(term.span, format!("type_check: unbound variable {}", idx)))?;
-                match result {
-                    v => Ok(v),
-                }
+                Ok(result)
             }
 
             Kind::Abs(ty, t2) => {
                 self.push(*ty.clone());
-                let ty2 = self.type_check(&t2, ext)?;
+                let ty2 = self.type_check(t2, ext)?;
                 // Shift::new(-1).visit(&mut ty2);
                 self.pop();
                 Ok(Type::Arrow(ty.clone(), Box::new(ty2)))
             }
             Kind::App(t1, t2) => {
-                let ty1 = self.type_check(&t1, ext)?;
-                let mut ty2 = self.type_check(&t2, ext)?;
+                let ty1 = self.type_check(t1, ext)?;
+                let mut ty2 = self.type_check(t2, ext)?;
                 match ty1.clone() {
                     Type::Arrow(ty11, ty12) => {
                         // does the invocation's type (ty2)
@@ -235,7 +233,7 @@ impl<TExtDialect: SystemRDialect>
                 }
             }
             Kind::Fix(inner) => {
-                let ty = self.type_check(&inner, ext)?;
+                let ty = self.type_check(inner, ext)?;
                 match ty {
                     Type::Arrow(ty1, ty2) => {
                         if ty1 == ty2 {
@@ -260,7 +258,7 @@ impl<TExtDialect: SystemRDialect>
                 Type::Variant(fields) => {
                     for f in fields {
                         if label == &f.label {
-                            let ty_ = self.type_check(&tm, ext)?;
+                            let ty_ = self.type_check(tm, ext)?;
                             if ty_ == f.ty {
                                 return Ok(*ty.clone());
                             } else {
@@ -285,14 +283,14 @@ impl<TExtDialect: SystemRDialect>
                         ),
                     ))
                 }
-                Type::Extended(t) => ext.type_check_injection_to_ext(self, label, t, &tm),
+                Type::Extended(t) => ext.type_check_injection_to_ext(self, label, t, tm),
 
                 _ => Err(Diagnostic::error(
                     term.span,
                     format!("Cannot injection {} into non-variant type {:?}", label, ty),
                 )),
             },
-            Kind::Projection(term, idx) => match self.type_check(&term, ext)? {
+            Kind::Projection(term, idx) => match self.type_check(term, ext)? {
                 Type::Product(types) => match types.get(*idx) {
                     Some(ty) => Ok(ty.clone()),
                     None => Err(Diagnostic::error(
@@ -312,8 +310,8 @@ impl<TExtDialect: SystemRDialect>
                     .collect::<Result<_, _>>()?,
             )),
             Kind::Let(pat, t1, t2) => {
-                let ty = self.type_check(&t1, ext)?;
-                if !self.pattern_type_eq(&pat, &ty, ext) {
+                let ty = self.type_check(t1, ext)?;
+                if !self.pattern_type_eq(pat, &ty, ext) {
                     return Err(Diagnostic::error(
                         t1.span,
                         "pattern does not match type of binder".to_string(),
@@ -322,12 +320,12 @@ impl<TExtDialect: SystemRDialect>
 
                 let height = self.stack.len();
 
-                let binds = crate::patterns::PatTyStack::<TExtDialect>::collect(&ty, pat, ext, &mut self.ext_state);
+                let binds = crate::patterns::PatTyStack::<TExtDialect>::collect(&ty, pat, ext, &self.ext_state);
                 for b in binds.into_iter().rev() {
                     self.push(b.clone());
                 }
 
-                let y = self.type_check(&t2, ext);
+                let y = self.type_check(t2, ext);
 
                 while self.stack.len() > height {
                     self.pop();
@@ -351,14 +349,14 @@ impl<TExtDialect: SystemRDialect>
             }
             Kind::TyApp(term, ty) => {
                 let mut ty = ty.clone();
-                let ty1 = self.type_check(&term, ext)?;
+                let ty1 = self.type_check(term, ext)?;
                 match ty1 {
                     Type::Universal(mut ty12) => {
-                        Shift::new(1).visit(&mut ty, ext, &mut self.ext_state);
+                        Shift::new(1).visit(&mut ty, ext, &self.ext_state);
                         //panic!("type_check for Kind::TyApp: term: {:?} span: {:?} ty: {:?} ty12 {:?}
                         // stack: {:?}", term, term.span, ty, ty12, self.stack);
-                        Subst::new(*ty.clone()).visit(&mut ty12, ext, &mut self.ext_state);
-                        Shift::new(-1).visit(&mut ty12, ext, &mut self.ext_state);
+                        Subst::new(*ty.clone()).visit(&mut ty12, ext, &self.ext_state);
+                        Shift::new(-1).visit(&mut ty12, ext, &self.ext_state);
                         Ok(*ty12)
                     }
                     _ => Err(Diagnostic::error(

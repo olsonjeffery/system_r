@@ -36,12 +36,12 @@ pub trait SystemRExtension<TExtDialect: SystemRDialect>: Copy + Clone + Default 
     fn lex_extended_single(&mut self, data: &str) -> TExtDialect::TokenKind;
     fn lex_ext_keyword(&mut self, data: &str) -> TExtDialect::TokenKind;
     fn parser_has_ext_parse(&self, tk: &TExtDialect::TokenKind) -> bool;
-    fn parser_ext_parse<'s>(
+    fn parser_ext_parse(
         &mut self,
         ps: &mut ParserState<TExtDialect>,
     ) -> Result<Term<TExtDialect>, Error<TExtDialect::TokenKind>>;
     fn parser_has_ext_atom(&self, tk: &TExtDialect::TokenKind) -> bool;
-    fn parser_ext_atom<'s>(
+    fn parser_ext_atom(
         &mut self,
         ps: &mut ParserState<TExtDialect>,
     ) -> Result<Term<TExtDialect>, Error<TExtDialect::TokenKind>>;

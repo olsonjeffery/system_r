@@ -127,20 +127,18 @@ pub fn once<
 }
 
 pub fn diagnostic<
-    's,
     TExtDialect: SystemRDialect,
 >(
-    ps: ParserState<'s, TExtDialect>,
-) -> Diagnostic<'s> {
+    ps: ParserState<'_, TExtDialect>,
+) -> Diagnostic<'_> {
     ps.diagnostic
 }
 
 pub fn error<
-    's,
     TExtDialect: SystemRDialect,
     TError,
 >(
-    ps: &ParserState<'s, TExtDialect>,
+    ps: &ParserState<TExtDialect>,
     kind: ErrorKind<TExtDialect::TokenKind>,
 ) -> Result<TError, Error<TExtDialect::TokenKind>> {
     Err(Error {
@@ -296,8 +294,8 @@ pub fn ty_atom<
         }
         TokenKind::LBrace => {
             bump(ps, ext);
-            let mut ext2 = ext.clone();
-            let mut ext3 = ext.clone();
+            let mut ext2 = *ext;
+            let mut ext3 = *ext;
             let fields = once_or_more(ps, |p| ty_variant(p, &mut ext2), TokenKind::Bar, &mut ext3)?;
             expect(ps, ext, TokenKind::RBrace)?;
             Ok(Type::Variant(fields))
@@ -317,8 +315,8 @@ pub fn ty_tuple<
     ext: &mut TExt,
 ) -> Result<Type<TExtDialect>, Error<TExtDialect::TokenKind>> {
     if bump_if(ps, ext, &TokenKind::LParen) {
-        let mut ext2 = ext.clone();
-        let mut ext3 = ext.clone();
+        let mut ext2 = *ext;
+        let mut ext3 = *ext;
         let mut v = once_or_more(ps, |p| ty(p, &mut ext2), TokenKind::Comma, &mut ext3)?;
         expect(ps, ext, TokenKind::RParen)?;
 
@@ -463,7 +461,7 @@ pub fn letexpr<
 
     let t1 = once(ps, |p| parse(p, ext), "let binder required")?;
     let len = ps.tmvar.len();
-    for var in PatVarStack::<TExtDialect>::collect(&pat, ext, &mut ps.ext_state)
+    for var in PatVarStack::<TExtDialect>::collect(&pat, ext, &ps.ext_state)
         .into_iter()
         .rev()
     {
@@ -509,8 +507,8 @@ pub fn paren<
     expect(ps, ext, TokenKind::LParen)?;
     let span = ps.span;
 
-    let mut ext2 = ext.clone();
-    let mut ext3 = ext.clone();
+    let mut ext2 = *ext;
+    let mut ext3 = *ext;
     let mut n = once_or_more(ps, |p| parse(p, &mut ext2), TokenKind::Comma, &mut ext3)?;
     expect(ps, ext, TokenKind::RParen)?;
     if n.len() > 1 {
@@ -655,8 +653,8 @@ pub fn pattern<
     match kind(ps) {
         TokenKind::LParen => {
             bump(ps, ext);
-            let mut ext2 = ext.clone();
-            let mut ext3 = ext.clone();
+            let mut ext2 = *ext;
+            let mut ext3 = *ext;
             let mut v = once_or_more(ps, |p| pat_atom(p, &mut ext2), TokenKind::Comma, &mut ext3)?;
             expect(ps, ext, TokenKind::RParen)?;
             if v.len() > 1 {
@@ -692,7 +690,7 @@ pub fn case_arm<
 
     let pat = once(ps, |p| pattern(p, ext), "missing pattern")?;
 
-    for var in PatVarStack::<TExtDialect>::collect(&pat, ext, &mut ps.ext_state)
+    for var in PatVarStack::<TExtDialect>::collect(&pat, ext, &ps.ext_state)
         .into_iter()
         .rev()
     {
@@ -730,8 +728,8 @@ pub fn case<
 
     bump_if(ps, ext, &TokenKind::Bar);
 
-    let mut ext2 = ext.clone();
-    let mut ext3 = ext.clone();
+    let mut ext2 = *ext;
+    let mut ext3 = *ext;
     let arms = once_or_more(ps, |p| case_arm(p, &mut ext3), TokenKind::Bar, &mut ext2)?;
 
     Ok(Term::new(Kind::Case(Box::new(expr), arms), span + ps.span))
@@ -812,11 +810,11 @@ pub fn numeric_bytes_arr<
     ext: &mut TExt,
 ) -> Result<Term<TExtDialect>, Error<TExtDialect::TokenKind>> {
     // advance past opening LSquare
-    let start_span = ps.span.clone();
+    let start_span = ps.span;
     let start_token = ps.token.clone();
     bump(ps, ext);
 
-    let mut ext_2 = ext.clone();
+    let mut ext_2 = *ext;
     let nats = once_or_more(ps, |p| atom(p, &mut ext_2), TokenKind::Comma, ext)?;
     let mut out_bytes: Vec<u8> = Vec::new();
     for n in nats {
@@ -963,7 +961,7 @@ pub fn ext_atom<
             Ok(t) => t,
         }
     };
-    return Ok(r);
+    Ok(r)
 }
 
 pub fn ext_parse<
@@ -979,7 +977,7 @@ pub fn ext_parse<
             Ok(t) => t,
         }
     };
-    return Ok(r);
+    Ok(r)
 }
 
 pub fn parse<

@@ -55,7 +55,6 @@ pub fn code_format(src: &str, diag: Diagnostic) -> String {
 }
 
 pub fn type_check_term<
-    's,
     TExtDialect: SystemRDialect,
     TExt: SystemRExtension<TExtDialect>,
 >(
@@ -69,7 +68,6 @@ pub fn type_check_term<
 }
 
 pub fn dealias_and_type_check_term<
-    's,
     TExtDialect: SystemRDialect,
     TExt: SystemRExtension<TExtDialect>,
 >(
@@ -79,18 +77,17 @@ pub fn dealias_and_type_check_term<
 ) -> Result<Type<TExtDialect>, Diagnostic> {
     // Step 0
     ctx.de_alias(term, ext);
-    InjRewriter(Default::default(), Default::default()).visit(term, ext, &mut ctx.ext_state);
+    InjRewriter(Default::default(), Default::default()).visit(term, ext, &ctx.ext_state);
 
     type_check_term(ctx, term, ext)
 }
 
 pub fn operate_parser_for<
-    's,
     TExtDialect: SystemRDialect,
     TExt: SystemRExtension<TExtDialect>,
 >(
     input: &str,
-    ps: &mut ParserState<'s, TExtDialect>,
+    ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
 ) -> Result<Term<TExtDialect>, Diagnostic> {
     return match parser::parse(ps, ext) {
@@ -174,7 +171,6 @@ pub fn type_check_and_eval_single_block(
 }
 
 pub fn do_type_check<
-    's,
     TExtDialect: SystemRDialect,
     TExt: SystemRExtension<TExtDialect>,
 >(

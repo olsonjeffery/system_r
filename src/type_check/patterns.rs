@@ -235,7 +235,7 @@ impl<TExtDialect: SystemRDialect>
                 let height = self.stack.len();
 
                 let binds =
-                    PatTyStack::<TExtDialect>::collect::<TExt>(&matrix.expr_ty, &arm.pat, ext, &mut self.ext_state);
+                    PatTyStack::<TExtDialect>::collect::<TExt>(&matrix.expr_ty, &arm.pat, ext, &self.ext_state);
                 for b in binds.into_iter().rev() {
                     self.push(b.clone());
                 }

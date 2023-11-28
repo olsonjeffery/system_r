@@ -193,9 +193,9 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         false
     }
 
-    fn parser_ext_atom<'s>(
+    fn parser_ext_atom(
         &mut self,
-        ps: &mut ParserState<'s, TypeAliasDialect>,
+        ps: &mut ParserState<'_, TypeAliasDialect>,
     ) -> Result<Term<TypeAliasDialect>, Error<TypeAliasTokenKind>> {
         let name_tok = ps.token.clone();
         let name_val = match name_tok.kind.clone() {
@@ -203,7 +203,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
                 TypeAliasTokenKind::TypeBindingVar(name) => name,
                 v => {
                     return Err(Error {
-                        span: name_tok.span.clone(),
+                        span: name_tok.span,
                         tok: name_tok.clone(),
                         kind: ErrorKind::ExtendedError(format!("Expected a TypeBindingVar, got {:?}", v)),
                     })
@@ -211,7 +211,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
             },
             v => {
                 return Err(Error {
-                    span: name_tok.span.clone(),
+                    span: name_tok.span,
                     tok: name_tok.clone(),
                     kind: ErrorKind::ExtendedError(format!("Expected a ExtendedTokenKind, got {:?}", v)),
                 })
@@ -219,16 +219,13 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         };
         parser::bump(ps, self);
         Ok(Term {
-            span: name_tok.span.clone(),
+            span: name_tok.span,
             kind: Kind::Extended(TypeAliasKind::StructIdent(name_val)),
         })
     }
 
     fn parser_ty_bump_if(&mut self, ps: &mut ParserState<TypeAliasDialect>) -> bool {
-        match &ps.token.kind {
-            TokenKind::Extended(TypeAliasTokenKind::TypeBindingVar(_)) => true,
-            _ => false,
-        }
+        matches!(&ps.token.kind, TokenKind::Extended(TypeAliasTokenKind::TypeBindingVar(_)))
     }
 
     fn parser_ty(
@@ -277,14 +274,14 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         match dealiased {
             Type::Variant(v) => {
                 for discriminant in v {
-                    if ctor_label == &discriminant.label && ctx.pattern_type_eq(inner, &discriminant.ty, self) {
+                    if ctor_label == discriminant.label && ctx.pattern_type_eq(inner, &discriminant.ty, self) {
                         return true;
                     }
                 }
-                return false;
+                false
             }
-            v => return false,
-        };
+            v => false,
+        }
     }
 
     fn type_check_injection_to_ext(
@@ -294,14 +291,14 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         target: &<TypeAliasDialect as SystemRDialect>::Type,
         tm: &Term<TypeAliasDialect>,
     ) -> Result<Type<TypeAliasDialect>, Diagnostic> {
-        let sp = tm.span.clone();
+        let sp = tm.span;
         let TypeAliasType::TypeAliasApp(type_alias_label, inner_types) = target else {
-            return Err(Diagnostic::error(sp.clone(), format!("")));
+            return Err(Diagnostic::error(sp, String::new()));
         };
 
         let ps = &mut ctx.ext_state;
         let dealiased = match reify_type(ps, type_alias_label, inner_types) {
-            Err(e) => return Err(Diagnostic::error(sp.clone(), format!("failed to reify type: {:?}", e))),
+            Err(e) => return Err(Diagnostic::error(sp, format!("failed to reify type: {:?}", e))),
             Ok(t) => t,
         };
 
@@ -309,15 +306,15 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         match dealiased.clone() {
             Type::Variant(fields) => {
                 for f in fields.clone() {
-                    if inj_label == &f.label {
+                    if inj_label == f.label {
                         let ty = ctx.type_check(tm, self)?;
                         if ty == f.ty {
                             return Ok(dealiased);
                         }
                     }
                 }
-                return Err(Diagnostic::error(
-                    sp.clone(),
+                Err(Diagnostic::error(
+                    sp,
                     format!(
                         "constructor {} does not belong to the variant {:?}",
                         inj_label,
@@ -327,15 +324,15 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
                             .collect::<Vec<String>>()
                             .join(" | ")
                     ),
-                ));
+                ))
             }
             v => {
-                return Err(Diagnostic::error(
-                    sp.clone(),
+                Err(Diagnostic::error(
+                    sp,
                     format!("expected de-aliased type to be a Varient, was {:?}", v),
                 ))
             }
-        };
+        }
     }
 
     fn pat_visit_constructor_of_ext(
@@ -396,7 +393,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
                 }
                 ret
             }),
-            _ => return false,
+            _ => false,
         }
     }
 
@@ -409,7 +406,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         let Type::Extended(TypeAliasType::TypeAliasApp(type_decl_key, applied_types)) = ext_ty else {
             return;
         };
-        let reified = match reify_type(ext_state, &type_decl_key, &applied_types) {
+        let reified = match reify_type(ext_state, type_decl_key, applied_types) {
             Ok(t) => t,
             _ => return,
         };
@@ -460,7 +457,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
     ) -> bool {
         match ext_ty.clone() {
             TypeAliasType::TypeAliasApp(type_decl_key, applied_types) => {
-                let reified = match reify_type(&mut ctx.ext_state, &type_decl_key, &applied_types) {
+                let reified = match reify_type(&ctx.ext_state, &type_decl_key, &applied_types) {
                     Ok(t) => t,
                     _ => return false,
                 };
@@ -513,7 +510,7 @@ pub fn set_holed_type_for(
     }
 }
 
-pub fn reify_type<'s>(
+pub fn reify_type(
     ext_state: &TypeAliasDialectState,
     type_decl_key: &str,
     applied_types: &Vec<Type<TypeAliasDialect>>,
@@ -582,11 +579,11 @@ pub fn pulls_types_from_tyapp(
     Ok(ret_val)
 }
 
-pub fn extract_tyabs_for_type_shape<'s>(
-    ps: &mut ParserState<'s, TypeAliasDialect>,
+pub fn extract_tyabs_for_type_shape(
+    ps: &mut ParserState<'_, TypeAliasDialect>,
     ext: &mut TypeAliasExtension,
 ) -> Result<usize, Error<TypeAliasTokenKind>> {
-    let mut ext_2 = ext.clone();
+    let mut ext_2 = *ext;
     let mut tyabs = Vec::new();
     if ps.token.kind == TokenKind::Lambda {
         parser::expect(ps, ext, TokenKind::Lambda)?;
@@ -604,8 +601,8 @@ pub fn extract_tyabs_for_type_shape<'s>(
     Ok(tyabs.len()) // FIXME do dynamic tyabs extraction and return the count
 }
 
-pub fn parse_holed_type_from_decl<'s>(
-    ps: &mut ParserState<'s, TypeAliasDialect>,
+pub fn parse_holed_type_from_decl(
+    ps: &mut ParserState<'_, TypeAliasDialect>,
     ext: &mut TypeAliasExtension,
 ) -> Result<(usize, Type<TypeAliasDialect>), Error<TypeAliasTokenKind>> {
     let sp = ps.span;
@@ -656,7 +653,7 @@ pub struct TatbTypeVisitor {
 }
 
 pub struct VarWrapReplacingVisitor;
-impl<'a> DialectChangingTypeVisitor<TypeAliasDialect, TypeAliasDialect> for VarWrapReplacingVisitor {
+impl DialectChangingTypeVisitor<TypeAliasDialect, TypeAliasDialect> for VarWrapReplacingVisitor {
     fn visit_ext(&self, ty: &Type<TypeAliasDialect>) -> Type<TypeAliasDialect> {
         match ty {
             Type::Extended(TypeAliasType::VarWrap(v)) => Type::Var(*v),
@@ -665,7 +662,7 @@ impl<'a> DialectChangingTypeVisitor<TypeAliasDialect, TypeAliasDialect> for VarW
     }
 }
 
-impl<'a> DialectChangingTypeVisitor<TypeAliasDialect, BottomDialect> for TatbTypeVisitor {
+impl DialectChangingTypeVisitor<TypeAliasDialect, BottomDialect> for TatbTypeVisitor {
     fn visit_ext(&self, ty: &Type<TypeAliasDialect>) -> Type<BottomDialect> {
         match ty {
             Type::Extended(TypeAliasType::TypeAliasApp(label, applied_types)) => {
@@ -685,12 +682,11 @@ pub struct TatbTermVisitor {
     pub ext_state: Rc<RefCell<TypeAliasDialectState>>,
 }
 
-impl<'a> TatbTermVisitor {
+impl TatbTermVisitor {
     pub fn new(ext_state: TypeAliasDialectState) -> Self {
-        let out = TatbTermVisitor {
+        TatbTermVisitor {
             ext_state: Rc::new(RefCell::new(ext_state)),
-        };
-        out
+        }
     }
 }
 
