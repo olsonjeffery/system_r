@@ -1,5 +1,6 @@
 #![feature(test)]
 #![deny(warnings)]
+#![dent(clippy::all)]
 extern crate test;
 
 mod platform_bindings;
