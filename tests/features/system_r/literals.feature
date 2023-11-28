@@ -97,8 +97,6 @@ let f = \x: (Nat, @Foo).
         Then the last eval should be successful
         Then the result should be Boolean true
 
-    # Scenario: Float
-
     # Scenario: Hex
     # Scenario: Octal
     # Scenario: scientific/engineering notation for nat/float
