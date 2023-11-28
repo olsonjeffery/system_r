@@ -4,8 +4,8 @@ Feature: Technical Debt
     # Incomplete list:
     # - DONE Supertraits to clean up signatures
     # - pervasive Result<> everywhere; use anyhow?
-    #   - Adopt standardized error format at error creation site
-    #   - figure out how to improve cli failure feedback;
+    #   - Adopt standardized error format at error creation site: big file of errors, impl a common spec+error
+    #   - ALL "foo should have failed" specs should be audited/replaced with citations for specific errcodes by convention
     # - clippy patrol
     # - adopt git2rs pre-commit hook
     # - rustdoc-documentation of entire API surface

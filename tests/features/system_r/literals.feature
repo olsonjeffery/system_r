@@ -81,6 +81,7 @@ let f = \x: (Nat, @Foo).
         Then the last parse should have failed
     
     # Scenario: Bytes in fn signature, case with exact match & catch-all arms
+
     # Scenario: zero-length Bytes with []
 
     # Scenario: Boolean
@@ -96,7 +97,3 @@ let f = \x: (Nat, @Foo).
         Then the last parse should be successful
         Then the last eval should be successful
         Then the result should be Boolean true
-
-    # Scenario: Hex
-    # Scenario: Octal
-    # Scenario: scientific/engineering notation for nat/float
