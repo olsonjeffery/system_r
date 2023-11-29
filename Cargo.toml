@@ -1,6 +1,4 @@
 [workspace]
-members = [
-    "system_r",
-    "xtask"
-]
-workspace.resolver = "2"
+members = [ "system_r", "xtask" ]
+default-members = [ "system_r" ]
+resolver = "2"

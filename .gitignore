@@ -4,3 +4,4 @@
 target
 specs-results.json
 *.profraw
+coverage
