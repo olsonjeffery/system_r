@@ -9,7 +9,7 @@ Feature: Platform Bindings
     #    - there will likely be higher-level APIs to emit these binding instructions; used's by an `rstrong_input`
 
     Scenario: Recursive fib() with natAdd & natSub
-        Given a new ctx
+        Given a new type checker
         And platform bindings for Nat add & sub
         And a srpt block:
         """
@@ -29,7 +29,7 @@ let fib = \z: Nat->Nat. \i: Nat.
         # The regression this captures is to ensure that the
         # arguments to a PB are evaluated-down to normal form
         # before the PB itself is invoked
-        Given a new ctx
+        Given a new type checker
         And an instrinsic for Nat addition named iiiNatAdd
         And a srpt block:
         """

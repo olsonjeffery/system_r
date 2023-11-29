@@ -1,7 +1,7 @@
 @test_infra
 Feature: System R Parsing/EVal
     Scenario: code that has a lex/parse error
-        Given a new ctx
+        Given a new type checker
         Given a srpt block:
         """
         let f = \X:x -> n.

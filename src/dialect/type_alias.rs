@@ -29,7 +29,7 @@ use anyhow::Result;
 #[derive(Copy, Clone, Debug, Default)]
 pub struct TypeAliasExtension;
 
-pub type TypeAliasContext = TypeChecker<TypeAliasDialect>;
+pub type TypeAliasTypeChecker = TypeChecker<TypeAliasDialect>;
 
 pub fn new<'s>(platform_bindings: &'s PlatformBindings, input: &'s str) -> ParserState<'s, TypeAliasDialect> {
     parser::ext_new::<TypeAliasDialect, TypeAliasExtension>(platform_bindings, input, &mut TypeAliasExtension)

@@ -5,7 +5,7 @@ use cucumber::{given, then, when};
 use system_r::testing;
 use system_r::{
     dialect::{
-        type_alias::{TypeAliasContext, TypeAliasDialectState, TypeAliasExtension, TypeAliasToBottomDialectResolver},
+        type_alias::{TypeAliasTypeChecker, TypeAliasDialectState, TypeAliasExtension, TypeAliasToBottomDialectResolver},
         SystemRDialect, SystemRExtension, SystemRResolver,
     },
     syntax::parser::{self, ParserState},
@@ -15,11 +15,11 @@ use system_r::{
 
 use crate::common::{
     self,
-    extensions::{OmniContext, OmniKind, OmniState, OmniTerm, OmniType},
+    extensions::{OmniTypeChecker, OmniKind, OmniState, OmniTerm, OmniType},
     SpecsWorld,
 };
 
-use super::system_r::{given_a_new_context, BOTTOM_CTX_NAME};
+use super::system_r::{given_a_new_type_checker, BOTTOM_TC_NAME};
 
 use anyhow::Result;
 
@@ -45,7 +45,7 @@ pub fn type_check_for_extension<'s, TExtDialect: SystemRDialect, TLE: SystemRExt
 }
 
 pub fn add_type_alias_ext_state_to_context<'s>(world: &mut SpecsWorld, st: TypeAliasDialectState) {
-    let Some(OmniContext::TypeAlias(ctx)) = world.contexts.get_mut(TYPE_ALIAS_CTX_NAME) else {
+    let Some(OmniTypeChecker::TypeAlias(ctx)) = world.type_checkers.get_mut(TYPE_ALIAS_CTX_NAME) else {
         panic!("expected type alias context, didn't get it!");
     };
     ctx.ext_state = st;
@@ -54,9 +54,9 @@ pub fn add_type_alias_ext_state_to_context<'s>(world: &mut SpecsWorld, st: TypeA
 #[given(regex = r#"^a system_r toolchain extended for TypeAlias"#)]
 #[given(regex = r#"^a new TypeAlias context"#)]
 fn given_a_new_type_alias_context(world: &mut common::SpecsWorld) {
-    world.contexts.insert(
+    world.type_checkers.insert(
         TYPE_ALIAS_CTX_NAME.to_owned(),
-        OmniContext::TypeAlias(TypeAliasContext::default()),
+        OmniTypeChecker::TypeAlias(TypeAliasTypeChecker::default()),
     );
 }
 
@@ -103,7 +103,7 @@ fn when_type_alias_type_checks_the_code(world: &mut SpecsWorld) {
         panic!("expect last ext state to be from TypeAliasDialect, wasn't!");
     };
     add_type_alias_ext_state_to_context(world, st);
-    let Some(OmniContext::TypeAlias(ctx)) = world.contexts.get_mut(TYPE_ALIAS_CTX_NAME) else {
+    let Some(OmniTypeChecker::TypeAlias(ctx)) = world.type_checkers.get_mut(TYPE_ALIAS_CTX_NAME) else {
         panic!("expected to get a TypeAlias context, didn't!");
     };
     match type_check_for_extension(ctx, &mut term, &mut TypeAliasExtension) {
@@ -125,7 +125,7 @@ pub fn when_it_is_converted_to_bottom_dialect(world: &mut SpecsWorld) {
 
     let in_ctx = match world.take_ctx_by_name(TYPE_ALIAS_CTX_NAME) {
         Ok(c) => match c {
-            OmniContext::TypeAlias(ctx) => ctx,
+            OmniTypeChecker::TypeAlias(ctx) => ctx,
             _ => panic!("Expected TypeAlias context, didn't get one!"),
         },
         Err(_) => panic!("expected to get a TypeAlias context, didn't!"),
@@ -152,11 +152,11 @@ pub fn when_it_is_converted_to_bottom_dialect(world: &mut SpecsWorld) {
         }
     };
 
-    world.contexts.remove(BOTTOM_CTX_NAME);
-    given_a_new_context(world);
+    world.type_checkers.remove(BOTTOM_TC_NAME);
+    given_a_new_type_checker(world);
     world
-        .contexts
-        .get_mut(BOTTOM_CTX_NAME)
+        .type_checkers
+        .get_mut(BOTTOM_TC_NAME)
         .unwrap()
         .set_platform_bindings(platform_bindings);
     world.last_parse_term = bottom_tm.clone();

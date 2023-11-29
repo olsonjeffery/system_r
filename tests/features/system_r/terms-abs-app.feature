@@ -1,7 +1,7 @@
 @system_r
 Feature: Terms Function ABS APP
     Scenario: Function Abstraction (ABS)
-        Given a new system_r context
+        Given a new type checker
         Given a srpt block:
         # Nat identity function abs
         """
@@ -11,7 +11,7 @@ Feature: Terms Function ABS APP
         Then the resulting eval Kind should be a fn abs
     
     Scenario: Function Application (APP)
-        Given a new system_r context
+        Given a new type checker
         Given a srpt block:
         # applying Nat literal to the Nat identity fn
         """
@@ -21,7 +21,7 @@ Feature: Terms Function ABS APP
         Then the resulting eval Kind should be Nat of 64
     
     Scenario: tuple arg to fn for multi-arg app
-        Given a new system_r context
+        Given a new type checker
         Given a srpt block:
         """
         let x = (\struct: (Nat, Nat, Nat). 

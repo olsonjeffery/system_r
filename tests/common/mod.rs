@@ -11,7 +11,7 @@ use system_r::{
 
 use anyhow::Result;
 
-use self::extensions::{OmniContext, OmniKind, OmniState, OmniTerm, OmniType};
+use self::extensions::{OmniTypeChecker, OmniKind, OmniState, OmniTerm, OmniType};
 
 pub mod extensions;
 pub mod platform_bindings;
@@ -19,7 +19,7 @@ pub mod platform_bindings;
 #[derive(Debug, Default, World)]
 pub struct SpecsWorld {
     pub code_snippet: String,
-    pub contexts: HashMap<String, OmniContext>,
+    pub type_checkers: HashMap<String, OmniTypeChecker>,
     pub platform_bindings: PlatformBindings,
     pub last_parse_success: bool,
     pub last_parse_kind: Kind<BottomDialect>,
@@ -44,8 +44,8 @@ impl SpecsWorld {
         st
     }
 
-    pub fn take_ctx_by_name(&mut self, ctx_name: &str) -> Result<OmniContext> {
-        match self.contexts.remove(ctx_name) {
+    pub fn take_ctx_by_name(&mut self, ctx_name: &str) -> Result<OmniTypeChecker> {
+        match self.type_checkers.remove(ctx_name) {
             Some(v) => Ok(v),
             None => Err(anyhow!("take_ctx_by_name")),
         }

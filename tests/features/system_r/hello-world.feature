@@ -1,7 +1,7 @@
 @system_r
 Feature: RStrong: System R Hello World
     Scenario: System R with generic identity function, use Bool
-        Given a new system_r context
+        Given a new type checker
         Given a srpt block:
         """
 let id = \X \x: X. x in
@@ -12,7 +12,7 @@ id [Bool] (true);
         Then the resulting eval Kind should be Boolean true
 
     Scenario: System R with generic identity function, use Nat
-        Given a new system_r context
+        Given a new type checker
         Given a srpt block:
         """
 let id = \X \x: X. x in
@@ -24,7 +24,7 @@ id [Nat] (42);
         Then the resulting eval Kind should be Nat of 42
 
     Scenario: System R with non-generic succ hello world
-        Given a new system_r context
+        Given a new type checker
         Given a srpt block:
         """
 let incr = \x: Nat. succ(x) in

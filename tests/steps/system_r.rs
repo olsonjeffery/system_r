@@ -3,24 +3,24 @@ extern crate cucumber;
 use cucumber::{gherkin::Step, given, then, when};
 
 use system_r::{
+    diagnostics::Diagnostic,
     terms::{Kind, Literal, Term},
     testing::{self, do_bottom_eval},
     type_check::Type,
-    type_check::TypeChecker,
+    type_check::TypeChecker, bottom::BottomTokenKind,
 };
 
-use crate::common::{self, extensions::OmniContext};
+use crate::common::{self, extensions::OmniTypeChecker};
 
-pub static BOTTOM_CTX_NAME: &'static str = "Bottom";
+pub static BOTTOM_TC_NAME: &'static str = "Bottom";
 
-#[given(regex = r#"^a new ctx"#)]
-#[given(regex = r#"^a new sr ctx"#)]
-#[given(regex = r#"^a new system_r context"#)]
-pub fn given_a_new_context(world: &mut common::SpecsWorld) {
-    let new_ctx = TypeChecker::default();
+#[given(regex = r#"^a new type checker"#)]
+#[given(regex = r#"^a new Bottom type checker"#)]
+pub fn given_a_new_type_checker(world: &mut common::SpecsWorld) {
+    let new_tc = TypeChecker::default();
     world
-        .contexts
-        .insert(BOTTOM_CTX_NAME.to_string(), OmniContext::Bottom(new_ctx));
+        .type_checkers
+        .insert(BOTTOM_TC_NAME.to_string(), OmniTypeChecker::Bottom(new_tc));
 }
 
 #[given(regex = r#"^a code block:(\w?.*)$"#)]
@@ -37,7 +37,7 @@ fn given_an_intrinsic_for_nat_addition_named_i_nat_add_to_ctx(world: &mut common
     pb.register("iiiNatAdd", common::platform_bindings::arith::pb_add());
 
     world
-        .contexts
+        .type_checkers
         .get_mut(&ctx_name)
         .unwrap()
         .set_platform_bindings(pb.clone());
@@ -51,15 +51,15 @@ fn given_platform_bindings_for_nat_add_and_sub(world: &mut common::SpecsWorld) {
     pb.register("natSub", common::platform_bindings::arith::pb_sub());
 
     world
-        .contexts
-        .get_mut(BOTTOM_CTX_NAME)
+        .type_checkers
+        .get_mut(BOTTOM_TC_NAME)
         .unwrap()
         .set_platform_bindings(pb.clone());
 }
 
 #[given(regex = r#"an instrinsic for Nat addition named iiiNatAdd"#)]
 fn given_an_intrinsic_for_nat_addition_named_i_nat_add(world: &mut common::SpecsWorld) {
-    given_an_intrinsic_for_nat_addition_named_i_nat_add_to_ctx(world, BOTTOM_CTX_NAME.to_owned());
+    given_an_intrinsic_for_nat_addition_named_i_nat_add_to_ctx(world, BOTTOM_TC_NAME.to_owned());
 }
 
 #[when("it evals successfully")]
@@ -83,7 +83,21 @@ fn when_it_is_parsed(world: &mut common::SpecsWorld) {
         Err(e) => {
             world.last_parse_success = false;
             world.last_parse_kind = Kind::Lit(Literal::Unit);
-            world.last_parse_msg = e.to_string();
+            let output = match e.downcast_ref::<system_r::syntax::error::Error<BottomTokenKind>>() {
+                Some(e) => e.to_string(),
+                None => match e.downcast_ref() {
+                    Some(Diagnostic { ..
+                        /*
+                        _level,
+                        _primary,
+                        _info,
+                        _other,
+                        */
+                    }) => "diagnostic error".to_owned(),
+                    None => "unknown".to_owned()
+                },
+            };
+            world.last_parse_msg = output.to_owned();
             world.last_parse_term = Term::unit();
             return;
         }
@@ -95,7 +109,7 @@ fn when_it_is_parsed(world: &mut common::SpecsWorld) {
 }
 #[when("bottom eval is ran")]
 fn when_bottom_eval_is_ran(world: &mut common::SpecsWorld) {
-    let Some(OmniContext::Bottom(ctx)) = world.contexts.get_mut(BOTTOM_CTX_NAME) else {
+    let Some(OmniTypeChecker::Bottom(ctx)) = world.type_checkers.get_mut(BOTTOM_TC_NAME) else {
         world.last_eval_success = false;
         world.last_eval_term = Term::unit();
         world.last_eval_fty = Type::Unit;
@@ -131,7 +145,7 @@ fn when_eval_is_ran(world: &mut common::SpecsWorld) {
     if world.code_snippet == "" {
         assert!(false, "passed empty code snippet to parser");
     }
-    let Some(OmniContext::Bottom(ctx)) = world.contexts.get_mut(BOTTOM_CTX_NAME) else {
+    let Some(OmniTypeChecker::Bottom(ctx)) = world.type_checkers.get_mut(BOTTOM_TC_NAME) else {
         panic!("expected to get a bottom context, didn't!");
     };
     let mut term = world.last_parse_term.clone();
@@ -173,6 +187,12 @@ fn then_the_last_eval_should_be_successful(world: &mut common::SpecsWorld) {
 #[then("the last sr parse should be successful")]
 fn then_the_last_parse_should_be_successful(world: &mut common::SpecsWorld) {
     assert!(world.last_parse_success == true, "{}", world.last_parse_msg);
+}
+
+#[then(regex = r#"the last parse message should contain "([^"]*)""#)]
+fn then_the_last_eval_message_should_container(world: &mut common::SpecsWorld, expected_snippet: String) {
+    assert!(world.last_parse_msg.contains(&expected_snippet),
+        "Expected last parse msg: {:?} to contain snippet {:?}, didn't", world.last_parse_msg, expected_snippet);
 }
 
 #[then("the last eval should have failed")]
@@ -262,8 +282,8 @@ fn then_the_final_value_after_eval_should_equal(world: &mut common::SpecsWorld, 
     world.code_snippet = snippet;
     when_it_is_parsed(world);
     if world.last_parse_success {
-        world.contexts.remove(BOTTOM_CTX_NAME);
-        given_a_new_context(world);
+        world.type_checkers.remove(BOTTOM_TC_NAME);
+        given_a_new_type_checker(world);
         when_eval_is_ran(world);
 
         if world.last_eval_success {

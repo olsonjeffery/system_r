@@ -1,7 +1,7 @@
 @system_r
 Feature: Data
     Scenario: Tuple data
-        Given a new ctx
+        Given a new type checker
         Given a srpt block:
         """
 let f = (\x: (Bool, Nat).

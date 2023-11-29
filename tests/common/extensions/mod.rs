@@ -1,17 +1,17 @@
 use system_r::{
     bottom::{BottomDialect, BottomKind, BottomState},
-    dialect::type_alias::{TypeAliasContext, TypeAliasDialect, TypeAliasDialectState},
+    dialect::type_alias::{TypeAliasTypeChecker, TypeAliasDialect, TypeAliasDialectState},
     platform_bindings::PlatformBindings,
     terms::{Kind, Term},
     type_check::{Type, TypeChecker},
 };
 
 #[derive(Clone, Default, Debug)]
-pub enum OmniContext {
+pub enum OmniTypeChecker {
     #[default]
     Empty,
     Bottom(TypeChecker<BottomDialect>),
-    TypeAlias(TypeAliasContext),
+    TypeAlias(TypeAliasTypeChecker),
 }
 
 #[allow(dead_code)]
@@ -23,12 +23,12 @@ pub enum OmniState {
     TypeAlias(TypeAliasDialectState),
 }
 
-impl OmniContext {
+impl OmniTypeChecker {
     pub fn set_platform_bindings(&mut self, pb: PlatformBindings) {
         match self {
-            OmniContext::Empty => todo!(),
-            OmniContext::Bottom(ctx) => ctx.platform_bindings = pb,
-            OmniContext::TypeAlias(ctx) => ctx.platform_bindings = pb,
+            OmniTypeChecker::Empty => todo!(),
+            OmniTypeChecker::Bottom(ctx) => ctx.platform_bindings = pb,
+            OmniTypeChecker::TypeAlias(ctx) => ctx.platform_bindings = pb,
         }
     }
 }

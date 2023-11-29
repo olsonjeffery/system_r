@@ -1,7 +1,7 @@
 @system_r
 Feature: Literals
     Scenario: Nat
-        Given a new system_r context
+        Given a new type checker
         Given a srpt block:
         """
         let f = \x: (Nat, Nat).
@@ -23,7 +23,7 @@ Feature: Literals
         # - any two tags that share the same name are equivalent for equality purposes;
         # - anywhere an atomic typespec can appear, there can just be a tag literal
         # - Should variant injection/type constructions with labels have their labels be in @TagFormat ?
-        Given a new system_r context
+        Given a new type checker
         Given a srpt block:
         """
         @go
@@ -35,7 +35,7 @@ Feature: Literals
         Then the resulting eval Kind should be Tag of "@go"
 
     Scenario: Tag in tuple typing
-        Given a new system_r context
+        Given a new type checker
         Given a srpt block:
         """
 let f = \x: (Nat, @Foo).
@@ -51,7 +51,7 @@ let f = \x: (Nat, @Foo).
         Then the resulting eval Kind should be Nat of 2
 
     Scenario: Bytes / bin numeric literals
-        Given a new system_r context
+        Given a new type checker
         Given a srpt block:
         # We will support a very inefficient 0-255 byte array encoding for demonstration purposes
         """
@@ -70,7 +70,7 @@ let f = \x: (Nat, @Foo).
     Scenario: Bytes numeric literal admits only 0-255
         # note: Nat is intrinsically an unsigned integer,
         # so we get the lower bound for free
-        Given a new system_r context
+        Given a new type checker
         Given a srpt block:
         """
         let bytes = [71, 69, 256] in
@@ -79,6 +79,7 @@ let f = \x: (Nat, @Foo).
         When it is parsed
         When eval is ran
         Then the last parse should have failed
+        Then the last parse message should contain "invalid byte range"
     
     # Scenario: Bytes in fn signature, case with exact match & catch-all arms
 
@@ -86,7 +87,7 @@ let f = \x: (Nat, @Foo).
 
     # Scenario: Boolean
     Scenario: Boolean hello world
-        Given a new system_r context
+        Given a new type checker
         Given a srpt block:
         """
         let id = \T \x: T. x in
