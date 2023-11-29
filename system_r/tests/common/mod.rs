@@ -11,7 +11,7 @@ use system_r::{
 
 use anyhow::Result;
 
-use self::extensions::{OmniTypeChecker, OmniKind, OmniState, OmniTerm, OmniType};
+use self::extensions::{OmniKind, OmniState, OmniTerm, OmniType, OmniTypeChecker};
 
 pub mod extensions;
 pub mod platform_bindings;

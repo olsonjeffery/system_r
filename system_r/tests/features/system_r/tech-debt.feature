@@ -7,8 +7,6 @@ Feature: Technical Debt
     #   - DONE use anyhow?
     #   - panic removal..
     #   - deal with visitors
-    #   - Adopt standardized error format at error creation site: big file of errors, impl a common spec+error
-    #   - ALL "foo should have failed" specs should be audited/replaced with citations for specific errcodes by convention
     # - adopt git2rs pre-commit hook
     # - rustdoc-documentation of entire API surface
     #    - #[deny(missing_docs)]

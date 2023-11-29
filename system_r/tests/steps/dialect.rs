@@ -5,7 +5,9 @@ use cucumber::{given, then, when};
 use system_r::testing;
 use system_r::{
     dialect::{
-        type_alias::{TypeAliasTypeChecker, TypeAliasDialectState, TypeAliasExtension, TypeAliasToBottomDialectResolver},
+        type_alias::{
+            TypeAliasDialectState, TypeAliasExtension, TypeAliasToBottomDialectResolver, TypeAliasTypeChecker,
+        },
         SystemRDialect, SystemRExtension, SystemRResolver,
     },
     syntax::parser::{self, ParserState},
@@ -15,7 +17,7 @@ use system_r::{
 
 use crate::common::{
     self,
-    extensions::{OmniTypeChecker, OmniKind, OmniState, OmniTerm, OmniType},
+    extensions::{OmniKind, OmniState, OmniTerm, OmniType, OmniTypeChecker},
     SpecsWorld,
 };
 

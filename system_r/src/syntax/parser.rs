@@ -797,7 +797,10 @@ where
                     return Err(Error {
                         span: start_span,
                         tok: start_token,
-                        kind: ErrorKind::ExtendedError(format!("expect Nat literals from 0 to 255, got {:?}; invalid byte range", e)),
+                        kind: ErrorKind::ExtendedError(format!(
+                            "expect Nat literals from 0 to 255, got {:?}; invalid byte range",
+                            e
+                        )),
                     }
                     .into());
                 }
@@ -806,7 +809,10 @@ where
                 return Err(Error {
                     span: start_span,
                     tok: start_token,
-                    kind: ErrorKind::ExtendedError(format!("expect Nat literals from 0 to 255, got {:?}; invalid byte range", v)),
+                    kind: ErrorKind::ExtendedError(format!(
+                        "expect Nat literals from 0 to 255, got {:?}; invalid byte range",
+                        v
+                    )),
                 }
                 .into())
             }

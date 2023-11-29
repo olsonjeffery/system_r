@@ -3,11 +3,12 @@ extern crate cucumber;
 use cucumber::{gherkin::Step, given, then, when};
 
 use system_r::{
+    bottom::BottomTokenKind,
     diagnostics::Diagnostic,
     terms::{Kind, Literal, Term},
     testing,
     type_check::Type,
-    type_check::TypeChecker, bottom::BottomTokenKind,
+    type_check::TypeChecker,
 };
 
 use crate::common::{self, extensions::OmniTypeChecker};
@@ -161,8 +162,12 @@ fn then_the_last_parse_should_be_successful(world: &mut common::SpecsWorld) {
 
 #[then(regex = r#"the last parse message should contain "([^"]*)""#)]
 fn then_the_last_eval_message_should_container(world: &mut common::SpecsWorld, expected_snippet: String) {
-    assert!(world.last_parse_msg.contains(&expected_snippet),
-        "Expected last parse msg: {:?} to contain snippet {:?}, didn't", world.last_parse_msg, expected_snippet);
+    assert!(
+        world.last_parse_msg.contains(&expected_snippet),
+        "Expected last parse msg: {:?} to contain snippet {:?}, didn't",
+        world.last_parse_msg,
+        expected_snippet
+    );
 }
 
 #[then("the last eval should have failed")]
