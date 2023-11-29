@@ -1,0 +1,23 @@
+[package]
+name = "system_r"
+version = "0.0.1"
+authors = ["see AUTHORS.md", "Michael Lazear <lazear@scripps.edu>"]
+edition = "2021"
+license = "APACHE2 & MIT"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = { version = "1.0.75" }
+
+[dev-dependencies]
+futures = "0.3"
+chrono = "0.4"
+cucumber = { version = "0.20.1", features = ["output-json"] }
+
+[[test]]
+name = "specs"
+harness = false
+
+[[bench]]
+name = "default"

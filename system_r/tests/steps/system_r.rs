@@ -5,7 +5,7 @@ use cucumber::{gherkin::Step, given, then, when};
 use system_r::{
     diagnostics::Diagnostic,
     terms::{Kind, Literal, Term},
-    testing::{self, do_bottom_eval},
+    testing,
     type_check::Type,
     type_check::TypeChecker, bottom::BottomTokenKind,
 };
@@ -106,36 +106,6 @@ fn when_it_is_parsed(world: &mut common::SpecsWorld) {
     world.last_parse_term = parse_result.clone();
     world.last_parse_kind = parse_result.kind;
     world.last_parse_msg = "".to_owned();
-}
-#[when("bottom eval is ran")]
-fn when_bottom_eval_is_ran(world: &mut common::SpecsWorld) {
-    let Some(OmniTypeChecker::Bottom(ctx)) = world.type_checkers.get_mut(BOTTOM_TC_NAME) else {
-        world.last_eval_success = false;
-        world.last_eval_term = Term::unit();
-        world.last_eval_fty = Type::Unit;
-        world.last_eval_kind = Kind::Lit(Literal::Unit);
-        world.last_eval_msg = "Failed to do bottom eval; there is no Context<BottomDialect> stored".to_owned();
-        return;
-    };
-    let mut term = world.last_parse_term.clone();
-
-    match do_bottom_eval(ctx, &mut term) {
-        Ok(t) => {
-            world.last_eval_success = true;
-            world.last_eval_term = t.clone();
-            world.last_eval_fty = Type::Unit;
-            world.last_eval_kind = t.kind;
-            world.last_eval_msg = "".to_owned();
-        }
-        Err(e) => {
-            world.last_eval_success = false;
-            world.last_eval_term = Term::unit();
-            world.last_eval_fty = Type::Unit;
-            world.last_eval_kind = Kind::Lit(Literal::Unit);
-            world.last_eval_msg = e.to_string();
-            return;
-        }
-    }
 }
 
 #[when("eval is ran")]
