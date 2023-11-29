@@ -21,10 +21,11 @@ use crate::terms::Term;
 use crate::type_check::Variant;
 use crate::{
     diagnostics::Diagnostic,
-    type_check::{TypeChecker, Type},
+    type_check::{Type, TypeChecker},
 };
+use anyhow::Result;
 
-pub type WrappedFn = fn(input: Term<BottomDialect>, span: &Span) -> Result<Term<BottomDialect>, Diagnostic>;
+pub type WrappedFn = fn(input: Term<BottomDialect>, span: &Span) -> Result<Term<BottomDialect>>;
 
 pub struct WrappedContent(pub WrappedFn, pub Type<BottomDialect>, pub Type<BottomDialect>);
 
@@ -85,16 +86,13 @@ impl<'a> PlatformBindings {
     }
 }
 
-fn resolve_pb_type<
-    TExtDialect: SystemRDialect,
->(
-    ty_in: Type<BottomDialect>,
-) -> Result<Type<TExtDialect>, Diagnostic> {
+fn resolve_pb_type<TExtDialect: SystemRDialect>(ty_in: Type<BottomDialect>) -> Result<Type<TExtDialect>> {
     match ty_in {
         Type::Extended(v) => Err(Diagnostic::error(
             Default::default(),
             "Platform binding with extended args type; not allowed",
-        )),
+        )
+        .into()),
         Type::Alias(v) => Ok(Type::Alias(v)),
         Type::Arrow(a, b) => Ok(Type::Arrow(
             Box::new(resolve_pb_type(*a)?),
@@ -107,7 +105,8 @@ fn resolve_pb_type<
         Type::PlatformBinding(_, _) => Err(Diagnostic::error(
             Default::default(),
             "Platforming with platform-binding-type vars; shouldn't happen",
-        )),
+        )
+        .into()),
         Type::Product(v) => {
             let mut result = Vec::new();
             for i in v {
@@ -134,14 +133,8 @@ fn resolve_pb_type<
     }
 }
 
-impl<TExtDialect: SystemRDialect>
-    TypeChecker<TExtDialect>
-{
-    pub(crate) fn type_check_platform_binding(
-        &mut self,
-        idx: &usize,
-        span: &Span,
-    ) -> Result<Type<TExtDialect>, Diagnostic> {
+impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
+    pub(crate) fn type_check_platform_binding(&mut self, idx: &usize, span: &Span) -> Result<Type<TExtDialect>> {
         match self.platform_bindings.get(*idx) {
             Some(wc) => {
                 let args_resolved = resolve_pb_type(wc.1.clone())?;
@@ -151,7 +144,8 @@ impl<TExtDialect: SystemRDialect>
             None => Err(Diagnostic::error(
                 *span,
                 format!("No matching platform_binding registration for idx {}", idx),
-            )),
+            )
+            .into()),
         }
     }
 }

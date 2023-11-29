@@ -3,7 +3,7 @@ use system_r::{
     dialect::type_alias::{TypeAliasContext, TypeAliasDialect, TypeAliasDialectState},
     platform_bindings::PlatformBindings,
     terms::{Kind, Term},
-    type_check::{TypeChecker, Type},
+    type_check::{Type, TypeChecker},
 };
 
 #[derive(Clone, Default, Debug)]

@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 use crate::syntax::parser::ParserState;
-use crate::system_r_util::span::Span;
 
 use crate::bottom::BottomDialect;
 use crate::dialect::{SystemRDialect, SystemRExtension};
@@ -23,11 +22,13 @@ use crate::{
     diagnostics::Diagnostic,
     eval,
     platform_bindings::PlatformBindings,
-    syntax::{error::Error, parser, parser::ErrorKind},
+    syntax::parser,
     terms::{visit::InjRewriter, Term},
     type_check::{self, Type},
     visit::MutTermVisitor,
 };
+
+use anyhow::Result;
 
 pub fn code_format(src: &str, diag: Diagnostic) -> String {
     let srcl = src.lines().collect::<Vec<&str>>();
@@ -54,27 +55,21 @@ pub fn code_format(src: &str, diag: Diagnostic) -> String {
     output
 }
 
-pub fn type_check_term<
-    TExtDialect: SystemRDialect,
-    TExt: SystemRExtension<TExtDialect>,
->(
+pub fn type_check_term<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
     ctx: &mut type_check::TypeChecker<TExtDialect>,
     term: &mut Term<TExtDialect>,
     ext: &mut TExt,
-) -> Result<Type<TExtDialect>, Diagnostic> {
+) -> Result<Type<TExtDialect>> {
     // Step 1
     let ty = ctx.type_check(term, ext)?;
     Ok(ty)
 }
 
-pub fn dealias_and_type_check_term<
-    TExtDialect: SystemRDialect,
-    TExt: SystemRExtension<TExtDialect>,
->(
+pub fn dealias_and_type_check_term<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
     ctx: &mut type_check::TypeChecker<TExtDialect>,
     term: &mut Term<TExtDialect>,
     ext: &mut TExt,
-) -> Result<Type<TExtDialect>, Diagnostic> {
+) -> Result<Type<TExtDialect>> {
     // Step 0
     ctx.de_alias(term, ext);
     InjRewriter(Default::default(), Default::default()).visit(term, ext, &ctx.ext_state);
@@ -82,56 +77,27 @@ pub fn dealias_and_type_check_term<
     type_check_term(ctx, term, ext)
 }
 
-pub fn operate_parser_for<
-    TExtDialect: SystemRDialect,
-    TExt: SystemRExtension<TExtDialect>,
->(
+pub fn operate_parser_for<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
     input: &str,
     ps: &mut ParserState<TExtDialect>,
     ext: &mut TExt,
-) -> Result<Term<TExtDialect>, Diagnostic> {
-    return match parser::parse(ps, ext) {
-        Ok(term) => Ok(term),
-        Err(Error {
-            kind: ErrorKind::Eof, ..
-        }) => return Err(Diagnostic::error(Span::default(), "Unexpected EOF")),
-        Err(e) => {
-            //dbg!(e);
-            let diagnostic_message = parser::diagnostic(ps.clone()).emit();
-            let msg = format!("operate ERROR {:?}\r\nDIAGNOSTIC: {:?}", e.clone(), diagnostic_message);
-            return Err(Diagnostic::error(Span::default(), msg));
-        }
-    };
+) -> Result<Term<TExtDialect>>
+where
+    <TExtDialect as SystemRDialect>::TokenKind: 'static,
+{
+    parser::parse(ps, ext)
 }
 
-pub fn parse_single_block(
-    platform_bindings: &PlatformBindings,
-    input: &str,
-) -> Result<Term<BottomDialect>, Diagnostic> {
+pub fn parse_single_block(platform_bindings: &PlatformBindings, input: &str) -> Result<Term<BottomDialect>> {
     let mut ps = parser::new(platform_bindings, input);
     let mut ext = BottomExtension;
-    return match parser::parse(&mut ps, &mut ext) {
-        Ok(term) => Ok(term),
-        Err(Error {
-            kind: ErrorKind::Eof, ..
-        }) => return Err(Diagnostic::error(Span::default(), "Unexpected EOF")),
-        Err(e) => {
-            //dbg!(e);
-            let diagnostic_message = parser::diagnostic(ps).emit();
-            let msg = format!(
-                "bottom parse ERROR {:?}\r\nDIAGNOSTIC: {:?}",
-                e.clone(),
-                diagnostic_message
-            );
-            return Err(Diagnostic::error(Span::default(), msg));
-        }
-    };
+    parser::parse(&mut ps, &mut ext)
 }
 
 pub fn do_bottom_eval(
     ctx: &mut type_check::TypeChecker<BottomDialect>,
     term: &mut Term<BottomDialect>,
-) -> Result<Term<BottomDialect>, Diagnostic> {
+) -> Result<Term<BottomDialect>> {
     let ev = eval::Eval::with_context(ctx);
     let mut t: Term<BottomDialect> = term.clone();
     let fin = loop {
@@ -149,7 +115,7 @@ pub fn type_check_and_eval_single_block(
     term: &mut Term<BottomDialect>,
     src: &str,
     fail_on_type_mismatch: bool,
-) -> Result<(Type<BottomDialect>, Term<BottomDialect>), Diagnostic> {
+) -> Result<(Type<BottomDialect>, Term<BottomDialect>)> {
     // Step 1
     let mut ext = BottomExtension;
     let pre_ty = do_type_check(ctx, term, &mut ext)?;
@@ -164,24 +130,17 @@ pub fn type_check_and_eval_single_block(
             "Type change of term pre check typecheck to post-eval: {:?} {:?}",
             pre_ty, fin_ty
         );
-        return Err(Diagnostic::error(fin.span(), msg));
+        return Err(Diagnostic::error(fin.span(), msg).into());
     }
 
     Ok((fin_ty, fin))
 }
 
-pub fn do_type_check<
-    TExtDialect: SystemRDialect,
-    TExt: SystemRExtension<TExtDialect>,
->(
+pub fn do_type_check<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
     ctx: &mut type_check::TypeChecker<TExtDialect>,
     term: &mut Term<TExtDialect>,
     ext: &mut TExt,
-) -> Result<Type<TExtDialect>, Diagnostic> {
-    let tc_result = dealias_and_type_check_term(ctx, term, ext);
-    let Some(pre_ty) = tc_result.clone().ok() else {
-        let e = tc_result.err().unwrap();
-        return Err(e);
-    };
-    Ok(pre_ty)
+) -> Result<Type<TExtDialect>> {
+    let tc_result = dealias_and_type_check_term(ctx, term, ext)?;
+    Ok(tc_result)
 }

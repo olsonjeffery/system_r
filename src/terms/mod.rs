@@ -78,9 +78,7 @@ pub enum Kind<TExtDialect: SystemRDialect> {
     Extended(TExtDialect::Kind),
 }
 
-impl<TExtDialect: SystemRDialect> Default
-    for Kind<TExtDialect>
-{
+impl<TExtDialect: SystemRDialect> Default for Kind<TExtDialect> {
     fn default() -> Self {
         Kind::Lit(Literal::Unit)
     }
@@ -142,9 +140,7 @@ impl fmt::Display for Literal {
     }
 }
 
-impl<TExtDialect: SystemRDialect> fmt::Display
-    for Term<TExtDialect>
-{
+impl<TExtDialect: SystemRDialect> fmt::Display for Term<TExtDialect> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match &self.kind {
             Kind::Lit(lit) => write!(f, "{}", lit),
@@ -184,9 +180,7 @@ impl<TExtDialect: SystemRDialect> fmt::Display
     }
 }
 
-impl<TExtDialect: SystemRDialect> fmt::Debug
-    for Term<TExtDialect>
-{
+impl<TExtDialect: SystemRDialect> fmt::Debug for Term<TExtDialect> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self.kind)
     }

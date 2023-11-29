@@ -16,11 +16,7 @@ impl Shift {
     }
 }
 
-impl<
-        TExtDialect: SystemRDialect,
-        TExt: SystemRExtension<TExtDialect>,
-    > MutTermVisitor<TExtDialect, TExt> for Shift
-{
+impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVisitor<TExtDialect, TExt> for Shift {
     fn visit_var(&mut self, sp: &mut Span, var: &mut usize, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
         if *var >= self.cutoff {
             *var = (*var as isize + self.shift) as usize;
@@ -88,24 +84,19 @@ impl<
     }
 }
 
-pub struct Subst<TExtDialect: SystemRDialect>
-{
+pub struct Subst<TExtDialect: SystemRDialect> {
     cutoff: usize,
     term: Term<TExtDialect>,
 }
 
-impl<TExtDialect: SystemRDialect>
-    Subst<TExtDialect>
-{
+impl<TExtDialect: SystemRDialect> Subst<TExtDialect> {
     pub fn new(term: Term<TExtDialect>) -> Subst<TExtDialect> {
         Subst { cutoff: 0, term }
     }
 }
 
-impl<
-        TExtDialect: SystemRDialect,
-        TExt: SystemRExtension<TExtDialect>,
-    > MutTermVisitor<TExtDialect, TExt> for Subst<TExtDialect>
+impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVisitor<TExtDialect, TExt>
+    for Subst<TExtDialect>
 {
     fn visit_abs(
         &mut self,
@@ -179,16 +170,12 @@ impl<
     }
 }
 
-pub struct TyTermSubst<
-    TExtDialect: SystemRDialect,
-> {
+pub struct TyTermSubst<TExtDialect: SystemRDialect> {
     cutoff: usize,
     ty: Type<TExtDialect>,
 }
 
-impl<TExtDialect: SystemRDialect>
-    TyTermSubst<TExtDialect>
-{
+impl<TExtDialect: SystemRDialect> TyTermSubst<TExtDialect> {
     pub fn new<TExt: SystemRExtension<TExtDialect>>(
         ty: Type<TExtDialect>,
         ext: &mut TExt,
@@ -214,10 +201,8 @@ impl<TExtDialect: SystemRDialect>
     }
 }
 
-impl<
-        TExtDialect: SystemRDialect,
-        TExt: SystemRExtension<TExtDialect>,
-    > MutTermVisitor<TExtDialect, TExt> for TyTermSubst<TExtDialect>
+impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVisitor<TExtDialect, TExt>
+    for TyTermSubst<TExtDialect>
 {
     fn visit_abs(
         &mut self,
@@ -328,15 +313,10 @@ impl<
 ///
 /// Transform an [`Injection`] term of form: `Label tm of Rec(u.T)` into
 /// `fold [u.T] Label tm of [X->u.T] T`
-pub struct InjRewriter<TExtDialect: SystemRDialect>(
-    pub TExtDialect::Pattern,
-    pub TExtDialect::Kind,
-);
+pub struct InjRewriter<TExtDialect: SystemRDialect>(pub TExtDialect::Pattern, pub TExtDialect::Kind);
 
-impl<
-        TExtDialect: SystemRDialect,
-        TExt: SystemRExtension<TExtDialect>,
-    > MutTermVisitor<TExtDialect, TExt> for InjRewriter<TExtDialect>
+impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVisitor<TExtDialect, TExt>
+    for InjRewriter<TExtDialect>
 {
     fn visit(&mut self, term: &mut Term<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
         match &mut term.kind {

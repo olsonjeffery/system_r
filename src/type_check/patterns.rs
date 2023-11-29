@@ -17,14 +17,12 @@ use crate::diagnostics::*;
 use crate::dialect::{SystemRDialect, SystemRExtension};
 use crate::patterns::{PatTyStack, Pattern};
 use crate::terms::*;
+use anyhow::Result;
 use std::collections::HashSet;
 
 /// Return true if `existing` covers `new`, i.e. if new is a useful pattern
 /// then `overlap` will return `false`
-pub fn overlap<TExtDialect: SystemRDialect>(
-    existing: &Pattern<TExtDialect>,
-    new: &Pattern<TExtDialect>,
-) -> bool {
+pub fn overlap<TExtDialect: SystemRDialect>(existing: &Pattern<TExtDialect>, new: &Pattern<TExtDialect>) -> bool {
     use Pattern::*;
     match (existing, new) {
         (Any, _) => true,
@@ -43,18 +41,13 @@ pub fn overlap<TExtDialect: SystemRDialect>(
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Default)]
-pub struct Matrix<
-    'pat,
-    TExtDialect: SystemRDialect,
-> {
+pub struct Matrix<'pat, TExtDialect: SystemRDialect> {
     pub expr_ty: Type<TExtDialect>,
     len: usize,
     pub inner_matrix: Vec<Vec<&'pat Pattern<TExtDialect>>>,
 }
 
-impl<'pat, TExtDialect: SystemRDialect>
-    Matrix<'pat, TExtDialect>
-{
+impl<'pat, TExtDialect: SystemRDialect> Matrix<'pat, TExtDialect> {
     /// Create a new [`Matrix`] for a given type
     pub fn new(expr_ty: Type<TExtDialect>) -> Matrix<'pat, TExtDialect> {
         let len = match &expr_ty {
@@ -193,9 +186,7 @@ impl<'pat, TExtDialect: SystemRDialect>
     }
 }
 
-impl<TExtDialect: SystemRDialect>
-    TypeChecker<TExtDialect>
-{
+impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
     /// Type check a case expression, returning the Type of the arms, assuming
     /// that the case expression is exhaustive and well-typed
     ///
@@ -225,7 +216,7 @@ impl<TExtDialect: SystemRDialect>
         expr: &Term<TExtDialect>,
         arms: &[Arm<TExtDialect>],
         ext: &mut TExt,
-    ) -> Result<Type<TExtDialect>, Diagnostic> {
+    ) -> Result<Type<TExtDialect>> {
         let ty = self.type_check(expr, ext)?;
         let mut matrix = patterns::Matrix::<TExtDialect>::new(ty);
 
@@ -234,8 +225,7 @@ impl<TExtDialect: SystemRDialect>
             if self.pattern_type_eq(&arm.pat, &matrix.expr_ty, ext) {
                 let height = self.stack.len();
 
-                let binds =
-                    PatTyStack::<TExtDialect>::collect::<TExt>(&matrix.expr_ty, &arm.pat, ext, &self.ext_state);
+                let binds = PatTyStack::<TExtDialect>::collect::<TExt>(&matrix.expr_ty, &arm.pat, ext, &self.ext_state);
                 for b in binds.into_iter().rev() {
                     self.push(b.clone());
                 }
@@ -248,38 +238,34 @@ impl<TExtDialect: SystemRDialect>
 
                 set.insert(arm_ty);
                 if !matrix.add_pattern(&arm.pat, ext, &mut self.ext_state) {
-                    return Err(Diagnostic::error(arm.span, "unreachable pattern!"));
+                    return Err(Diagnostic::error(arm.span, "unreachable pattern!").into());
                 }
             } else {
                 return Err(
-                    Diagnostic::error(expr.span, format!("case binding has a type {:?}", &matrix.expr_ty)).message(
-                        arm.span,
-                        format!(
-                            "but this pattern ({:?}) cannot bind a value of type {:?}",
-                            &arm.pat, &matrix.expr_ty
-                        ),
-                    ),
+                    Diagnostic::error(expr.span, format!("case binding has a type {:?}", &matrix.expr_ty))
+                        .message(
+                            arm.span,
+                            format!(
+                                "but this pattern ({:?}) cannot bind a value of type {:?}",
+                                &arm.pat, &matrix.expr_ty
+                            ),
+                        )
+                        .into(),
                 );
             }
         }
 
         if set.len() != 1 {
-            return Err(Diagnostic::error(
-                expr.span,
-                format!("incompatible arms! {:?} expr: {:?}", set, expr),
-            ));
+            return Err(Diagnostic::error(expr.span, format!("incompatible arms! {:?} expr: {:?}", set, expr)).into());
         }
 
         if matrix.exhaustive(ext, &mut self.ext_state) {
             match set.into_iter().next() {
                 Some(s) => Ok(s),
-                None => Err(Diagnostic::error(
-                    expr.span,
-                    "probably unreachable - expected variant type!",
-                )),
+                None => Err(Diagnostic::error(expr.span, "probably unreachable - expected variant type!").into()),
             }
         } else {
-            Err(Diagnostic::error(expr.span, "patterns are not exhaustive!"))
+            Err(Diagnostic::error(expr.span, "patterns are not exhaustive!").into())
         }
     }
 

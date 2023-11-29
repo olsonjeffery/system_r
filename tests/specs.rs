@@ -4,6 +4,9 @@ extern crate chrono;
 extern crate cucumber;
 extern crate test;
 
+#[macro_use]
+extern crate anyhow;
+
 use cucumber::{writer, World, WriterExt};
 use std::fs;
 

@@ -4,9 +4,9 @@ use cucumber::{gherkin::Step, given, then, when};
 
 use system_r::{
     terms::{Kind, Literal, Term},
-    testing::{self, code_format, do_bottom_eval},
-    type_check::TypeChecker,
+    testing::{self, do_bottom_eval},
     type_check::Type,
+    type_check::TypeChecker,
 };
 
 use crate::common::{self, extensions::OmniContext};
@@ -83,7 +83,7 @@ fn when_it_is_parsed(world: &mut common::SpecsWorld) {
         Err(e) => {
             world.last_parse_success = false;
             world.last_parse_kind = Kind::Lit(Literal::Unit);
-            world.last_parse_msg = code_format(&world.code_snippet, e);
+            world.last_parse_msg = e.to_string();
             world.last_parse_term = Term::unit();
             return;
         }
@@ -118,7 +118,7 @@ fn when_bottom_eval_is_ran(world: &mut common::SpecsWorld) {
             world.last_eval_term = Term::unit();
             world.last_eval_fty = Type::Unit;
             world.last_eval_kind = Kind::Lit(Literal::Unit);
-            world.last_eval_msg = code_format(&world.code_snippet, e);
+            world.last_eval_msg = e.to_string();
             return;
         }
     }
@@ -144,7 +144,7 @@ fn when_eval_is_ran(world: &mut common::SpecsWorld) {
             world.last_eval_term = Term::unit();
             world.last_eval_fty = Type::Unit;
             world.last_eval_kind = Kind::Lit(Literal::Unit);
-            world.last_eval_msg = code_format(&world.code_snippet, e);
+            world.last_eval_msg = e.to_string();
             return;
         }
     };

@@ -2,16 +2,15 @@ extern crate cucumber;
 
 use cucumber::{given, then, when};
 
+use system_r::testing;
 use system_r::{
-    diagnostics::Diagnostic,
     dialect::{
         type_alias::{TypeAliasContext, TypeAliasDialectState, TypeAliasExtension, TypeAliasToBottomDialectResolver},
         SystemRDialect, SystemRExtension, SystemRResolver,
     },
     syntax::parser::{self, ParserState},
     terms::Term,
-    testing::{self, code_format},
-    type_check::{TypeChecker, Type},
+    type_check::{Type, TypeChecker},
 };
 
 use crate::common::{
@@ -22,29 +21,26 @@ use crate::common::{
 
 use super::system_r::{given_a_new_context, BOTTOM_CTX_NAME};
 
+use anyhow::Result;
+
 static TYPE_ALIAS_CTX_NAME: &'static str = "TypeAlias";
 
-pub fn parse_for_extension<
-    's,
-    TExtDialect: SystemRDialect,
-    TLE: SystemRExtension<TExtDialect>,
->(
+pub fn parse_for_extension<'s, TExtDialect: SystemRDialect, TLE: SystemRExtension<TExtDialect>>(
     input: &str,
     ps: &mut ParserState<'s, TExtDialect>,
     ext: &mut TLE,
-) -> Result<Term<TExtDialect>, Diagnostic> {
+) -> Result<Term<TExtDialect>>
+where
+    <TExtDialect as SystemRDialect>::TokenKind: 'static,
+{
     testing::operate_parser_for(input, ps, ext)
 }
 
-pub fn type_check_for_extension<
-    's,
-    TExtDialect: SystemRDialect,
-    TLE: SystemRExtension<TExtDialect>,
->(
+pub fn type_check_for_extension<'s, TExtDialect: SystemRDialect, TLE: SystemRExtension<TExtDialect>>(
     ctx: &mut TypeChecker<TExtDialect>,
     term: &mut Term<TExtDialect>,
     ext: &mut TLE,
-) -> Result<Type<TExtDialect>, Diagnostic> {
+) -> Result<Type<TExtDialect>> {
     testing::do_type_check::<TExtDialect, TLE>(ctx, term, ext)
 }
 
@@ -132,7 +128,7 @@ pub fn when_it_is_converted_to_bottom_dialect(world: &mut SpecsWorld) {
             OmniContext::TypeAlias(ctx) => ctx,
             _ => panic!("Expected TypeAlias context, didn't get one!"),
         },
-        Err(()) => panic!("expected to get a TypeAlias context, didn't!"),
+        Err(_) => panic!("expected to get a TypeAlias context, didn't!"),
     };
 
     let TypeChecker {
@@ -150,7 +146,7 @@ pub fn when_it_is_converted_to_bottom_dialect(world: &mut SpecsWorld) {
             Ok(tm) => tm,
             Err(d) => {
                 world.last_parse_success = false;
-                world.last_parse_msg = code_format("", d);
+                world.last_parse_msg = d.to_string();
                 return;
             }
         }

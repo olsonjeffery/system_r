@@ -44,11 +44,7 @@ use crate::system_r_util::span::Span;
 use crate::terms::{Arm, Kind, Literal, Primitive, Term};
 use crate::type_check::{Type, Variant};
 
-pub trait MutTypeVisitor<
-    TExtDialect: SystemRDialect,
-    TExt: SystemRExtension<TExtDialect>,
->: Sized
-{
+pub trait MutTypeVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>: Sized {
     fn visit_pb(
         &mut self,
         i: &mut Type<TExtDialect>,
@@ -136,21 +132,9 @@ pub trait MutTypeVisitor<
     }
 }
 
-pub trait MutTermVisitor<
-    TExtDialect: SystemRDialect,
-    TExt: SystemRExtension<TExtDialect>,
->: Sized
-{
-    fn visit_lit(
-        &mut self,
-        sp: &mut Span,
-        lit: &mut Literal,
-        ext: &mut TExt,
-        ext_state: &TExtDialect::DialectState,
-    ) {
-    }
-    fn visit_var(&mut self, sp: &mut Span, var: &mut usize, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
-    }
+pub trait MutTermVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>: Sized {
+    fn visit_lit(&mut self, sp: &mut Span, lit: &mut Literal, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {}
+    fn visit_var(&mut self, sp: &mut Span, var: &mut usize, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {}
     fn visit_pb(&mut self, sp: &mut Span, idx: &mut usize, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {}
 
     fn visit_abs(
@@ -353,11 +337,7 @@ pub trait MutTermVisitor<
     }
 }
 
-pub trait PatternVisitor<
-    TExtDialect: SystemRDialect,
-    TExt: SystemRExtension<TExtDialect>,
->: Sized
-{
+pub trait PatternVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>: Sized {
     fn visit_ext(&mut self, pat: &Pattern<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
         panic!("shouldn't be reached; needs to be overriden in every implementor")
     }
@@ -384,12 +364,7 @@ pub trait PatternVisitor<
         self.visit_pattern(pat, ext, ext_state);
     }
 
-    fn visit_pattern(
-        &mut self,
-        pattern: &Pattern<TExtDialect>,
-        ext: &mut TExt,
-        ext_state: &TExtDialect::DialectState,
-    ) {
+    fn visit_pattern(&mut self, pattern: &Pattern<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
         match pattern {
             Pattern::Any => {}
             Pattern::Constructor(label, pat) => self.visit_constructor(label, pat, ext, ext_state),
@@ -401,11 +376,7 @@ pub trait PatternVisitor<
     }
 }
 
-pub trait DialectChangingPatternVisitor<
-    InDialect: SystemRDialect,
-    OutDialect: SystemRDialect,
->: Sized
-{
+pub trait DialectChangingPatternVisitor<InDialect: SystemRDialect, OutDialect: SystemRDialect>: Sized {
     fn visit_ext(&self, pat: &Pattern<InDialect>) -> Pattern<OutDialect>;
 
     fn visit_product(&self, pats: &Vec<Pattern<InDialect>>) -> Pattern<OutDialect> {
@@ -434,11 +405,7 @@ pub trait DialectChangingPatternVisitor<
     }
 }
 
-pub trait DialectChangingTypeVisitor<
-    InDialect: SystemRDialect,
-    OutDialect: SystemRDialect,
->: Sized
-{
+pub trait DialectChangingTypeVisitor<InDialect: SystemRDialect, OutDialect: SystemRDialect>: Sized {
     fn visit_pb(&self, i: &Type<InDialect>, r: &Type<InDialect>) -> Type<OutDialect> {
         let out_i = self.visit(i);
         let out_r = self.visit(r);
@@ -533,9 +500,7 @@ pub trait DialectChangingTermVisitor<
 
     fn visit_abs(&self, sp: &Span, ty: &Type<InDialect>, term: &Term<InDialect>) -> Term<OutDialect> {
         let out_term = self.visit(term);
-        let out_ty = {
-            self.get_type_visitor().visit(ty)
-        };
+        let out_ty = { self.get_type_visitor().visit(ty) };
         Term {
             span: *sp,
             kind: Kind::Abs(Box::new(out_ty), Box::new(out_term)),
@@ -673,20 +638,14 @@ pub trait DialectChangingTermVisitor<
         let signature = ty_visitor.visit(signature);
         let evidence = self.visit(evidence);
         let k = Kind::Pack(Box::new(witness), Box::new(evidence), Box::new(signature));
-        Term {
-            span: *sp,
-            kind: k,
-        }
+        Term { span: *sp, kind: k }
     }
 
     fn visit_unpack(&self, sp: &Span, package: &Term<InDialect>, term: &Term<InDialect>) -> Term<OutDialect> {
         let pkg = self.visit(package);
         let t = self.visit(term);
         let k = Kind::Unpack(Box::new(pkg), Box::new(t));
-        Term {
-            span: *sp,
-            kind: k,
-        }
+        Term { span: *sp, kind: k }
     }
 
     fn visit_ext(&self, term: &Term<InDialect>) -> Term<OutDialect>;

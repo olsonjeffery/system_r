@@ -6,7 +6,7 @@ mod platform_bindings;
 
 #[cfg(test)]
 mod bench {
-    use system_r::{testing, platform_bindings::PlatformBindings, type_check::TypeChecker, terms::Kind};
+    use system_r::{platform_bindings::PlatformBindings, terms::Kind, testing, type_check::TypeChecker};
     use test::{black_box, Bencher};
 
     #[bench]
@@ -40,7 +40,7 @@ let fib = \z: Nat->Nat. \i: Nat.
         b.iter(|| {
             let mut t = match testing::parse_single_block(&pb, &code) {
                 Ok(t) => t,
-                _ => return
+                _ => return,
             };
 
             let mut ctx = TypeChecker::default();
@@ -48,7 +48,7 @@ let fib = \z: Nat->Nat. \i: Nat.
 
             let result = match testing::type_check_and_eval_single_block(&mut ctx, &mut t, code, false) {
                 Ok(t) => t,
-                _ => return
+                _ => return,
             };
             assert_eq!(result.1.kind, Kind::Lit(system_r::terms::Literal::Nat(21)));
             println!("end of bench with result: {:?}", result);

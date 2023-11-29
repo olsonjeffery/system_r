@@ -9,6 +9,8 @@ use system_r::{
     type_check::Type,
 };
 
+use anyhow::Result;
+
 use self::extensions::{OmniContext, OmniKind, OmniState, OmniTerm, OmniType};
 
 pub mod extensions;
@@ -42,10 +44,10 @@ impl SpecsWorld {
         st
     }
 
-    pub fn take_ctx_by_name(&mut self, ctx_name: &str) -> Result<OmniContext, ()> {
+    pub fn take_ctx_by_name(&mut self, ctx_name: &str) -> Result<OmniContext> {
         match self.contexts.remove(ctx_name) {
             Some(v) => Ok(v),
-            None => Err(()),
+            None => Err(anyhow!("take_ctx_by_name")),
         }
     }
 }

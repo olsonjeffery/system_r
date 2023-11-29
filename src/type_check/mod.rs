@@ -8,9 +8,10 @@ use crate::platform_bindings::PlatformBindings;
 use crate::system_r_util::span::Span;
 use crate::terms::{Kind, Literal, Primitive, Term};
 use crate::visit::{MutTermVisitor, MutTypeVisitor};
+use anyhow::Result;
 use std::collections::{HashMap, VecDeque};
-use std::hash::Hash;
 use std::fmt;
+use std::hash::Hash;
 use visit::{Shift, Subst};
 
 #[derive(Default, Clone, PartialEq, PartialOrd, Eq, Hash)]
@@ -69,9 +70,7 @@ pub struct TypeChecker<TExtDialect: SystemRDialect> {
     pub ext_state: TExtDialect::DialectState,
 }
 
-impl<TExtDialect: SystemRDialect> Default
-    for TypeChecker<TExtDialect>
-{
+impl<TExtDialect: SystemRDialect> Default for TypeChecker<TExtDialect> {
     fn default() -> Self {
         Self {
             stack: Default::default(),
@@ -82,9 +81,7 @@ impl<TExtDialect: SystemRDialect> Default
     }
 }
 
-impl<TExtDialect: SystemRDialect>
-    TypeChecker<TExtDialect>
-{
+impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
     fn push(&mut self, ty: Type<TExtDialect>) {
         self.stack.push_front(ty);
     }
@@ -105,11 +102,7 @@ impl<TExtDialect: SystemRDialect>
         Aliaser { map: &self.map }
     }
 
-    pub fn de_alias<TExt: SystemRExtension<TExtDialect>>(
-        &mut self,
-        term: &mut Term<TExtDialect>,
-        ext: &mut TExt,
-    ) {
+    pub fn de_alias<TExt: SystemRExtension<TExtDialect>>(&mut self, term: &mut Term<TExtDialect>, ext: &mut TExt) {
         crate::visit::MutTermVisitor::visit(self, term, ext, &self.ext_state.clone())
     }
 
@@ -123,31 +116,21 @@ pub fn variant_field<'vs, TExtDialect: SystemRDialect>(
     var: &'vs [Variant<TExtDialect>],
     label: &str,
     span: Span,
-) -> Result<&'vs Type<TExtDialect>, Diagnostic> {
+) -> Result<&'vs Type<TExtDialect>> {
     for f in var {
         if label == f.label {
             return Ok(&f.ty);
         }
     }
-    Err(Diagnostic::error(
-        span,
-        format!("constructor {} doesn't appear in variant fields", label),
-    ))
-
-    // Err(Type<TExtDialect>Error {
-    //     span,
-    //     kind: Type<TExtDialect>ErrorKind::NotVariant,
-    // })
+    Err(Diagnostic::error(span, format!("constructor {} doesn't appear in variant fields", label)).into())
 }
 
-impl<TExtDialect: SystemRDialect>
-    TypeChecker<TExtDialect>
-{
+impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
     pub fn type_check<TExt: SystemRExtension<TExtDialect>>(
         &mut self,
         term: &Term<TExtDialect>,
         ext: &mut TExt,
-    ) -> Result<Type<TExtDialect>, Diagnostic> {
+    ) -> Result<Type<TExtDialect>> {
         match term.kind() {
             Kind::Extended(_) => self.type_check_ext(term),
             Kind::Lit(Literal::Bytes(_)) => Ok(Type::Bytes),
@@ -195,7 +178,7 @@ impl<TExtDialect: SystemRDialect>
                                         .message(t2.span, format!("WTF is ty12? {:?}", ty12))
                                         .message(term.span, format!("parent term {:?}", term.kind))
                                         .message(term.span, format!("ctx stack {:?}", self.stack));
-                                        Err(d)
+                                        Err(d.into())
                                     }
                                 }
                                 _ => {
@@ -204,7 +187,7 @@ impl<TExtDialect: SystemRDialect>
                                         .message(t2.span, format!("Value has a type of {:?}", ty2))
                                         .message(t1.span, format!("Stack contents: {:?}", self.stack))
                                         .message(term.span, format!("parent term {:?}", term.kind));
-                                    Err(d)
+                                    Err(d.into())
                                 }
                             }
                         }
@@ -220,7 +203,7 @@ impl<TExtDialect: SystemRDialect>
                             )
                             .message(t1.span, format!("PlatformBinding Abstraction requires type {:?}", ty11))
                             .message(t2.span, format!("Value has a type of {:?}", ty2));
-                            Err(d)
+                            Err(d.into())
                         }
                     }
                     Type::Extended(t) => {
@@ -229,7 +212,8 @@ impl<TExtDialect: SystemRDialect>
                         // &ty2)
                     }
                     _ => Err(Diagnostic::error(term.span, "App: Expected arrow type!")
-                        .message(t1.span, format!("Kind::App ty1 {:?} ty2 {:?}", &ty1, &ty2))),
+                        .message(t1.span, format!("Kind::App ty1 {:?} ty2 {:?}", &ty1, &ty2))
+                        .into()),
                 }
             }
             Kind::Fix(inner) => {
@@ -241,13 +225,15 @@ impl<TExtDialect: SystemRDialect>
                         } else {
                             let d = Diagnostic::error(term.span, "Type<TExtDialect> mismatch in fix term")
                                 .message(inner.span, format!("Abstraction requires type {:?}->{:?}", ty1, ty1));
-                            Err(d)
+                            Err(d.into())
                         }
                     }
-                    _ => Err(Diagnostic::error(term.span, "Fix: Expected arrow type!").message(
-                        inner.span,
-                        format!("Kind::Fix -> type_check operator has type {:?}", ty),
-                    )),
+                    _ => Err(Diagnostic::error(term.span, "Fix: Expected arrow type!")
+                        .message(
+                            inner.span,
+                            format!("Kind::Fix -> type_check operator has type {:?}", ty),
+                        )
+                        .into()),
                 }
             }
             Kind::Primitive(prim) => match prim {
@@ -266,7 +252,7 @@ impl<TExtDialect: SystemRDialect>
                                     tm.span,
                                     format!("variant {} requires type {:?}, but this is {:?}", label, f.ty, ty_),
                                 );
-                                return Err(d);
+                                return Err(d.into());
                             }
                         }
                     }
@@ -281,14 +267,16 @@ impl<TExtDialect: SystemRDialect>
                                 .collect::<Vec<String>>()
                                 .join(" | ")
                         ),
-                    ))
+                    )
+                    .into())
                 }
                 Type::Extended(t) => ext.type_check_injection_to_ext(self, label, t, tm),
 
                 _ => Err(Diagnostic::error(
                     term.span,
                     format!("Cannot injection {} into non-variant type {:?}", label, ty),
-                )),
+                )
+                .into()),
             },
             Kind::Projection(term, idx) => match self.type_check(term, ext)? {
                 Type::Product(types) => match types.get(*idx) {
@@ -296,12 +284,10 @@ impl<TExtDialect: SystemRDialect>
                     None => Err(Diagnostic::error(
                         term.span,
                         format!("{} is out of range for product of length {}", idx, types.len()),
-                    )),
+                    )
+                    .into()),
                 },
-                ty => Err(Diagnostic::error(
-                    term.span,
-                    format!("Cannot project on non-product type {:?}", ty),
-                )),
+                ty => Err(Diagnostic::error(term.span, format!("Cannot project on non-product type {:?}", ty)).into()),
             },
             Kind::Product(terms) => Ok(Type::Product(
                 terms
@@ -312,10 +298,7 @@ impl<TExtDialect: SystemRDialect>
             Kind::Let(pat, t1, t2) => {
                 let ty = self.type_check(t1, ext)?;
                 if !self.pattern_type_eq(pat, &ty, ext) {
-                    return Err(Diagnostic::error(
-                        t1.span,
-                        "pattern does not match type of binder".to_string(),
-                    ));
+                    return Err(Diagnostic::error(t1.span, "pattern does not match type of binder".to_string()).into());
                 }
 
                 let height = self.stack.len();
@@ -353,16 +336,11 @@ impl<TExtDialect: SystemRDialect>
                 match ty1 {
                     Type::Universal(mut ty12) => {
                         Shift::new(1).visit(&mut ty, ext, &self.ext_state);
-                        //panic!("type_check for Kind::TyApp: term: {:?} span: {:?} ty: {:?} ty12 {:?}
-                        // stack: {:?}", term, term.span, ty, ty12, self.stack);
                         Subst::new(*ty.clone()).visit(&mut ty12, ext, &self.ext_state);
                         Shift::new(-1).visit(&mut ty12, ext, &self.ext_state);
                         Ok(*ty12)
                     }
-                    _ => Err(Diagnostic::error(
-                        term.span,
-                        format!("Expected a universal type, not {:?}", ty1),
-                    )),
+                    _ => Err(Diagnostic::error(term.span, format!("Expected a universal type, not {:?}", ty1)).into()),
                 }
             }
             // See src/types/patterns.rs for exhaustiveness and typechecking
@@ -379,13 +357,10 @@ impl<TExtDialect: SystemRDialect>
                         let d = Diagnostic::error(term.span, "Type<TExtDialect> mismatch in unfold")
                             .message(term.span, format!("unfold requires type {:?}", rec))
                             .message(tm.span, format!("term has a type of {:?}", ty_));
-                        Err(d)
+                        Err(d.into())
                     }
                 }
-                _ => Err(Diagnostic::error(
-                    term.span,
-                    format!("Expected a recursive type, not {:?}", rec),
-                )),
+                _ => Err(Diagnostic::error(term.span, format!("Expected a recursive type, not {:?}", rec)).into()),
             },
 
             Kind::Fold(rec, tm) => match rec.as_ref() {
@@ -398,13 +373,10 @@ impl<TExtDialect: SystemRDialect>
                         let d = Diagnostic::error(term.span, "Type<TExtDialect> mismatch in fold")
                             .message(term.span, format!("unfold requires type {:?}", s))
                             .message(tm.span, format!("term has a type of {:?}", ty_));
-                        Err(d)
+                        Err(d.into())
                     }
                 }
-                _ => Err(Diagnostic::error(
-                    term.span,
-                    format!("Expected a recursive type, not {:?}", rec),
-                )),
+                _ => Err(Diagnostic::error(term.span, format!("Expected a recursive type, not {:?}", rec)).into()),
             },
             Kind::Pack(witness, evidence, signature) => {
                 if let Type::Existential(exists) = signature.as_ref() {
@@ -416,13 +388,14 @@ impl<TExtDialect: SystemRDialect>
                         let d = Diagnostic::error(term.span, "Type<TExtDialect> mismatch in pack")
                             .message(term.span, format!("signature has type {:?}", sig_prime))
                             .message(evidence.span, format!("but term has a type {:?}", evidence_ty));
-                        Err(d)
+                        Err(d.into())
                     }
                 } else {
                     Err(Diagnostic::error(
                         term.span,
                         format!("Expected an existential type signature, not {:?}", signature),
-                    ))
+                    )
+                    .into())
                 }
             }
             Kind::Unpack(package, body) => {
@@ -436,20 +409,18 @@ impl<TExtDialect: SystemRDialect>
                     Err(Diagnostic::error(
                         package.span,
                         format!("Expected an existential type signature, not {:?}", p_ty),
-                    ))
+                    )
+                    .into())
                 }
             }
         }
     }
-    pub fn type_check_ext(&mut self, t: &Term<TExtDialect>) -> Result<Type<TExtDialect>, Diagnostic> {
+    pub fn type_check_ext(&mut self, t: &Term<TExtDialect>) -> Result<Type<TExtDialect>> {
         panic!("Context::type_check_ext unimplemented");
     }
 }
 
-pub fn subst<
-    TExtDialect: SystemRDialect,
-    TExt: SystemRExtension<TExtDialect>,
->(
+pub fn subst<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
     mut s: Type<TExtDialect>,
     mut t: Type<TExtDialect>,
     ext: &mut TExt,
@@ -465,11 +436,8 @@ pub struct Aliaser<'ctx, TExtDialect: SystemRDialect> {
     map: &'ctx HashMap<String, Type<TExtDialect>>,
 }
 
-impl<
-        'ctx,
-        TExtDialect: SystemRDialect,
-        TExt: SystemRExtension<TExtDialect>,
-    > MutTypeVisitor<TExtDialect, TExt> for Aliaser<'ctx, TExtDialect>
+impl<'ctx, TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTypeVisitor<TExtDialect, TExt>
+    for Aliaser<'ctx, TExtDialect>
 {
     fn visit_ext(
         &mut self,
@@ -502,10 +470,8 @@ impl<
     }
 }
 
-impl<
-        TExtDialect: SystemRDialect,
-        TExt: SystemRExtension<TExtDialect>,
-    > MutTermVisitor<TExtDialect, TExt> for TypeChecker<TExtDialect>
+impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVisitor<TExtDialect, TExt>
+    for TypeChecker<TExtDialect>
 {
     fn visit_abs(
         &mut self,
@@ -569,9 +535,7 @@ impl<
     }
 }
 
-impl<TExtDialect: SystemRDialect> fmt::Debug
-    for Type<TExtDialect>
-{
+impl<TExtDialect: SystemRDialect> fmt::Debug for Type<TExtDialect> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Type::Bytes => write!(f, "Bytes"),

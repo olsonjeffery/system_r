@@ -1,11 +1,15 @@
+use std::fmt::Display;
+
 use crate::{
-    diagnostics::Diagnostic,
-    dialect::{SystemRDialect, SystemRExtension, ExtendedTokenKind, ExtendedKind, ExtendedPattern, ExtendedType, ExtendedDialectState},
+    dialect::{
+        ExtendedDialectState, ExtendedKind, ExtendedPattern, ExtendedTokenKind, ExtendedType, SystemRDialect,
+        SystemRExtension,
+    },
     patterns::Pattern,
-    syntax::error::Error,
     terms::Term,
-    type_check::{TypeChecker, Type},
+    type_check::{Type, TypeChecker},
 };
+use anyhow::Result;
 
 #[derive(Eq, Hash, Clone, Default, Debug, PartialEq, PartialOrd)]
 pub struct BottomDialect;
@@ -28,6 +32,13 @@ pub enum BottomTokenKind {
     Placeholder,
 }
 impl ExtendedTokenKind for BottomTokenKind {}
+impl Display for BottomTokenKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BottomTokenKind")
+            .field("variant", &format!("{:?}", self))
+            .finish()
+    }
+}
 
 #[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
 pub enum BottomKind {
@@ -106,14 +117,14 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
     fn parser_ext_parse<'s>(
         &mut self,
         ps: &mut crate::syntax::parser::ParserState<BottomDialect>,
-    ) -> Result<Term<BottomDialect>, Error<BottomTokenKind>> {
+    ) -> Result<Term<BottomDialect>> {
         panic!("shouldn't be called");
     }
 
     fn parser_ext_atom<'s>(
         &mut self,
         ps: &mut crate::syntax::parser::ParserState<BottomDialect>,
-    ) -> Result<Term<BottomDialect>, Error<BottomTokenKind>> {
+    ) -> Result<Term<BottomDialect>> {
         panic!("shouldn't be called");
     }
 
@@ -124,7 +135,7 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
     fn parser_ty(
         &mut self,
         ps: &mut crate::syntax::parser::ParserState<BottomDialect>,
-    ) -> Result<crate::type_check::Type<BottomDialect>, Error<BottomTokenKind>> {
+    ) -> Result<crate::type_check::Type<BottomDialect>> {
         panic!("calling parser_ty on BottomExtension; shouldn't happen");
     }
 
@@ -144,7 +155,7 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
         label: &str,
         target: &<BottomDialect as SystemRDialect>::Type,
         tm: &Term<BottomDialect>,
-    ) -> Result<crate::type_check::Type<BottomDialect>, Diagnostic> {
+    ) -> Result<crate::type_check::Type<BottomDialect>> {
         panic!("type_check_injection_to_ext for BottomDialect; should never be called")
     }
 

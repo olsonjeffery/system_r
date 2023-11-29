@@ -16,11 +16,7 @@ impl Shift {
     }
 }
 
-impl<
-        TExtDialect: SystemRDialect,
-        TExt: SystemRExtension<TExtDialect>,
-    > MutTypeVisitor<TExtDialect, TExt> for Shift
-{
+impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTypeVisitor<TExtDialect, TExt> for Shift {
     fn visit_ext(
         &mut self,
         ty: &mut Type<TExtDialect>,
@@ -67,25 +63,19 @@ impl<
 /// Represents substituting the provided `Type` into
 /// TmVar(0) position in the `&mut Type<TExtDialect>` provided to
 /// `visit()`
-pub struct Subst<
-    TExtDialect: SystemRDialect,
-> {
+pub struct Subst<TExtDialect: SystemRDialect> {
     pub cutoff: usize,
     pub ty: Type<TExtDialect>,
 }
 
-impl<TExtDialect: SystemRDialect>
-    Subst<TExtDialect>
-{
+impl<TExtDialect: SystemRDialect> Subst<TExtDialect> {
     pub fn new(ty: Type<TExtDialect>) -> Subst<TExtDialect> {
         Subst { cutoff: 0, ty }
     }
 }
 
-impl<
-        TExtDialect: SystemRDialect,
-        TExt: SystemRExtension<TExtDialect>,
-    > MutTypeVisitor<TExtDialect, TExt> for Subst<TExtDialect>
+impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTypeVisitor<TExtDialect, TExt>
+    for Subst<TExtDialect>
 {
     fn visit_universal(
         &mut self,

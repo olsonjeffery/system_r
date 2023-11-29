@@ -1,6 +1,6 @@
 use core::fmt;
 
-use crate::{system_r_util::span::Span, dialect::ExtendedTokenKind};
+use crate::{dialect::ExtendedTokenKind, system_r_util::span::Span};
 
 use super::{parser::ErrorKind, Token};
 
@@ -11,7 +11,16 @@ pub struct Error<TExtTokenKind: ExtendedTokenKind> {
     pub kind: ErrorKind<TExtTokenKind>,
 }
 
+impl<T: ExtendedTokenKind + fmt::Debug + fmt::Display> std::error::Error for Error<T> {}
+
 impl<TExtTokenKind: ExtendedTokenKind> fmt::Debug for Error<TExtTokenKind> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Error")
+            .field("kind", &format!("{:?}", self.kind))
+            .finish()
+    }
+}
+impl<TExtTokenKind: ExtendedTokenKind> fmt::Display for Error<TExtTokenKind> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Error")
             .field("kind", &format!("{:?}", self.kind))

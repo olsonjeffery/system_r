@@ -38,13 +38,13 @@ limitations under the License.
 */
 
 use crate::bottom::{BottomDialect, BottomExtension, BottomState};
-use crate::diagnostics::Diagnostic;
 use crate::patterns::Pattern;
 use crate::platform_bindings::PlatformBindings;
 use crate::terms::visit::{Shift, Subst, TyTermSubst};
 use crate::terms::{Kind, Literal, Primitive, Term};
-use crate::type_check::{TypeChecker, Type};
+use crate::type_check::{Type, TypeChecker};
 use crate::visit::MutTermVisitor;
+use anyhow::Result;
 
 pub struct Eval<'ctx> {
     _context: &'ctx TypeChecker<BottomDialect>,
@@ -76,11 +76,7 @@ impl<'ctx> Eval<'ctx> {
         }
     }
 
-    fn eval_primitive(
-        &self,
-        p: Primitive,
-        term: Term<BottomDialect>,
-    ) -> Result<Option<Term<BottomDialect>>, Diagnostic> {
+    fn eval_primitive(&self, p: Primitive, term: Term<BottomDialect>) -> Result<Option<Term<BottomDialect>>> {
         fn map<F: Fn(u64) -> u64>(f: F, mut term: Term<BottomDialect>) -> Option<Term<BottomDialect>> {
             match &term.kind {
                 Kind::Lit(Literal::Nat(n)) => {
@@ -101,7 +97,7 @@ impl<'ctx> Eval<'ctx> {
         }
     }
 
-    pub fn small_step(&self, term: Term<BottomDialect>) -> Result<Option<Term<BottomDialect>>, Diagnostic> {
+    pub fn small_step(&self, term: Term<BottomDialect>) -> Result<Option<Term<BottomDialect>>> {
         if Eval::normal_form(&term) {
             return Ok(None);
         }

@@ -1,3 +1,5 @@
+use std::{error::Error, fmt::Display};
+
 use crate::system_r_util::span::Span;
 #[derive(Debug, Default, Copy, Clone)]
 pub enum Level {
@@ -18,6 +20,14 @@ pub struct Diagnostic {
     pub primary: Annotation,
     pub info: Vec<String>,
     pub other: Vec<Annotation>,
+}
+
+impl Error for Diagnostic {}
+
+impl Display for Diagnostic {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Diagnostic({:?})", self.level)
+    }
 }
 
 impl Annotation {

@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, fmt::Display, rc::Rc};
 
 use crate::{
     bottom::{BottomDialect, BottomKind, BottomPattern, BottomTokenKind},
@@ -12,14 +12,19 @@ use crate::{
         TokenKind,
     },
     terms::{Kind, Term},
-    type_check::{patterns::overlap, visit::Subst, TypeChecker, Type},
+    type_check::{patterns::overlap, visit::Subst, Type, TypeChecker},
     visit::{
         DialectChangingPatternVisitor, DialectChangingTermVisitor, DialectChangingTypeVisitor, MutTypeVisitor,
         PatternVisitor,
     },
 };
 
-use super::{SystemRDialect, SystemRExtension, SystemRResolver, ExtendedTokenKind, ExtendedKind, ExtendedPattern, ExtendedType, ExtendedDialectState};
+use super::{
+    ExtendedDialectState, ExtendedKind, ExtendedPattern, ExtendedTokenKind, ExtendedType, SystemRDialect,
+    SystemRExtension, SystemRResolver,
+};
+
+use anyhow::Result;
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct TypeAliasExtension;
@@ -40,6 +45,14 @@ pub enum TypeAliasTokenKind {
     TypeAliasKeyword,
     TypeBindingVar(String),
     Below(BottomTokenKind),
+}
+
+impl Display for TypeAliasTokenKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TypeAliasTokenKind")
+            .field("variant", &format!("{:?}", self))
+            .finish()
+    }
 }
 
 impl ExtendedTokenKind for TypeAliasTokenKind {}
@@ -146,10 +159,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         tk == &TypeAliasTokenKind::TypeAliasKeyword
     }
 
-    fn parser_ext_parse<'s>(
-        &mut self,
-        ps: &mut ParserState<TypeAliasDialect>,
-    ) -> Result<Term<TypeAliasDialect>, Error<TypeAliasTokenKind>> {
+    fn parser_ext_parse<'s>(&mut self, ps: &mut ParserState<TypeAliasDialect>) -> Result<Term<TypeAliasDialect>> {
         let sp = ps.span;
         parser::expect(ps, self, TokenKind::Extended(TypeAliasTokenKind::TypeAliasKeyword))?;
 
@@ -160,8 +170,12 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
                 return Err(Error {
                     span: ps.span,
                     tok: ps.token.clone(),
-                    kind: ErrorKind::ExtendedError(format!("expected a StructIdent, got {:?}", e)),
-                })
+                    kind: ErrorKind::ExtendedError::<TypeAliasTokenKind>(format!(
+                        "expected a StructIdent, got {:?}",
+                        e
+                    )),
+                }
+                .into())
             }
         };
 
@@ -193,10 +207,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         false
     }
 
-    fn parser_ext_atom(
-        &mut self,
-        ps: &mut ParserState<'_, TypeAliasDialect>,
-    ) -> Result<Term<TypeAliasDialect>, Error<TypeAliasTokenKind>> {
+    fn parser_ext_atom(&mut self, ps: &mut ParserState<'_, TypeAliasDialect>) -> Result<Term<TypeAliasDialect>> {
         let name_tok = ps.token.clone();
         let name_val = match name_tok.kind.clone() {
             TokenKind::Extended(n) => match n {
@@ -205,16 +216,24 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
                     return Err(Error {
                         span: name_tok.span,
                         tok: name_tok.clone(),
-                        kind: ErrorKind::ExtendedError(format!("Expected a TypeBindingVar, got {:?}", v)),
-                    })
+                        kind: ErrorKind::ExtendedError::<TypeAliasTokenKind>(format!(
+                            "Expected a TypeBindingVar, got {:?}",
+                            v
+                        )),
+                    }
+                    .into())
                 }
             },
             v => {
                 return Err(Error {
                     span: name_tok.span,
                     tok: name_tok.clone(),
-                    kind: ErrorKind::ExtendedError(format!("Expected a ExtendedTokenKind, got {:?}", v)),
-                })
+                    kind: ErrorKind::ExtendedError::<TypeAliasTokenKind>(format!(
+                        "Expected a ExtendedTokenKind, got {:?}",
+                        v
+                    )),
+                }
+                .into())
             }
         };
         parser::bump(ps, self);
@@ -225,21 +244,25 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
     }
 
     fn parser_ty_bump_if(&mut self, ps: &mut ParserState<TypeAliasDialect>) -> bool {
-        matches!(&ps.token.kind, TokenKind::Extended(TypeAliasTokenKind::TypeBindingVar(_)))
+        matches!(
+            &ps.token.kind,
+            TokenKind::Extended(TypeAliasTokenKind::TypeBindingVar(_))
+        )
     }
 
-    fn parser_ty(
-        &mut self,
-        ps: &mut ParserState<TypeAliasDialect>,
-    ) -> Result<Type<TypeAliasDialect>, Error<TypeAliasTokenKind>> {
+    fn parser_ty(&mut self, ps: &mut ParserState<TypeAliasDialect>) -> Result<Type<TypeAliasDialect>> {
         let binding = ps.token.kind.clone();
 
         let TokenKind::Extended(TypeAliasTokenKind::TypeBindingVar(type_decl_key)) = binding else {
             return Err(Error {
                 span: ps.span,
                 tok: ps.token.clone(),
-                kind: ErrorKind::ExtendedError(format!("Expected a TypeBindingVar, got {:?}", binding)),
-            });
+                kind: ErrorKind::ExtendedError::<TypeAliasTokenKind>(format!(
+                    "Expected a TypeBindingVar, got {:?}",
+                    binding
+                )),
+            }
+            .into());
         };
         parser::bump(ps, self);
 
@@ -290,15 +313,15 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         inj_label: &str,
         target: &<TypeAliasDialect as SystemRDialect>::Type,
         tm: &Term<TypeAliasDialect>,
-    ) -> Result<Type<TypeAliasDialect>, Diagnostic> {
+    ) -> Result<Type<TypeAliasDialect>> {
         let sp = tm.span;
         let TypeAliasType::TypeAliasApp(type_alias_label, inner_types) = target else {
-            return Err(Diagnostic::error(sp, String::new()));
+            return Err(Diagnostic::error(sp, String::new()).into());
         };
 
         let ps = &mut ctx.ext_state;
         let dealiased = match reify_type(ps, type_alias_label, inner_types) {
-            Err(e) => return Err(Diagnostic::error(sp, format!("failed to reify type: {:?}", e))),
+            Err(e) => return Err(Diagnostic::error(sp, format!("failed to reify type: {:?}", e)).into()),
             Ok(t) => t,
         };
 
@@ -324,14 +347,10 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
                             .collect::<Vec<String>>()
                             .join(" | ")
                     ),
-                ))
+                )
+                .into())
             }
-            v => {
-                Err(Diagnostic::error(
-                    sp,
-                    format!("expected de-aliased type to be a Varient, was {:?}", v),
-                ))
-            }
+            v => Err(Diagnostic::error(sp, format!("expected de-aliased type to be a Varient, was {:?}", v)).into()),
         }
     }
 
@@ -358,8 +377,6 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         };
         pts.ty = reified_type.clone();
 
-        //panic!("before re-entry into visitor, label {:?} pat {:?}, reified: {:?}",
-        // label, pat, reified_type);
         pts.visit_constructor(label, pat, self, ext_state);
 
         pts.ty = ty;
@@ -461,8 +478,6 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
                     Ok(t) => t,
                     _ => return false,
                 };
-                //panic!("end of type_check_Ext_equals_ty ext {:?} other {:?} stack {:?}",
-                // reified, *other_ty, ctx.stack);
                 reified == *other_ty
             }
             TypeAliasType::VarWrap(v) => false, // shouldn't happen
@@ -471,24 +486,22 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
     }
 }
 
-pub fn has_holed_type_named(
-    ps: &<TypeAliasDialect as SystemRDialect>::DialectState,
-    key: &str,
-) -> Result<bool, Error<TypeAliasTokenKind>> {
+pub fn has_holed_type_named(ps: &<TypeAliasDialect as SystemRDialect>::DialectState, key: &str) -> Result<bool> {
     Ok(get_holed_type_from(ps, key).is_ok())
 }
 
-pub fn get_holed_type_from(
-    ps: &TypeAliasDialectState,
-    key: &str,
-) -> Result<(usize, Type<TypeAliasDialect>), Error<TypeAliasTokenKind>> {
+pub fn get_holed_type_from(ps: &TypeAliasDialectState, key: &str) -> Result<(usize, Type<TypeAliasDialect>)> {
     match ps.type_map.get(key) {
         Some(t) => Ok(t.clone()),
         None => Err(Error {
             span: Default::default(),
             tok: Default::default(), // FIXME replace span/tok defaults and propagating it into extensions
-            kind: ErrorKind::ExtendedError(format!("Tried to get holed type named '{:?}', found None", key)),
-        }),
+            kind: ErrorKind::ExtendedError::<TypeAliasTokenKind>(format!(
+                "Tried to get holed type named '{:?}', found None",
+                key
+            )),
+        }
+        .into()),
     }
 }
 
@@ -496,7 +509,7 @@ pub fn set_holed_type_for(
     ps: &mut ParserState<TypeAliasDialect>,
     key: &str,
     ty: (usize, Type<TypeAliasDialect>),
-) -> Result<(), Error<TypeAliasTokenKind>> {
+) -> Result<()> {
     match ps.ext_state.type_map.contains_key(key) {
         false => {
             ps.ext_state.type_map.insert(key.to_owned(), ty);
@@ -505,8 +518,12 @@ pub fn set_holed_type_for(
         true => Err(Error {
             span: ps.span,
             tok: ps.token.clone(),
-            kind: ErrorKind::ExtendedError(format!("key {:?} is already present in types hash", key)),
-        }),
+            kind: ErrorKind::ExtendedError::<TypeAliasTokenKind>(format!(
+                "key {:?} is already present in types hash",
+                key
+            )),
+        }
+        .into()),
     }
 }
 
@@ -514,7 +531,7 @@ pub fn reify_type(
     ext_state: &TypeAliasDialectState,
     type_decl_key: &str,
     applied_types: &Vec<Type<TypeAliasDialect>>,
-) -> Result<Type<TypeAliasDialect>, Error<TypeAliasTokenKind>> {
+) -> Result<Type<TypeAliasDialect>> {
     let (tyabs_count, mut holed_type) = get_holed_type_from(ext_state, type_decl_key)?;
 
     let mut ext = TypeAliasExtension; // :3
@@ -523,12 +540,13 @@ pub fn reify_type(
         return Err(Error {
             span: Default::default(),
             tok: Default::default(),
-            kind: ErrorKind::ExtendedError(format!(
+            kind: ErrorKind::ExtendedError::<TypeAliasTokenKind>(format!(
                 "Expected tyabs count in holed type of be {:?}, but was {:?}",
                 applied_types.len(),
                 tyabs_count
             )),
-        });
+        }
+        .into());
     }
 
     let cutoffs = (0..applied_types.len()).rev();
@@ -553,7 +571,7 @@ pub fn reify_type(
 pub fn pulls_types_from_tyapp(
     ps: &mut ParserState<TypeAliasDialect>,
     ext: &mut TypeAliasExtension,
-) -> Result<Vec<Type<TypeAliasDialect>>, Error<TypeAliasTokenKind>> {
+) -> Result<Vec<Type<TypeAliasDialect>>> {
     parser::expect(ps, ext, TokenKind::LSquare)?;
 
     let mut ret_val = Vec::new();
@@ -572,7 +590,8 @@ pub fn pulls_types_from_tyapp(
             span: ps.span,
             tok: ps.token.clone(),
             kind: ErrorKind::ExtendedError("Expected either end of tyapp or comma".to_owned()),
-        });
+        }
+        .into());
     }
 
     parser::expect(ps, ext, TokenKind::RSquare)?;
@@ -582,7 +601,7 @@ pub fn pulls_types_from_tyapp(
 pub fn extract_tyabs_for_type_shape(
     ps: &mut ParserState<'_, TypeAliasDialect>,
     ext: &mut TypeAliasExtension,
-) -> Result<usize, Error<TypeAliasTokenKind>> {
+) -> Result<usize> {
     let mut ext_2 = *ext;
     let mut tyabs = Vec::new();
     if ps.token.kind == TokenKind::Lambda {
@@ -604,7 +623,7 @@ pub fn extract_tyabs_for_type_shape(
 pub fn parse_holed_type_from_decl(
     ps: &mut ParserState<'_, TypeAliasDialect>,
     ext: &mut TypeAliasExtension,
-) -> Result<(usize, Type<TypeAliasDialect>), Error<TypeAliasTokenKind>> {
+) -> Result<(usize, Type<TypeAliasDialect>)> {
     let sp = ps.span;
     let push_count = extract_tyabs_for_type_shape(ps, ext)?;
 
@@ -627,11 +646,7 @@ pub fn parse_holed_type_from_decl(
 pub struct TypeAliasToBottomDialectResolver;
 
 impl SystemRResolver<TypeAliasDialect, BottomDialect> for TypeAliasToBottomDialectResolver {
-    fn resolve(
-        &self,
-        ext_state: TypeAliasDialectState,
-        tm: Term<TypeAliasDialect>,
-    ) -> Result<Term<BottomDialect>, Diagnostic> {
+    fn resolve(&self, ext_state: TypeAliasDialectState, tm: Term<TypeAliasDialect>) -> Result<Term<BottomDialect>> {
         //let out_tm = Term::unit();
         let ttv = TatbTermVisitor::new(ext_state);
         Ok(ttv.visit(&tm))

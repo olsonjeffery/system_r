@@ -69,12 +69,3 @@ impl Diagnostic<'_> {
         s
     }
 }
-
-impl Drop for Diagnostic<'_> {
-    fn drop(&mut self) {
-        if self.error_count() != 0 {
-            let messages: Vec<String> = self.messages.iter().map(|x| format!("{:?}", x)).collect();
-            panic!("Diagnostic dropped without handling {} errors! Messages: {:?}", self.error_count(), messages);
-        }
-    }
-}

@@ -1,5 +1,4 @@
 //! Source code locations and spans
-
 use std::fmt;
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Default)]
@@ -94,22 +93,6 @@ impl<T> Spanned<T> {
     #[inline]
     pub fn data(self) -> T {
         self.data
-    }
-}
-
-impl<T, E> Spanned<Result<T, E>> {
-    /// Transpose a [`Spanned<Result<T, E>>`] into a [`Result<Spanned<T>,
-    /// Spanned<E>>`]
-    pub fn map_result(self) -> Result<Spanned<T>, Spanned<E>> {
-        let Spanned { span, data } = self;
-        data.map(|t| Spanned::new(span, t)).map_err(|e| Spanned::new(span, e))
-    }
-}
-
-impl<T> Spanned<Option<T>> {
-    pub fn map_option(self) -> Option<Spanned<T>> {
-        let Spanned { span, data } = self;
-        data.map(|t| Spanned::new(span, t))
     }
 }
 

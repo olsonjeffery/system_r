@@ -26,9 +26,7 @@ pub struct PatVarStack<TExtDialect: SystemRDialect> {
     _d: TExtDialect,
 }
 
-impl<TExtDialect: SystemRDialect>
-    PatVarStack<TExtDialect>
-{
+impl<TExtDialect: SystemRDialect> PatVarStack<TExtDialect> {
     pub fn collect<TExt: SystemRExtension<TExtDialect>>(
         pat: &Pattern<TExtDialect>,
         ext: &mut TExt,
@@ -40,10 +38,8 @@ impl<TExtDialect: SystemRDialect>
     }
 }
 
-impl<
-        TExtDialect: SystemRDialect,
-        TExt: SystemRExtension<TExtDialect>,
-    > PatternVisitor<TExtDialect, TExt> for PatVarStack<TExtDialect>
+impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> PatternVisitor<TExtDialect, TExt>
+    for PatVarStack<TExtDialect>
 {
     fn visit_variable(&mut self, var: &str, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
         self.inner.push(var.to_owned());
@@ -52,13 +48,9 @@ impl<
 
 /// Visitor that simply counts the number of binders (variables) within a
 /// pattern
-pub struct PatternCount<
-    TExtDialect: SystemRDialect,
->(pub usize, pub TExtDialect::Pattern, pub TExtDialect::Kind);
+pub struct PatternCount<TExtDialect: SystemRDialect>(pub usize, pub TExtDialect::Pattern, pub TExtDialect::Kind);
 
-impl<TExtDialect: SystemRDialect>
-    PatternCount<TExtDialect>
-{
+impl<TExtDialect: SystemRDialect> PatternCount<TExtDialect> {
     pub fn collect<TExt: SystemRExtension<TExtDialect>>(
         pat: &Pattern<TExtDialect>,
         ext: &mut TExt,
@@ -70,19 +62,15 @@ impl<TExtDialect: SystemRDialect>
     }
 }
 
-impl<
-        TExtDialect: SystemRDialect,
-        TExt: SystemRExtension<TExtDialect>,
-    > PatternVisitor<TExtDialect, TExt> for PatternCount<TExtDialect>
+impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> PatternVisitor<TExtDialect, TExt>
+    for PatternCount<TExtDialect>
 {
     fn visit_variable(&mut self, var: &str, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
         self.0 += 1;
     }
 }
 
-impl<TExtDialect: SystemRDialect>
-    Pattern<TExtDialect>
-{
+impl<TExtDialect: SystemRDialect> Pattern<TExtDialect> {
     /// Does this pattern match the given [`Term`]?
     pub fn matches<TPtE: SystemRExtension<TExtDialect>>(&self, term: &Term<TExtDialect>, ext: &TPtE) -> bool {
         match self {
@@ -121,9 +109,7 @@ pub struct PatTyStack<TExtDialect: SystemRDialect> {
     pub inner: Vec<Type<TExtDialect>>,
 }
 
-impl<'ty, TExtDialect: SystemRDialect>
-    PatTyStack<TExtDialect>
-{
+impl<'ty, TExtDialect: SystemRDialect> PatTyStack<TExtDialect> {
     pub fn collect<TExt: SystemRExtension<TExtDialect>>(
         ty: &'ty Type<TExtDialect>,
         pat: &Pattern<TExtDialect>,
@@ -139,10 +125,8 @@ impl<'ty, TExtDialect: SystemRDialect>
     }
 }
 
-impl<
-        TExtDialect: SystemRDialect,
-        TExt: SystemRExtension<TExtDialect>,
-    > PatternVisitor<TExtDialect, TExt> for PatTyStack<TExtDialect>
+impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> PatternVisitor<TExtDialect, TExt>
+    for PatTyStack<TExtDialect>
 {
     fn visit_product(
         &mut self,
@@ -183,12 +167,7 @@ impl<
 
     fn visit_ext(&mut self, p: &Pattern<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {}
 
-    fn visit_pattern(
-        &mut self,
-        pattern: &Pattern<TExtDialect>,
-        ext: &mut TExt,
-        ext_state: &TExtDialect::DialectState,
-    ) {
+    fn visit_pattern(&mut self, pattern: &Pattern<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
         match pattern {
             Pattern::Any | Pattern::Literal(_) => {}
             Pattern::Variable(_) => self.inner.push(self.ty.clone()),

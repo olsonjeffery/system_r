@@ -1,10 +1,10 @@
-use super::{TokenKind, Token};
+use super::{Token, TokenKind};
 use crate::dialect::SystemRDialect;
 use crate::dialect::SystemRExtension;
 use crate::system_r_util::span::{Location, Span};
+use std::char;
 use std::iter::Peekable;
 use std::str::Chars;
-use std::char;
 
 #[derive(Clone, Debug)]
 pub struct Lexer<'s, TExtDialect: SystemRDialect> {
@@ -15,9 +15,7 @@ pub struct Lexer<'s, TExtDialect: SystemRDialect> {
     _pat: TExtDialect::Pattern,
 }
 
-impl<'s, TExtDialect: SystemRDialect> Default
-    for Lexer<'s, TExtDialect>
-{
+impl<'s, TExtDialect: SystemRDialect> Default for Lexer<'s, TExtDialect> {
     fn default() -> Self {
         Self {
             input: "".chars().peekable(),
@@ -36,9 +34,7 @@ fn is_tag(x: char) -> bool {
     false
 }
 
-impl<'s, TExtDialect: SystemRDialect>
-    Lexer<'s, TExtDialect>
-{
+impl<'s, TExtDialect: SystemRDialect> Lexer<'s, TExtDialect> {
     pub fn new(input: Chars<'s>) -> Lexer<'s, TExtDialect> {
         Lexer {
             input: input.peekable(),
@@ -132,10 +128,7 @@ impl<'s, TExtDialect: SystemRDialect>
     }
 
     /// Lex a reserved keyword or an identifier
-    fn keyword<TExt: SystemRExtension<TExtDialect>>(
-        &mut self,
-        ext: &mut TExt,
-    ) -> Token<TExtDialect::TokenKind> {
+    fn keyword<TExt: SystemRExtension<TExtDialect>>(&mut self, ext: &mut TExt) -> Token<TExtDialect::TokenKind> {
         let (data, span) = self.consume_while(|ch| ch.is_ascii_alphanumeric());
         let kind = match data.as_ref() {
             data if ext.lex_is_ext_keyword(data) => TokenKind::Extended(ext.lex_ext_keyword(data)),
@@ -191,10 +184,7 @@ impl<'s, TExtDialect: SystemRDialect>
     }
 
     /// Return the next lexeme in the input as a [`Token`]
-    pub fn lex<TExt: SystemRExtension<TExtDialect>>(
-        &mut self,
-        ext: &mut TExt,
-    ) -> Token<TExtDialect::TokenKind> {
+    pub fn lex<TExt: SystemRExtension<TExtDialect>>(&mut self, ext: &mut TExt) -> Token<TExtDialect::TokenKind> {
         self.consume_delimiter();
         let next = match self.peek() {
             Some(ch) => ch,
@@ -232,20 +222,14 @@ impl<'s, TExtDialect: SystemRDialect>
     }
 }
 
-impl<'s, TExtDialect: SystemRDialect>
-    Lexer<'s, TExtDialect>
-{
+impl<'s, TExtDialect: SystemRDialect> Lexer<'s, TExtDialect> {
     /// FIXME Choosing to keep this, because if/when a move
     /// to a flat AST occurs, this will be handy
     #[allow(dead_code)]
-    fn next<TExt: SystemRExtension<TExtDialect>>(
-        &mut self,
-        ext: &mut TExt,
-    ) -> Option<Token<TExtDialect::TokenKind>> {
+    fn next<TExt: SystemRExtension<TExtDialect>>(&mut self, ext: &mut TExt) -> Option<Token<TExtDialect::TokenKind>> {
         match self.lex(ext) {
             Token {
-                kind: TokenKind::Eof,
-                ..
+                kind: TokenKind::Eof, ..
             } => None,
             tok => Some(tok),
         }

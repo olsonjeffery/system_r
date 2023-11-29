@@ -3,7 +3,7 @@ pub mod debruijn;
 pub mod error;
 pub mod lexer;
 pub mod parser;
-use crate::{system_r_util::span::Span, dialect::ExtendedTokenKind};
+use crate::{dialect::ExtendedTokenKind, system_r_util::span::Span};
 
 #[derive(Clone, Default, Debug, PartialEq, PartialOrd)]
 pub enum TokenKind<TExtTokenKind: PartialEq> {
