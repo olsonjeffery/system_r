@@ -117,7 +117,7 @@ impl<'ctx> Eval<'ctx> {
                                     Err(e) => Err(e),
                                 }
                             }
-                            _ => panic!("unable to get platform_binding with idx after parsing; shouldn't happen"),
+                            _ => Err(anyhow!("unable to get platform_binding with idx after parsing; shouldn't happen"))
                         },
                         Kind::Primitive(p) => self.eval_primitive(p, *t2),
                         _ => match self.small_step(*t1)? {
@@ -321,7 +321,7 @@ impl<'ctx> Eval<'ctx> {
                         Eval::case_subst(&v[idx], tm, term);
                     }
                 } else {
-                    panic!("wrong type!")
+                    panic!("runtime error")
                 }
             }
             Constructor(label, v) => {
@@ -330,7 +330,7 @@ impl<'ctx> Eval<'ctx> {
                         Eval::case_subst(v, tm, term);
                     }
                 } else {
-                    panic!("wrong type!")
+                    panic!("runtime error")
                 }
             }
             Extended(_) => panic!("extended pattern instructions shouldn't appear here in eval"),

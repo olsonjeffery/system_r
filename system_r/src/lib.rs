@@ -53,3 +53,6 @@ pub mod terms;
 pub mod testing;
 pub mod type_check;
 pub mod visit;
+
+#[macro_use]
+extern crate anyhow;

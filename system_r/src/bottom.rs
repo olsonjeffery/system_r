@@ -118,14 +118,14 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
         &mut self,
         ps: &mut crate::syntax::parser::ParserState<BottomDialect>,
     ) -> Result<Term<BottomDialect>> {
-        panic!("shouldn't be called");
+        Err(anyhow!("shouldn't be called"))
     }
 
     fn parser_ext_atom<'s>(
         &mut self,
         ps: &mut crate::syntax::parser::ParserState<BottomDialect>,
     ) -> Result<Term<BottomDialect>> {
-        panic!("shouldn't be called");
+        Err(anyhow!("shouldn't be called"))
     }
 
     fn parser_ty_bump_if(&mut self, ps: &mut crate::syntax::parser::ParserState<BottomDialect>) -> bool {
@@ -136,7 +136,7 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
         &mut self,
         ps: &mut crate::syntax::parser::ParserState<BottomDialect>,
     ) -> Result<crate::type_check::Type<BottomDialect>> {
-        panic!("calling parser_ty on BottomExtension; shouldn't happen");
+        Err(anyhow!("calling parser_ty on BottomExtension; shouldn't happen"))
     }
 
     fn pat_ctor_eq_within(
@@ -156,7 +156,7 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
         target: &<BottomDialect as SystemRDialect>::Type,
         tm: &Term<BottomDialect>,
     ) -> Result<crate::type_check::Type<BottomDialect>> {
-        panic!("type_check_injection_to_ext for BottomDialect; should never be called")
+        Err(anyhow!("type_check_injection_to_ext for BottomDialect; should never be called"))
     }
 
     fn pat_visit_constructor_of_ext(

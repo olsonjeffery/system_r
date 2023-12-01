@@ -44,6 +44,10 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> PatternVi
     fn visit_variable(&mut self, var: &str, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
         self.inner.push(var.to_owned());
     }
+
+    fn visit_ext(&mut self, pat: &Pattern<TExtDialect>, ext: &mut TExt, ext_state: &<TExtDialect as SystemRDialect>::DialectState) {
+        panic!("not implemented")
+    }
 }
 
 /// Visitor that simply counts the number of binders (variables) within a
@@ -67,6 +71,10 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> PatternVi
 {
     fn visit_variable(&mut self, var: &str, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
         self.0 += 1;
+    }
+
+    fn visit_ext(&mut self, pat: &Pattern<TExtDialect>, ext: &mut TExt, ext_state: &<TExtDialect as SystemRDialect>::DialectState) {
+        panic!("not implemented")
     }
 }
 

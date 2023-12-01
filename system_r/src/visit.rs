@@ -111,9 +111,7 @@ pub trait MutTypeVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TEx
         self.visit(ty, ext, ext_state);
     }
 
-    fn visit_ext(&mut self, ty: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
-        panic!("this path shouldn't be reached; needs override in every concrete impl");
-    }
+    fn visit_ext(&mut self, ty: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::DialectState);
 
     fn visit(&mut self, ty: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
         match ty {
@@ -306,9 +304,7 @@ pub trait MutTermVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TEx
         k: &TExtDialect::Kind,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
-        panic!("visit_ext in MutTermVisitor should be override in implementors")
-    }
+    );
 
     fn walk(&mut self, term: &mut Term<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
         let sp = &mut term.span;
@@ -338,9 +334,7 @@ pub trait MutTermVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TEx
 }
 
 pub trait PatternVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>: Sized {
-    fn visit_ext(&mut self, pat: &Pattern<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
-        panic!("shouldn't be reached; needs to be overriden in every implementor")
-    }
+    fn visit_ext(&mut self, pat: &Pattern<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::DialectState);
     fn visit_literal(&mut self, lit: &Literal, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {}
     fn visit_variable(&mut self, var: &str, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {}
     fn visit_product(

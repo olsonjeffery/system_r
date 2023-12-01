@@ -533,6 +533,16 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
         self.aliaser().visit(ty, ext, ext_state);
         self.visit(tm, ext, ext_state);
     }
+
+    fn visit_ext(
+        &mut self,
+        sp: &mut Span,
+        k: &<TExtDialect as SystemRDialect>::Kind,
+        ext: &mut TExt,
+        ext_state: &<TExtDialect as SystemRDialect>::DialectState,
+    ) {
+        panic!("not implemented")
+    }
 }
 
 impl<TExtDialect: SystemRDialect> fmt::Debug for Type<TExtDialect> {

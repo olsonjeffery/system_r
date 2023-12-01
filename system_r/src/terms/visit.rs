@@ -82,6 +82,16 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
         self.visit(term, ext, ext_state);
         self.cutoff -= 1;
     }
+
+    fn visit_ext(
+        &mut self,
+        sp: &mut Span,
+        k: &<TExtDialect as SystemRDialect>::Kind,
+        ext: &mut TExt,
+        ext_state: &<TExtDialect as SystemRDialect>::DialectState,
+    ) {
+        panic!("not implemented")
+    }
 }
 
 pub struct Subst<TExtDialect: SystemRDialect> {
@@ -167,6 +177,16 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
             }
             _ => self.walk(term, ext, ext_state),
         }
+    }
+
+    fn visit_ext(
+        &mut self,
+        sp: &mut Span,
+        k: &<TExtDialect as SystemRDialect>::Kind,
+        ext: &mut TExt,
+        ext_state: &<TExtDialect as SystemRDialect>::DialectState,
+    ) {
+        panic!("not implemented")
     }
 }
 
@@ -306,6 +326,16 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
         self.visit_ty(ty, ext, ext_state);
         self.visit(term, ext, ext_state);
     }
+
+    fn visit_ext(
+        &mut self,
+        sp: &mut Span,
+        k: &<TExtDialect as SystemRDialect>::Kind,
+        ext: &mut TExt,
+        ext_state: &<TExtDialect as SystemRDialect>::DialectState,
+    ) {
+        panic!("not implemented")
+    }
 }
 
 /// Visitor for handling recursive variants automatically, by inserting a
@@ -334,5 +364,15 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
             }
             _ => self.walk(term, ext, ext_state),
         }
+    }
+
+    fn visit_ext(
+        &mut self,
+        sp: &mut Span,
+        k: &<TExtDialect as SystemRDialect>::Kind,
+        ext: &mut TExt,
+        ext_state: &<TExtDialect as SystemRDialect>::DialectState,
+    ) {
+        panic!("not implemented")
     }
 }
