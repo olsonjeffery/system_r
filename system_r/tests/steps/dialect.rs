@@ -10,7 +10,7 @@ use system_r::{
         },
         SystemRDialect, SystemRExtension, SystemRResolver,
     },
-    syntax::parser::{self, ParserState},
+    syntax::parser::ParserState,
     terms::Term,
     type_check::{Type, TypeChecker},
 };
@@ -73,7 +73,7 @@ fn when_it_is_processed_for_type_alias(world: &mut common::SpecsWorld) {
     let mut ext = TypeAliasExtension;
     let pb = world.platform_bindings.clone();
 
-    let mut ps = parser::ext_new(&pb, &input, &mut ext);
+    let mut ps = ParserState::ext_new(&pb, &input, &mut ext);
 
     let res = parse_for_extension(&input, &mut ps, &mut ext);
     let _term = match res {

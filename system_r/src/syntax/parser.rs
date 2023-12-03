@@ -51,171 +51,163 @@ impl<'s, TExtDialect: SystemRDialect> ParserState<'s, TExtDialect> {
     pub fn to_ext_state(self) -> TExtDialect::DialectState {
         self.ext_state
     }
-}
 
-pub fn new<'s>(platform_bindings: &'s PlatformBindings, input: &'s str) -> ParserState<'s, BottomDialect> {
-    let mut ext = BottomExtension;
-    ext_new(platform_bindings, input, &mut ext)
-}
-
-pub fn ext_new<'s, TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
-    platform_bindings: &'s PlatformBindings,
-    input: &'s str,
-    ext: &mut TExt,
-) -> ParserState<'s, TExtDialect> {
-    let mut p = ParserState {
-        tmvar: DeBruijnIndexer::default(),
-        tyvar: DeBruijnIndexer::default(),
-        diagnostic: Diagnostic::new(input),
-        lexer: Lexer::new(input.chars()),
-        span: Span::default(),
-        token: Token::dummy(),
-        platform_bindings: platform_bindings.clone(),
-        ext_state: Default::default(),
-        ty: Default::default(),
-    };
-    bump(&mut p, ext);
-    p
-}
-
-/// Kleene Plus combinator
-pub fn once_or_more<
-    TExtDialect: SystemRDialect,
-    F: FnMut(&mut ParserState<TExtDialect>) -> Result<T>,
-    TExt: SystemRExtension<TExtDialect>,
-    T,
->(
-    ps: &mut ParserState<TExtDialect>,
-    mut func: F,
-    delimiter: TokenKind<TExtDialect::TokenKind>,
-    ext: &mut TExt,
-) -> Result<Vec<T>> {
-    let mut v = vec![func(ps)?];
-    while bump_if(ps, ext, &delimiter) {
-        v.push(func(ps)?);
+    pub fn new(platform_bindings: &'s PlatformBindings, input: &'s str) -> ParserState<'s, BottomDialect> {
+        let mut ext = BottomExtension;
+        ParserState::ext_new(platform_bindings, input, &mut ext)
     }
-    Ok(v)
-}
 
-/// Expect combinator
-/// Combinator that must return Ok or a message will be pushed to
-/// diagnostic. This method should only be called after a token has
-/// already been bumped.
-pub fn once<TExtDialect: SystemRDialect, F: FnMut(&mut ParserState<TExtDialect>) -> Result<T>, T>(
-    ps: &mut ParserState<TExtDialect>,
-    mut func: F,
-    message: &str,
-) -> Result<T> {
-    match func(ps) {
-        Err(e) => {
-            ps.diagnostic.push(message, ps.span);
-            Err(e)
+    pub fn ext_new<TExt: SystemRExtension<TExtDialect>>(
+        platform_bindings: &'s PlatformBindings,
+        input: &'s str,
+        ext: &mut TExt,
+    ) -> ParserState<'s, TExtDialect> {
+        let mut p = ParserState {
+            tmvar: DeBruijnIndexer::default(),
+            tyvar: DeBruijnIndexer::default(),
+            diagnostic: Diagnostic::new(input),
+            lexer: Lexer::new(input.chars()),
+            span: Span::default(),
+            token: Token::dummy(),
+            platform_bindings: platform_bindings.clone(),
+            ext_state: Default::default(),
+            ty: Default::default(),
+        };
+        p.bump(ext);
+        p
+    }
+
+    /// Kleene Plus combinator
+    pub fn once_or_more<
+        F: FnMut(&mut Self) -> Result<T>,
+        TExt: SystemRExtension<TExtDialect>,
+        T,
+    >(
+        &mut self,
+        mut func: F,
+        delimiter: TokenKind<TExtDialect::TokenKind>,
+        ext: &mut TExt,
+    ) -> Result<Vec<T>> {
+        let mut v = vec![func(self)?];
+        while self.bump_if(ext, &delimiter) {
+            v.push(func(self)?);
         }
-        t => t,
+        Ok(v)
     }
-}
 
-pub fn diagnostic<TExtDialect: SystemRDialect>(ps: ParserState<'_, TExtDialect>) -> Diagnostic<'_> {
-    ps.diagnostic
-}
-
-pub fn error<TExtDialect: SystemRDialect, TError>(
-    ps: &ParserState<TExtDialect>,
-    kind: ErrorKind<TExtDialect::TokenKind>,
-) -> Result<TError>
-where
-    <TExtDialect as SystemRDialect>::TokenKind: 'static,
-{
-    Err(Error {
-        span: ps.token.span,
-        tok: ps.token.clone(),
-        kind,
+    /// Expect combinator
+    /// Combinator that must return Ok or a message will be pushed to
+    /// diagnostic. This method should only be called after a token has
+    /// already been bumped.
+    pub fn once<F: FnMut(&mut Self) -> Result<T>, T>(
+        &mut self,
+        mut func: F,
+        message: &str,
+    ) -> Result<T> {
+        match func(self) {
+            Err(e) => {
+                self.diagnostic.push(message, self.span);
+                Err(e)
+            }
+            t => t,
+        }
     }
-    .into())
-}
 
-pub fn bump<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
-    ps: &mut ParserState<TExtDialect>,
-    ext: &mut TExt,
-) -> TokenKind<TExtDialect::TokenKind> {
-    let prev = std::mem::replace(&mut ps.token, ps.lexer.lex(ext));
-    ps.span = prev.span;
-    prev.kind
-}
-
-/// Used within parser-logic to advance the ParserState to the next token,
-/// if the current token's kind matches the given `kind` arg and returning
-/// true, otherwise returns false
-pub fn bump_if<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
-    ps: &mut ParserState<TExtDialect>,
-    ext: &mut TExt,
-    kind: &TokenKind<TExtDialect::TokenKind>,
-) -> bool {
-    if &ps.token.kind == kind {
-        bump(ps, ext);
-        true
-    } else {
-        false
+    pub fn diagnostic(self) -> Diagnostic<'s> {
+        self.diagnostic
     }
-}
 
-/// With the provided ParserState + TExt + a given TokenKind, return Err
-/// Result if current token kind is NOT eq to the given `kind` arg, otherwise
-/// returns an Ok(()) unit result
-pub fn expect<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
-    ps: &mut ParserState<TExtDialect>,
-    ext: &mut TExt,
-    kind: TokenKind<TExtDialect::TokenKind>,
-) -> Result<()>
-where
-    <TExtDialect as SystemRDialect>::TokenKind: 'static,
-{
-    if ps.token.kind == kind {
-        bump(ps, ext);
-        Ok(())
-    } else {
-        ps.diagnostic
-            .push(format!("expected token {:?}, found {:?}", kind, ps.token.kind), ps.span);
-        error(ps, ErrorKind::ExpectedToken(kind))
+    pub fn error<TError>(
+        &self,
+        kind: ErrorKind<TExtDialect::TokenKind>,
+    ) -> Result<TError>
+    where
+        <TExtDialect as SystemRDialect>::TokenKind: 'static,
+    {
+        Err(Error {
+            span: self.token.span,
+            tok: self.token.clone(),
+            kind,
+        }
+        .into())
     }
-}
 
-/// Return current TokenKind for the ParserState
-pub fn kind<'s, TExtDialect: SystemRDialect>(
-    ps: &'s ParserState<TExtDialect>,
-) -> &'s TokenKind<TExtDialect::TokenKind> {
-    &ps.token.kind
-}
-
-pub fn ty_variant<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
-    ps: &mut ParserState<TExtDialect>,
-    ext: &mut TExt,
-) -> Result<Variant<TExtDialect>>
-where
-    <TExtDialect as SystemRDialect>::TokenKind: 'static,
-{
-    let label = uppercase_id(ps, ext)?;
-    let ty = match ty(ps, ext) {
-        Ok(ty) => ty,
-        _ => Type::Unit,
-    };
-
-    Ok(Variant { label, ty })
-}
-
-pub fn ty_app<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
-    ps: &mut ParserState<TExtDialect>,
-    ext: &mut TExt,
-) -> Result<Type<TExtDialect>>
-where
-    <TExtDialect as SystemRDialect>::TokenKind: 'static,
-{
-    if !bump_if(ps, ext, &TokenKind::LSquare) {
-        return error(ps, ErrorKind::ExpectedToken(TokenKind::LSquare));
+    pub fn bump<TExt: SystemRExtension<TExtDialect>>(
+        &mut self,
+        ext: &mut TExt,
+    ) -> TokenKind<TExtDialect::TokenKind> {
+        let prev = std::mem::replace(&mut self.token, self.lexer.lex(ext));
+        self.span = prev.span;
+        prev.kind
     }
-    let ty = ty(ps, ext)?;
-    expect(ps, ext, TokenKind::RSquare)?;
-    Ok(ty)
+
+    /// Used within parser-logic to advance the ParserState to the next token,
+    /// if the current token's kind matches the given `kind` arg and returning
+    /// true, otherwise returns false
+    pub fn bump_if<TExt: SystemRExtension<TExtDialect>>(
+        &mut self,
+        ext: &mut TExt,
+        kind: &TokenKind<TExtDialect::TokenKind>,
+    ) -> bool {
+        if &self.token.kind == kind {
+            self.bump(ext);
+            true
+        } else {
+            false
+        }
+    }
+
+    /// With the provided ParserState + TExt + a given TokenKind, return Err
+    /// Result if current token kind is NOT eq to the given `kind` arg, otherwise
+    /// returns an Ok(()) unit result
+    pub fn expect<TExt: SystemRExtension<TExtDialect>>(
+        &mut self,
+        ext: &mut TExt,
+        kind: TokenKind<TExtDialect::TokenKind>,
+    ) -> Result<()>
+    where
+        <TExtDialect as SystemRDialect>::TokenKind: 'static,
+    {
+        if self.token.kind == kind {
+            self.bump(ext);
+            Ok(())
+        } else {
+            self.diagnostic
+                .push(format!("expected token {:?}, found {:?}", kind, self.token.kind), self.span);
+            self.error(ErrorKind::ExpectedToken(kind))
+        }
+    }
+
+    pub fn ty_variant<TExt: SystemRExtension<TExtDialect>>(
+        &mut self,
+        ext: &mut TExt,
+    ) -> Result<Variant<TExtDialect>>
+    where
+        <TExtDialect as SystemRDialect>::TokenKind: 'static,
+    {
+        let label = uppercase_id(self, ext)?;
+        let ty = match ty(self, ext) {
+            Ok(ty) => ty,
+            _ => Type::Unit,
+        };
+
+        Ok(Variant { label, ty })
+    }
+
+    pub fn ty_app<TExt: SystemRExtension<TExtDialect>>(
+        &mut self,
+        ext: &mut TExt,
+    ) -> Result<Type<TExtDialect>>
+    where
+        <TExtDialect as SystemRDialect>::TokenKind: 'static,
+    {
+        if !self.bump_if(ext, &TokenKind::LSquare) {
+            return self.error(ErrorKind::ExpectedToken(TokenKind::LSquare));
+        }
+        let ty = ty(self, ext)?;
+        self.expect(ext, TokenKind::RSquare)?;
+        Ok(ty)
+    }
 }
 
 pub fn ty_atom<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
@@ -225,38 +217,38 @@ pub fn ty_atom<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>
 where
     <TExtDialect as SystemRDialect>::TokenKind: 'static,
 {
-    match kind(ps) {
+    match ps.token.kind.clone() {
         TokenKind::Tag(s) => {
             let v = s.to_owned();
-            bump(ps, ext);
+            ps.bump(ext);
             Ok(Type::Tag(v))
         }
         TokenKind::TyBool => {
-            bump(ps, ext);
+            ps.bump(ext);
             Ok(Type::Bool)
         }
         TokenKind::TyNat => {
-            bump(ps, ext);
+            ps.bump(ext);
             Ok(Type::Nat)
         }
         TokenKind::TyUnit => {
-            bump(ps, ext);
+            ps.bump(ext);
             Ok(Type::Unit)
         }
         TokenKind::LParen => {
-            bump(ps, ext);
+            ps.bump(ext);
             let r = ty(ps, ext)?;
-            expect(ps, ext, TokenKind::RParen)?;
+            ps.expect(ext, TokenKind::RParen)?;
             Ok(r)
         }
         TokenKind::Forall => {
-            bump(ps, ext);
+            ps.bump(ext);
             Ok(Type::Universal(Box::new(ty(ps, ext)?)))
         }
         TokenKind::Exists => {
-            bump(ps, ext);
+            ps.bump(ext);
             let tvar = uppercase_id(ps, ext)?;
-            expect(ps, ext, TokenKind::Proj)?;
+            ps.expect(ext, TokenKind::Proj)?;
             ps.tyvar.push(tvar);
             let xs = Type::Existential(Box::new(ty(ps, ext)?));
             ps.tyvar.pop();
@@ -270,15 +262,14 @@ where
             }
         }
         TokenKind::LBrace => {
-            bump(ps, ext);
+            ps.bump(ext);
             let mut ext2 = *ext;
             let mut ext3 = *ext;
-            let fields = once_or_more(ps, |p| ty_variant(p, &mut ext2), TokenKind::Bar, &mut ext3)?;
-            expect(ps, ext, TokenKind::RBrace)?;
+            let fields = ps.once_or_more( |p| p.ty_variant(&mut ext2), TokenKind::Bar, &mut ext3)?;
+            ps.expect(ext, TokenKind::RBrace)?;
             Ok(Type::Variant(fields))
         }
-        v => error(
-            ps,
+        v => ps.error(
             ErrorKind::ExtendedError(format!("Expected type-able token, got {:?}", v)),
         ),
     }
@@ -291,11 +282,11 @@ pub fn ty_tuple<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>
 where
     <TExtDialect as SystemRDialect>::TokenKind: 'static,
 {
-    if bump_if(ps, ext, &TokenKind::LParen) {
+    if ps.bump_if(ext, &TokenKind::LParen) {
         let mut ext2 = *ext;
         let mut ext3 = *ext;
-        let mut v = once_or_more(ps, |p| ty(p, &mut ext2), TokenKind::Comma, &mut ext3)?;
-        expect(ps, ext, TokenKind::RParen)?;
+        let mut v = ps.once_or_more(|p| ty(p, &mut ext2), TokenKind::Comma, &mut ext3)?;
+        ps.expect(ext, TokenKind::RParen)?;
 
         if v.len() > 1 {
             Ok(Type::Product(v))
@@ -318,9 +309,9 @@ where
         return ext.parser_ty(ps);
     }
 
-    if bump_if(ps, ext, &TokenKind::Rec) {
+    if ps.bump_if(ext, &TokenKind::Rec) {
         let name = uppercase_id(ps, ext)?;
-        expect(ps, ext, TokenKind::Equals)?;
+        ps.expect(ext, TokenKind::Equals)?;
         ps.tyvar.push(name);
         let ty = ty(ps, ext)?;
         ps.tyvar.pop();
@@ -328,12 +319,12 @@ where
     }
 
     let mut lhs = ty_tuple(ps, ext)?;
-    if let TokenKind::TyArrow = kind(ps) {
-        bump(ps, ext);
+    if let TokenKind::TyArrow = ps.token.kind {
+        ps.bump(ext);
         while let Ok(rhs) = ty(ps, ext) {
             lhs = Type::Arrow(Box::new(lhs), Box::new(rhs));
-            if let TokenKind::TyArrow = kind(ps) {
-                bump(ps, ext);
+            if let TokenKind::TyArrow = ps.token.kind {
+                ps.bump(ext);
             } else {
                 break;
             }
@@ -352,7 +343,7 @@ where
     let tyvar = uppercase_id(ps, ext)?;
     let sp = ps.span;
     let ty: Box<Type<TExtDialect>> = Box::new(Type::Var(ps.tyvar.push(tyvar)));
-    let body = once(ps, |p| parse(p, ext), "abstraction body required")?;
+    let body = ps.once(|p| parse(p, ext), "abstraction body required")?;
     Ok(Term::new(Kind::TyAbs(Box::new(body)), sp + ps.span))
 }
 
@@ -367,10 +358,10 @@ where
     let sp = ps.span;
     ps.tmvar.push(tmvar);
 
-    expect(ps, ext, TokenKind::Colon)?;
-    let ty = once(ps, |p| ty(p, ext), "type annotation required in abstraction")?;
-    expect(ps, ext, TokenKind::Proj)?;
-    let body = once(ps, |p| parse(p, ext), "abstraction body required")?;
+    ps.expect(ext, TokenKind::Colon)?;
+    let ty = ps.once(|p| ty(p, ext), "type annotation required in abstraction")?;
+    ps.expect(ext, TokenKind::Proj)?;
+    let body = ps.once(|p| parse(p, ext), "abstraction body required")?;
     ps.tmvar.pop();
     Ok(Term::new(Kind::Abs(Box::new(ty), Box::new(body)), sp + ps.span))
 }
@@ -382,10 +373,10 @@ pub fn fold<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
 where
     <TExtDialect as SystemRDialect>::TokenKind: 'static,
 {
-    expect(ps, ext, TokenKind::Fold)?;
+    ps.expect(ext, TokenKind::Fold)?;
     let sp = ps.span;
-    let ty = once(ps, |p| ty(p, ext), "type annotation required after `fold`")?;
-    let tm = once(ps, |p| parse(p, ext), "term required after `fold`")?;
+    let ty = ps.once(|p| ty(p, ext), "type annotation required after `fold`")?;
+    let tm = ps.once(|p| parse(p, ext), "term required after `fold`")?;
     Ok(Term::new(Kind::Fold(Box::new(ty), Box::new(tm)), sp + ps.span))
 }
 
@@ -396,10 +387,10 @@ pub fn unfold<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
 where
     <TExtDialect as SystemRDialect>::TokenKind: 'static,
 {
-    expect(ps, ext, TokenKind::Unfold)?;
+    ps.expect(ext, TokenKind::Unfold)?;
     let sp = ps.span;
-    let ty = once(ps, |p| ty(p, ext), "type annotation required after `unfold`")?;
-    let tm = once(ps, |p| parse(p, ext), "term required after `unfold`")?;
+    let ty = ps.once(|p| ty(p, ext), "type annotation required after `unfold`")?;
+    let tm = ps.once(|p| parse(p, ext), "term required after `unfold`")?;
     Ok(Term::new(Kind::Unfold(Box::new(ty), Box::new(tm)), sp + ps.span))
 }
 
@@ -411,7 +402,7 @@ where
     <TExtDialect as SystemRDialect>::TokenKind: 'static,
 {
     let sp = ps.span;
-    expect(ps, ext, TokenKind::Fix)?;
+    ps.expect(ext, TokenKind::Fix)?;
     let t = parse(ps, ext)?;
     Ok(Term::new(Kind::Fix(Box::new(t)), sp + ps.span))
 }
@@ -424,12 +415,12 @@ where
     <TExtDialect as SystemRDialect>::TokenKind: 'static,
 {
     let sp = ps.span;
-    expect(ps, ext, TokenKind::Let)?;
-    let pat = once(ps, |p| pattern(p, ext), "missing pattern")?;
+    ps.expect(ext, TokenKind::Let)?;
+    let pat = ps.once(|p| pattern(p, ext), "missing pattern")?;
 
-    expect(ps, ext, TokenKind::Equals)?;
+    ps.expect(ext, TokenKind::Equals)?;
 
-    let t1 = once(ps, |p| parse(p, ext), "let binder required")?;
+    let t1 = ps.once(|p| parse(p, ext), "let binder required")?;
     let len = ps.tmvar.len();
     for var in PatVarStack::<TExtDialect>::collect(&pat, ext, &ps.ext_state)
         .into_iter()
@@ -437,8 +428,8 @@ where
     {
         ps.tmvar.push(var);
     }
-    expect(ps, ext, TokenKind::In)?;
-    let t2 = once(ps, |p| parse(p, ext), "let body required")?;
+    ps.expect(ext, TokenKind::In)?;
+    let t2 = ps.once(|p| parse(p, ext), "let body required")?;
     while ps.tmvar.len() > len {
         ps.tmvar.pop();
     }
@@ -455,14 +446,14 @@ pub fn lambda<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
 where
     <TExtDialect as SystemRDialect>::TokenKind: 'static,
 {
-    expect(ps, ext, TokenKind::Lambda)?;
-    match kind(ps) {
+    ps.expect(ext, TokenKind::Lambda)?;
+    match ps.token.kind {
         TokenKind::Uppercase(_) => tyabs(ps, ext),
         TokenKind::Lowercase(_) => tmabs(ps, ext),
         _ => {
             ps.diagnostic
                 .push("expected identifier after lambda, found".to_string(), ps.span);
-            error(ps, ErrorKind::ExpectedIdent)
+            ps.error(ErrorKind::ExpectedIdent)
         }
     }
 }
@@ -474,13 +465,13 @@ pub fn paren<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
 where
     <TExtDialect as SystemRDialect>::TokenKind: 'static,
 {
-    expect(ps, ext, TokenKind::LParen)?;
+    ps.expect(ext, TokenKind::LParen)?;
     let span = ps.span;
 
     let mut ext2 = *ext;
     let mut ext3 = *ext;
-    let mut n = once_or_more(ps, |p| parse(p, &mut ext2), TokenKind::Comma, &mut ext3)?;
-    expect(ps, ext, TokenKind::RParen)?;
+    let mut n = ps.once_or_more(|p| parse(p, &mut ext2), TokenKind::Comma, &mut ext3)?;
+    ps.expect(ext, TokenKind::RParen)?;
     if n.len() > 1 {
         Ok(Term::new(Kind::Product(n), span + ps.span))
     } else {
@@ -496,12 +487,12 @@ pub fn uppercase_id<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDial
 where
     <TExtDialect as SystemRDialect>::TokenKind: 'static,
 {
-    match bump(ps, ext) {
+    match ps.bump(ext) {
         TokenKind::Uppercase(s) => Ok(s),
         tk => {
             ps.diagnostic
                 .push(format!("expected uppercase identifier, found {:?}", tk), ps.span);
-            error(ps, ErrorKind::ExpectedIdent)
+            ps.error(ErrorKind::ExpectedIdent)
         }
     }
 }
@@ -513,12 +504,12 @@ pub fn lowercase_id<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDial
 where
     <TExtDialect as SystemRDialect>::TokenKind: 'static,
 {
-    match bump(ps, ext) {
+    match ps.bump(ext) {
         TokenKind::Lowercase(s) => Ok(s),
         tk => {
             ps.diagnostic
                 .push(format!("expected lowercase identifier, found {:?}", tk), ps.span);
-            error(ps, ErrorKind::ExpectedIdent)
+            ps.error(ErrorKind::ExpectedIdent)
         }
     }
 }
@@ -530,13 +521,13 @@ pub fn literal<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>
 where
     <TExtDialect as SystemRDialect>::TokenKind: 'static,
 {
-    let lit = match bump(ps, ext) {
+    let lit = match ps.bump(ext) {
         TokenKind::Nat(x) => Literal::Nat(x),
         TokenKind::True => Literal::Bool(true),
         TokenKind::False => Literal::Bool(false),
         TokenKind::Unit => Literal::Unit,
         TokenKind::Tag(s) => Literal::Tag(s),
-        _ => return error(ps, ErrorKind::Unknown),
+        _ => return ps.error(ErrorKind::Unknown),
     };
     Ok(Term::new(Kind::Lit(lit), ps.span))
 }
@@ -548,11 +539,11 @@ pub fn primitive<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect
 where
     <TExtDialect as SystemRDialect>::TokenKind: 'static,
 {
-    let p = match bump(ps, ext) {
+    let p = match ps.bump(ext) {
         TokenKind::IsZero => Primitive::IsZero,
         TokenKind::Succ => Primitive::Succ,
         TokenKind::Pred => Primitive::Pred,
-        _ => return error(ps, ErrorKind::Unknown),
+        _ => return ps.error(ErrorKind::Unknown),
     };
     Ok(Term::new(Kind::Primitive(p), ps.span))
 }
@@ -567,10 +558,10 @@ pub fn pat_atom<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>
 where
     <TExtDialect as SystemRDialect>::TokenKind: 'static,
 {
-    match kind(ps) {
+    match ps.token.kind.clone() {
         TokenKind::LParen => pattern(ps, ext),
         TokenKind::Wildcard => {
-            bump(ps, ext);
+            ps.bump(ext);
             Ok(Pattern::Any)
         }
         TokenKind::Uppercase(_) => {
@@ -587,29 +578,29 @@ where
             Ok(Pattern::Variable(var))
         }
         TokenKind::True => {
-            bump(ps, ext);
+            ps.bump(ext);
             Ok(Pattern::Literal(Literal::Bool(true)))
         }
         TokenKind::False => {
-            bump(ps, ext);
+            ps.bump(ext);
             Ok(Pattern::Literal(Literal::Bool(false)))
         }
         TokenKind::Unit => {
-            bump(ps, ext);
+            ps.bump(ext);
             Ok(Pattern::Literal(Literal::Unit))
         }
         TokenKind::Nat(n) => {
             // O great borrowck, may this humble offering appease thee
-            let n = *n;
-            bump(ps, ext);
+            let n = n;
+            ps.bump(ext);
             Ok(Pattern::Literal(Literal::Nat(n)))
         }
         TokenKind::Tag(s) => {
             let s = s.clone();
-            bump(ps, ext);
+            ps.bump(ext);
             Ok(Pattern::Literal(Literal::Tag(s)))
         }
-        _ => error(ps, ErrorKind::ExpectedPattern),
+        _ => ps.error(ErrorKind::ExpectedPattern),
     }
 }
 
@@ -620,13 +611,13 @@ pub fn pattern<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>
 where
     <TExtDialect as SystemRDialect>::TokenKind: 'static,
 {
-    match kind(ps) {
+    match ps.token.kind {
         TokenKind::LParen => {
-            bump(ps, ext);
+            ps.bump(ext);
             let mut ext2 = *ext;
             let mut ext3 = *ext;
-            let mut v = once_or_more(ps, |p| pat_atom(p, &mut ext2), TokenKind::Comma, &mut ext3)?;
-            expect(ps, ext, TokenKind::RParen)?;
+            let mut v = ps.once_or_more(|p| pat_atom(p, &mut ext2), TokenKind::Comma, &mut ext3)?;
+            ps.expect(ext, TokenKind::RParen)?;
             if v.len() > 1 {
                 Ok(Pattern::Product(v))
             } else {
@@ -646,9 +637,9 @@ pub fn case_arm<TExtDialect: SystemRDialect, TExt: fmt::Debug + SystemRExtension
 where
     <TExtDialect as SystemRDialect>::TokenKind: 'static,
 {
-    // match kind(ps) {
+    // match ps.kind() {
     //     ExtTokenKind::Bar => bump(ps),
-    //     _ => return error(ps, ErrorKind::ExpectedToken(ExtTokenKind::Bar)),
+    //     _ => return ps.error(ErrorKind::ExpectedToken(ExtTokenKind::Bar)),
     // };
 
     // We don't track the length of the debruijn index in other methods,
@@ -658,7 +649,7 @@ where
     let len = ps.tmvar.len();
     let mut span = ps.span;
 
-    let pat = once(ps, |p| pattern(p, ext), "missing pattern")?;
+    let pat = ps.once(|p| pattern(p, ext), "missing pattern")?;
 
     for var in PatVarStack::<TExtDialect>::collect(&pat, ext, &ps.ext_state)
         .into_iter()
@@ -667,12 +658,12 @@ where
         ps.tmvar.push(var);
     }
 
-    expect(ps, ext, TokenKind::Equals)?;
-    expect(ps, ext, TokenKind::Gt)?;
+    ps.expect(ext, TokenKind::Equals)?;
+    ps.expect(ext, TokenKind::Gt)?;
 
-    let term = Box::new(once(ps, |p| application(p, ext), "missing case term")?);
+    let term = Box::new(ps.once(|p| application(p, ext), "missing case term")?);
 
-    bump_if(ps, ext, &TokenKind::Comma);
+    ps.bump_if(ext, &TokenKind::Comma);
 
     // Unbind any variables from the parsing context
     while ps.tmvar.len() > len {
@@ -691,16 +682,16 @@ pub fn case<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
 where
     <TExtDialect as SystemRDialect>::TokenKind: 'static,
 {
-    expect(ps, ext, TokenKind::Case)?;
+    ps.expect(ext, TokenKind::Case)?;
     let span = ps.span;
-    let expr = once(ps, |p| parse(p, ext), "missing case expression")?;
-    expect(ps, ext, TokenKind::Of)?;
+    let expr = ps.once(|p| parse(p, ext), "missing case expression")?;
+    ps.expect(ext, TokenKind::Of)?;
 
-    bump_if(ps, ext, &TokenKind::Bar);
+    ps.bump_if(ext, &TokenKind::Bar);
 
     let mut ext2 = *ext;
     let mut ext3 = *ext;
-    let arms = once_or_more(ps, |p| case_arm(p, &mut ext3), TokenKind::Bar, &mut ext2)?;
+    let arms = ps.once_or_more(|p| case_arm(p, &mut ext3), TokenKind::Bar, &mut ext2)?;
 
     Ok(Term::new(Kind::Case(Box::new(expr), arms), span + ps.span))
 }
@@ -719,7 +710,7 @@ where
         _ => Term::new(Kind::Lit(Literal::Unit), ps.span),
     };
 
-    expect(ps, ext, TokenKind::Of)?;
+    ps.expect(ext, TokenKind::Of)?;
     let ty = ty(ps, ext)?;
     Ok(Term::new(
         Kind::Injection(label, Box::new(term), Box::new(ty)),
@@ -734,12 +725,12 @@ pub fn pack<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
 where
     <TExtDialect as SystemRDialect>::TokenKind: 'static,
 {
-    expect(ps, ext, TokenKind::Pack)?;
+    ps.expect(ext, TokenKind::Pack)?;
     let sp = ps.span;
     let witness = ty(ps, ext)?;
-    expect(ps, ext, TokenKind::Comma)?;
+    ps.expect(ext, TokenKind::Comma)?;
     let evidence = parse(ps, ext)?;
-    expect(ps, ext, TokenKind::As)?;
+    ps.expect(ext, TokenKind::As)?;
     let signature = ty(ps, ext)?;
 
     Ok(Term::new(
@@ -755,17 +746,17 @@ pub fn unpack<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
 where
     <TExtDialect as SystemRDialect>::TokenKind: 'static,
 {
-    expect(ps, ext, TokenKind::Unpack)?;
+    ps.expect(ext, TokenKind::Unpack)?;
     let sp = ps.span;
     let package = parse(ps, ext)?;
-    expect(ps, ext, TokenKind::As)?;
+    ps.expect(ext, TokenKind::As)?;
 
     let tyvar = uppercase_id(ps, ext)?;
-    expect(ps, ext, TokenKind::Comma)?;
+    ps.expect(ext, TokenKind::Comma)?;
     let name = lowercase_id(ps, ext)?;
     ps.tyvar.push(tyvar);
     ps.tmvar.push(name);
-    expect(ps, ext, TokenKind::In)?;
+    ps.expect(ext, TokenKind::In)?;
     let expr = parse(ps, ext)?;
     ps.tmvar.pop();
     ps.tyvar.pop();
@@ -782,10 +773,10 @@ where
     // advance past opening LSquare
     let start_span = ps.span;
     let start_token = ps.token.clone();
-    bump(ps, ext);
+    ps.bump(ext);
 
     let mut ext_2 = *ext;
-    let nats = once_or_more(ps, |p| atom(p, &mut ext_2), TokenKind::Comma, ext)?;
+    let nats = ps.once_or_more(|p| atom(p, &mut ext_2), TokenKind::Comma, ext)?;
     let mut out_bytes: Vec<u8> = Vec::new();
     for n in nats {
         match n.kind {
@@ -820,7 +811,7 @@ where
     }
 
     // lastly we should expect a closing RSquare, no trailing comma!
-    expect(ps, ext, TokenKind::RSquare)?;
+    ps.expect(ext, TokenKind::RSquare)?;
 
     let mut bytes = Term::unit();
     bytes.span = Span {
@@ -838,7 +829,7 @@ pub fn atom<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
 where
     <TExtDialect as SystemRDialect>::TokenKind: 'static,
 {
-    match kind(ps) {
+    match ps.token.kind.clone() {
         TokenKind::Extended(tk) => ext_atom(ps, ext),
         TokenKind::LSquare => numeric_bytes_arr(ps, ext),
         TokenKind::LParen => paren(ps, ext),
@@ -858,19 +849,19 @@ where
                         return Ok(Term::new(Kind::PlatformBinding(idx), ps.span));
                     }
                     ps.diagnostic.push(format!("parser: unbound variable {}", var), ps.span);
-                    error(ps, ErrorKind::UnboundTypeVar)
+                    ps.error(ErrorKind::UnboundTypeVar)
                 }
             }
         }
         TokenKind::Nat(_) | TokenKind::True | TokenKind::False | TokenKind::Unit | TokenKind::Tag(_) => {
             literal(ps, ext)
         }
-        TokenKind::Eof => error(ps, ErrorKind::Eof),
+        TokenKind::Eof => ps.error(ErrorKind::Eof),
         TokenKind::Semicolon => {
-            bump(ps, ext);
-            error(ps, ErrorKind::ExpectedAtom)
+            ps.bump(ext);
+            ps.error(ErrorKind::ExpectedAtom)
         }
-        _ => error(ps, ErrorKind::ExpectedAtom),
+        _ => ps.error(ErrorKind::ExpectedAtom),
     }
 }
 
@@ -885,13 +876,13 @@ where
     <TExtDialect as SystemRDialect>::TokenKind: 'static,
 {
     let atom = atom(ps, ext)?;
-    if bump_if(ps, ext, &TokenKind::Proj) {
-        let idx = match bump(ps, ext) {
+    if ps.bump_if(ext, &TokenKind::Proj) {
+        let idx = match ps.bump(ext) {
             TokenKind::Nat(idx) => idx,
             _ => {
                 ps.diagnostic
                     .push(format!("expected integer index after {}", atom), ps.span);
-                return error(ps, ErrorKind::ExpectedToken(TokenKind::Proj));
+                return ps.error(ErrorKind::ExpectedToken(TokenKind::Proj));
             }
         };
         let sp = atom.span + ps.span;
@@ -915,7 +906,7 @@ where
 
     loop {
         let sp = app.span;
-        if let Ok(ty) = ty_app(ps, ext) {
+        if let Ok(ty) = ps.ty_app(ext) {
             // Full type inference for System F is undecidable
             // Additionally, even partial type reconstruction,
             // where only type application types are erased is also
@@ -970,7 +961,7 @@ pub fn parse<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
 where
     <TExtDialect as SystemRDialect>::TokenKind: 'static,
 {
-    match kind(ps).clone() {
+    match ps.token.kind.clone() {
         TokenKind::Case => case(ps, ext),
         TokenKind::Lambda => lambda(ps, ext),
         TokenKind::Let => letexpr(ps, ext),

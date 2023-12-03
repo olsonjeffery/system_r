@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-use crate::syntax::parser::ParserState;
-
 use crate::bottom::BottomDialect;
 use crate::dialect::{SystemRDialect, SystemRExtension};
 
@@ -22,7 +20,7 @@ use crate::{
     diagnostics::Diagnostic,
     eval,
     platform_bindings::PlatformBindings,
-    syntax::parser,
+    syntax::parser::{ParserState, self},
     terms::{visit::InjRewriter, Term},
     type_check::{self, Type},
     visit::MutTermVisitor,
@@ -89,7 +87,7 @@ where
 }
 
 pub fn parse_single_block(platform_bindings: &PlatformBindings, input: &str) -> Result<Term<BottomDialect>> {
-    let mut ps = parser::new(platform_bindings, input);
+    let mut ps = ParserState::<'_, BottomDialect>::new(platform_bindings, input);
     let mut ext = BottomExtension;
     parser::parse(&mut ps, &mut ext)
 }

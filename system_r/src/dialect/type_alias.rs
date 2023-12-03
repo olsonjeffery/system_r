@@ -4,7 +4,6 @@ use crate::{
     bottom::{BottomDialect, BottomKind, BottomPattern, BottomTokenKind},
     diagnostics::Diagnostic,
     patterns::Pattern,
-    platform_bindings::PlatformBindings,
     syntax::{
         error::Error,
         parser,
@@ -30,10 +29,6 @@ use anyhow::Result;
 pub struct TypeAliasExtension;
 
 pub type TypeAliasTypeChecker = TypeChecker<TypeAliasDialect>;
-
-pub fn new<'s>(platform_bindings: &'s PlatformBindings, input: &'s str) -> ParserState<'s, TypeAliasDialect> {
-    parser::ext_new::<TypeAliasDialect, TypeAliasExtension>(platform_bindings, input, &mut TypeAliasExtension)
-}
 
 /// Extension 1: TypeAliasDialect
 /// - Extends the Bottom-dialect of system_r (ie system_f with some minor
@@ -161,9 +156,9 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
 
     fn parser_ext_parse<'s>(&mut self, ps: &mut ParserState<TypeAliasDialect>) -> Result<Term<TypeAliasDialect>> {
         let sp = ps.span;
-        parser::expect(ps, self, TokenKind::Extended(TypeAliasTokenKind::TypeAliasKeyword))?;
+        ps.expect(self, TokenKind::Extended(TypeAliasTokenKind::TypeAliasKeyword))?;
 
-        let struct_ident = parser::once(ps, |p| parser::atom(p, self), "missing struct identifier $Binding")?;
+        let struct_ident = ps.once(|p| parser::atom(p, self), "missing struct identifier $Binding")?;
         let struct_ident = match struct_ident.kind {
             Kind::Extended(TypeAliasKind::StructIdent(s)) => s,
             e => {
@@ -179,7 +174,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
             }
         };
 
-        parser::expect(ps, self, TokenKind::Equals)?;
+        ps.expect(self, TokenKind::Equals)?;
 
         // this should be a "holed-out" type specification (it should have
         // entries for where generic types can be substituted-in)
@@ -187,9 +182,9 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         set_holed_type_for(ps, &struct_ident, type_shape.clone())?;
 
         let len = ps.tmvar.len();
-        parser::expect(ps, self, TokenKind::In)?;
+        ps.expect(self, TokenKind::In)?;
 
-        let t2 = parser::once(ps, |p| parser::parse(p, self), "type scope body required")?;
+        let t2 = ps.once(|p| parser::parse(p, self), "type scope body required")?;
         while ps.tmvar.len() > len {
             ps.tmvar.pop();
         }
@@ -236,7 +231,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
                 .into())
             }
         };
-        parser::bump(ps, self);
+        ps.bump(self);
         Ok(Term {
             span: name_tok.span,
             kind: Kind::Extended(TypeAliasKind::StructIdent(name_val)),
@@ -264,7 +259,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
             }
             .into());
         };
-        parser::bump(ps, self);
+        ps.bump(self);
 
         let applied_types = if ps.token.kind == TokenKind::LSquare {
             pulls_types_from_tyapp(ps, self)?
@@ -570,7 +565,7 @@ pub fn pulls_types_from_tyapp(
     ps: &mut ParserState<TypeAliasDialect>,
     ext: &mut TypeAliasExtension,
 ) -> Result<Vec<Type<TypeAliasDialect>>> {
-    parser::expect(ps, ext, TokenKind::LSquare)?;
+    ps.expect(ext, TokenKind::LSquare)?;
 
     let mut ret_val = Vec::new();
     loop {
@@ -581,7 +576,7 @@ pub fn pulls_types_from_tyapp(
             break;
         }
         if ps.token.kind == TokenKind::Comma {
-            parser::bump(ps, ext);
+            ps.bump(ext);
             continue;
         }
         return Err(Error {
@@ -592,7 +587,7 @@ pub fn pulls_types_from_tyapp(
         .into());
     }
 
-    parser::expect(ps, ext, TokenKind::RSquare)?;
+    ps.expect(ext, TokenKind::RSquare)?;
     Ok(ret_val)
 }
 
@@ -603,9 +598,8 @@ pub fn extract_tyabs_for_type_shape(
     let mut ext_2 = *ext;
     let mut tyabs = Vec::new();
     if ps.token.kind == TokenKind::Lambda {
-        parser::expect(ps, ext, TokenKind::Lambda)?;
-        tyabs = parser::once_or_more(
-            ps,
+        ps.expect(ext, TokenKind::Lambda)?;
+        tyabs = ps.once_or_more(
             |p| {
                 let tyvar = parser::uppercase_id(p, ext)?;
                 p.tyvar.push(tyvar);
@@ -626,8 +620,7 @@ pub fn parse_holed_type_from_decl(
     let push_count = extract_tyabs_for_type_shape(ps, ext)?;
 
     // type def
-    let type_shape = parser::once(
-        ps,
+    let type_shape = ps.once(
         |p| parser::ty_atom(p, &mut TypeAliasExtension),
         "abstraction body required",
     )?;
