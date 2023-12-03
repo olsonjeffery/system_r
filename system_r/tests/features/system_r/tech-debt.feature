@@ -4,12 +4,15 @@ Feature: Technical Debt
     # Incomplete list:
     # - DONE Supertraits to clean up signatures
     # - pervasive Result<> everywhere;
-    #   - DONE use anyhow?
-    #   - panic removal..
-    #   - deal with visitors
+    #   - DONE use anyhow!
+    #   - panic removal/convert-API to result
+    #     - all visitors (Result<()>)
+    #     - lexer->parser
+    #     - typechecker .. ?
     # - adopt git2rs pre-commit hook
     # - rustdoc-documentation of entire API surface
     #    - #[deny(missing_docs)]
+    #    - lots of error analysis
     # - Rationalize state & functionality across system_r
     #    - parser is broken into functions and ParserState; can it be re-unified into struct-state + impl? tried once and failed
     #    - SystemRExtensions are reified currently as a marker type/empty struct (has Copy trait) implementing a trait + dialect-state;

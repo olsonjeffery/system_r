@@ -173,7 +173,9 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> PatternVi
         }
     }
 
-    fn visit_ext(&mut self, p: &Pattern<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {}
+    fn visit_ext(&mut self, p: &Pattern<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
+        panic!("not impl")
+    }
 
     fn visit_pattern(&mut self, pattern: &Pattern<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
         match pattern {

@@ -81,8 +81,8 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
         BottomTokenKind::Placeholder
     }
 
-    fn lex_ext_keyword(&mut self, data: &str) -> BottomTokenKind {
-        BottomTokenKind::Placeholder
+    fn lex_ext_keyword(&mut self, data: &str) -> Result<BottomTokenKind> {
+        Ok(BottomTokenKind::Placeholder)
     }
 
     fn pat_ext_pattern_type_eq(
@@ -106,8 +106,8 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
         false
     }
 
-    fn parser_has_ext_parse(&self, tk: &BottomTokenKind) -> bool {
-        false
+    fn parser_has_ext_parse(&self, tk: &BottomTokenKind) -> Result<bool> {
+        Ok(false)
     }
 
     fn parser_has_ext_atom(&self, tk: &BottomTokenKind) -> bool {

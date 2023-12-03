@@ -960,13 +960,7 @@ pub fn ext_parse<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect
 where
     <TExtDialect as SystemRDialect>::TokenKind: 'static,
 {
-    let r = {
-        match ext.parser_ext_parse(ps) {
-            Err(e) => return Err(e),
-            Ok(t) => t,
-        }
-    };
-    Ok(r)
+    ext.parser_ext_parse(ps)
 }
 
 pub fn parse<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
@@ -980,7 +974,7 @@ where
         TokenKind::Case => case(ps, ext),
         TokenKind::Lambda => lambda(ps, ext),
         TokenKind::Let => letexpr(ps, ext),
-        TokenKind::Extended(tk) if ext.parser_has_ext_parse(&tk) => ext_parse(ps, ext),
+        TokenKind::Extended(tk) if ext.parser_has_ext_parse(&tk)? => ext_parse(ps, ext),
         _ => application(ps, ext),
     }
 }

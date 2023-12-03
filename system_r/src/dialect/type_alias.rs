@@ -127,11 +127,11 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         TypeAliasTokenKind::TypeBindingVar(data.to_owned())
     }
 
-    fn lex_ext_keyword(&mut self, data: &str) -> TypeAliasTokenKind {
+    fn lex_ext_keyword(&mut self, data: &str) -> Result<TypeAliasTokenKind> {
         if data == KEYWORD_TYPE {
-            return TypeAliasTokenKind::TypeAliasKeyword;
+            return Ok(TypeAliasTokenKind::TypeAliasKeyword);
         }
-        panic!("called lex_ext_keyword with a data str that wasn't TypeAlias-related; shouldn't happen");
+        Err(anyhow!("called lex_ext_keyword with a data str that wasn't TypeAlias-related; shouldn't happen"))
     }
 
     fn pat_ext_pattern_type_eq(
@@ -155,8 +155,8 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         false
     }
 
-    fn parser_has_ext_parse(&self, tk: &TypeAliasTokenKind) -> bool {
-        tk == &TypeAliasTokenKind::TypeAliasKeyword
+    fn parser_has_ext_parse(&self, tk: &TypeAliasTokenKind) -> Result<bool> {
+        Ok(tk == &TypeAliasTokenKind::TypeAliasKeyword)
     }
 
     fn parser_ext_parse<'s>(&mut self, ps: &mut ParserState<TypeAliasDialect>) -> Result<Term<TypeAliasDialect>> {
@@ -362,8 +362,6 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         pat: &Pattern<TypeAliasDialect>,
         ext_ty: &<TypeAliasDialect as SystemRDialect>::Type,
     ) {
-        // handle where this is Type::Extended; at which point
-        // the extension needs to re-create the above logic (including variant_field())
         let ty = pts.ty.clone();
 
         let TypeAliasType::TypeAliasApp(ext_label, applied_types) = ext_ty else {

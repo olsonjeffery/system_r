@@ -131,7 +131,13 @@ impl<'s, TExtDialect: SystemRDialect> Lexer<'s, TExtDialect> {
     fn keyword<TExt: SystemRExtension<TExtDialect>>(&mut self, ext: &mut TExt) -> Token<TExtDialect::TokenKind> {
         let (data, span) = self.consume_while(|ch| ch.is_ascii_alphanumeric());
         let kind = match data.as_ref() {
-            data if ext.lex_is_ext_keyword(data) => TokenKind::Extended(ext.lex_ext_keyword(data)),
+            data if ext.lex_is_ext_keyword(data) => {
+                let output = match ext.lex_ext_keyword(data) {
+                    Ok(t) => t,
+                    Err(e) => panic!("lexer: got err result from lex_ext_keyword: {:?}", e)
+                };
+                TokenKind::Extended(output)
+            },
             "if" => TokenKind::If,
             "then" => TokenKind::Then,
             "else" => TokenKind::Else,

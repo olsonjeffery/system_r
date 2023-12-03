@@ -38,8 +38,8 @@ pub trait SystemRExtension<TExtDialect: SystemRDialect>: Copy + Clone + Default 
     fn lex_is_extended_single_pred(&self, x: char) -> bool;
     fn lex_is_ext_keyword(&self, data: &str) -> bool;
     fn lex_extended_single(&mut self, data: &str) -> TExtDialect::TokenKind;
-    fn lex_ext_keyword(&mut self, data: &str) -> TExtDialect::TokenKind;
-    fn parser_has_ext_parse(&self, tk: &TExtDialect::TokenKind) -> bool;
+    fn lex_ext_keyword(&mut self, data: &str) -> Result<TExtDialect::TokenKind>;
+    fn parser_has_ext_parse(&self, tk: &TExtDialect::TokenKind) -> Result<bool>;
     fn parser_ext_parse(&mut self, ps: &mut ParserState<TExtDialect>) -> Result<Term<TExtDialect>>;
     fn parser_has_ext_atom(&self, tk: &TExtDialect::TokenKind) -> bool;
     fn parser_ext_atom(&mut self, ps: &mut ParserState<TExtDialect>) -> Result<Term<TExtDialect>>;
