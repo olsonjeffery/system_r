@@ -341,7 +341,7 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
 /// Visitor for handling recursive variants automatically, by inserting a
 /// fold term
 ///
-/// Transform an [`Injection`] term of form: `Label tm of Rec(u.T)` into
+/// Transform an `Kind::Injection` term of form: `Label tm of Rec(u.T)` into
 /// `fold [u.T] Label tm of [X->u.T] T`
 pub struct InjRewriter<TExtDialect: SystemRDialect>(pub TExtDialect::Pattern, pub TExtDialect::Kind);
 

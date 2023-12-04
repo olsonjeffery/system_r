@@ -2,7 +2,7 @@ use anyhow::Result;
 use system_r::bottom::BottomDialect;
 use system_r::system_r_util::span::Span;
 use system_r::terms::{Kind, Term};
-use system_r::{diagnostics::Diagnostic, platform_bindings::WrappedContent, terms::Literal, type_check::Type};
+use system_r::{diagnostics::Diagnostic, platform_bindings::WrappedBinding, terms::Literal, type_check::Type};
 
 pub fn pull_u64_from(args: &Vec<Term<BottomDialect>>, idx: usize, span: &Span) -> Result<u64> {
     let arg_t_raw = match args.get(idx) {
@@ -20,11 +20,11 @@ pub fn pull_u64_from(args: &Vec<Term<BottomDialect>>, idx: usize, span: &Span) -
     Ok(arg_actual)
 }
 
-pub fn pb_add() -> WrappedContent {
-    WrappedContent(add, Type::Product(vec![Type::Nat, Type::Nat]), Type::Nat)
+pub fn pb_add() -> WrappedBinding {
+    WrappedBinding(add, Type::Product(vec![Type::Nat, Type::Nat]), Type::Nat)
 }
-pub fn pb_sub() -> WrappedContent {
-    WrappedContent(sub, Type::Product(vec![Type::Nat, Type::Nat]), Type::Nat)
+pub fn pb_sub() -> WrappedBinding {
+    WrappedBinding(sub, Type::Product(vec![Type::Nat, Type::Nat]), Type::Nat)
 }
 fn sub(arg: Term<BottomDialect>, span: &Span) -> Result<Term<BottomDialect>> {
     match arg.kind {

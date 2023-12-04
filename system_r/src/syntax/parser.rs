@@ -10,7 +10,7 @@ use crate::system_r_util::span::*;
 use core::fmt;
 
 use crate::patterns::{PatVarStack, Pattern};
-use crate::platform_bindings::PlatformBindings;
+use crate::platform_bindings::Bindings;
 use crate::terms::*;
 use crate::type_check::*;
 
@@ -24,7 +24,7 @@ pub struct Parser<'s, TExtDialect: SystemRDialect> {
     pub lexer: Lexer<'s, TExtDialect>,
     pub span: Span,
     pub token: Token<TExtDialect::TokenKind>,
-    pub platform_bindings: PlatformBindings,
+    pub platform_bindings: Bindings,
     pub ext_state: TExtDialect::DialectState,
     pub ty: TExtDialect::Type,
 }
@@ -52,13 +52,13 @@ impl<'s, TExtDialect: SystemRDialect> Parser<'s, TExtDialect> {
         self.ext_state
     }
 
-    pub fn new(platform_bindings: &'s PlatformBindings, input: &'s str) -> Parser<'s, BottomDialect> {
+    pub fn new(platform_bindings: &'s Bindings, input: &'s str) -> Parser<'s, BottomDialect> {
         let mut ext = BottomExtension;
         Parser::ext_new(platform_bindings, input, &mut ext)
     }
 
     pub fn ext_new<TExt: SystemRExtension<TExtDialect>>(
-        platform_bindings: &'s PlatformBindings,
+        platform_bindings: &'s Bindings,
         input: &'s str,
         ext: &mut TExt,
     ) -> Parser<'s, TExtDialect> {

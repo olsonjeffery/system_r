@@ -6,7 +6,7 @@ mod platform_bindings;
 
 #[cfg(test)]
 mod bench {
-    use system_r::{platform_bindings::PlatformBindings, terms::Kind, testing, type_check::TypeChecker};
+    use system_r::{platform_bindings::Bindings, terms::Kind, testing, type_check::TypeChecker};
     use test::{black_box, Bencher};
 
     #[bench]
@@ -33,7 +33,7 @@ let fib = \z: Nat->Nat. \i: Nat.
         | n => natAdd( z(natSub(n, 1)), z(natSub(n, 2)) ) in
 (fix fib)(7);
         "#;
-        let mut pb = PlatformBindings::default();
+        let mut pb = Bindings::default();
         pb.register("natAdd", crate::platform_bindings::arith::pb_add());
         pb.register("natSub", crate::platform_bindings::arith::pb_sub());
 

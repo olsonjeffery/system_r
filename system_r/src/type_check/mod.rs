@@ -1,10 +1,10 @@
-//! Type<TExtDialect>checking of the simply typed lambda calculus with
+//! Type checking of the simply typed lambda calculus with
 //! parametric polymorphism
 pub mod patterns;
 pub mod visit;
 use crate::diagnostics::*;
 use crate::dialect::{SystemRDialect, SystemRExtension};
-use crate::platform_bindings::PlatformBindings;
+use crate::platform_bindings::Bindings;
 use crate::system_r_util::span::Span;
 use crate::terms::{Kind, Literal, Primitive, Term};
 use crate::visit::{MutTermVisitor, MutTypeVisitor};
@@ -66,7 +66,7 @@ pub enum TypeErrorKind<TExtDialect: SystemRDialect> {
 pub struct TypeChecker<TExtDialect: SystemRDialect> {
     pub stack: VecDeque<Type<TExtDialect>>,
     pub map: HashMap<String, Type<TExtDialect>>,
-    pub platform_bindings: PlatformBindings,
+    pub platform_bindings: Bindings,
     pub ext_state: TExtDialect::DialectState,
 }
 

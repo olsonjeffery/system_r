@@ -4,7 +4,7 @@ use cucumber::World;
 
 use system_r::{
     bottom::BottomDialect,
-    platform_bindings::PlatformBindings,
+    platform_bindings::Bindings,
     terms::{Kind, Term},
     type_check::Type,
 };
@@ -20,7 +20,7 @@ pub mod platform_bindings;
 pub struct SpecsWorld {
     pub code_snippet: String,
     pub type_checkers: HashMap<String, OmniTypeChecker>,
-    pub platform_bindings: PlatformBindings,
+    pub platform_bindings: Bindings,
     pub last_parse_success: bool,
     pub last_parse_kind: Kind<BottomDialect>,
     pub last_parse_term: Term<BottomDialect>,

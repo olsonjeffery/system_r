@@ -1,7 +1,7 @@
 use system_r::{
     bottom::{BottomDialect, BottomKind, BottomState},
     dialect::type_alias::{TypeAliasDialect, TypeAliasDialectState, TypeAliasTypeChecker},
-    platform_bindings::PlatformBindings,
+    platform_bindings::Bindings,
     terms::{Kind, Term},
     type_check::{Type, TypeChecker},
 };
@@ -24,7 +24,7 @@ pub enum OmniState {
 }
 
 impl OmniTypeChecker {
-    pub fn set_platform_bindings(&mut self, pb: PlatformBindings) {
+    pub fn set_platform_bindings(&mut self, pb: Bindings) {
         match self {
             OmniTypeChecker::Empty => todo!(),
             OmniTypeChecker::Bottom(ctx) => ctx.platform_bindings = pb,

@@ -9,8 +9,8 @@
 //! To check for exhaustiveness, we simply create a row of Wildcard matches,
 //! and see if it would be useful to add
 //!
-//! https://doc.rust-lang.org/nightly/nightly-rustc/src/rustc_mir/hair/pattern/_match.rs.html
-//! http://moscova.inria.fr/~maranget/papers/warn/index.html
+//! <https://doc.rust-lang.org/nightly/nightly-rustc/src/rustc_mir/hair/pattern/_match.rs.html>
+//! <http://moscova.inria.fr/~maranget/papers/warn/index.html>
 
 use super::*;
 use crate::diagnostics::*;

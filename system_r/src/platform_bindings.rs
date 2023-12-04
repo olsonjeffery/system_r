@@ -27,27 +27,27 @@ use anyhow::Result;
 
 pub type WrappedFn = fn(input: Term<BottomDialect>, span: &Span) -> Result<Term<BottomDialect>>;
 
-pub struct WrappedContent(pub WrappedFn, pub Type<BottomDialect>, pub Type<BottomDialect>);
+pub struct WrappedBinding(pub WrappedFn, pub Type<BottomDialect>, pub Type<BottomDialect>);
 
-impl Clone for WrappedContent {
+impl Clone for WrappedBinding {
     fn clone(&self) -> Self {
-        WrappedContent(self.0, self.1.clone(), self.2.clone())
+        WrappedBinding(self.0, self.1.clone(), self.2.clone())
     }
 }
 
-impl core::fmt::Debug for WrappedContent {
+impl core::fmt::Debug for WrappedBinding {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple("Intrinsic WrappedContent").finish()
+        f.debug_tuple("Intrinsic WrappedBinding").finish()
     }
 }
 
 #[derive(Default, Clone, Debug)]
-pub struct PlatformBindings {
+pub struct Bindings {
     by_name: HashMap<String, usize>,
-    by_idx: Vec<WrappedContent>,
+    by_idx: Vec<WrappedBinding>,
 }
 
-impl PartialEq for PlatformBindings {
+impl PartialEq for Bindings {
     fn eq(&self, other: &Self) -> bool {
         self.by_name == other.by_name
     }
@@ -57,9 +57,9 @@ pub trait UnwrappedFnTrait {
     fn to_wrapped(&self) -> WrappedFn;
 }
 
-impl<'a> PlatformBindings {
+impl<'a> Bindings {
     pub fn new() -> Self {
-        PlatformBindings {
+        Bindings {
             by_name: HashMap::new(),
             by_idx: Vec::new(),
         }
@@ -75,13 +75,13 @@ impl<'a> PlatformBindings {
         Some(*idx)
     }
 
-    pub fn register(&mut self, alias: &str, wrapped: WrappedContent) -> Option<WrappedContent> {
+    pub fn register(&mut self, alias: &str, wrapped: WrappedBinding) -> Option<WrappedBinding> {
         self.by_idx.push(wrapped.clone());
         let idx = self.by_idx.len() - 1;
         self.by_name.insert(alias.to_owned(), idx).map(|_| wrapped)
     }
 
-    pub fn get(&'a self, idx: usize) -> Option<&'a WrappedContent> {
+    pub fn get(&'a self, idx: usize) -> Option<&'a WrappedBinding> {
         self.by_idx.get(idx)
     }
 }
