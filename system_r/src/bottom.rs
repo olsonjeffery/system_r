@@ -116,25 +116,25 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
 
     fn parser_ext_parse<'s>(
         &mut self,
-        ps: &mut crate::syntax::parser::ParserState<BottomDialect>,
+        ps: &mut crate::syntax::parser::Parser<BottomDialect>,
     ) -> Result<Term<BottomDialect>> {
         Err(anyhow!("shouldn't be called"))
     }
 
     fn parser_ext_atom<'s>(
         &mut self,
-        ps: &mut crate::syntax::parser::ParserState<BottomDialect>,
+        ps: &mut crate::syntax::parser::Parser<BottomDialect>,
     ) -> Result<Term<BottomDialect>> {
         Err(anyhow!("shouldn't be called"))
     }
 
-    fn parser_ty_bump_if(&mut self, ps: &mut crate::syntax::parser::ParserState<BottomDialect>) -> bool {
+    fn parser_ty_bump_if(&mut self, ps: &mut crate::syntax::parser::Parser<BottomDialect>) -> bool {
         false
     }
 
     fn parser_ty(
         &mut self,
-        ps: &mut crate::syntax::parser::ParserState<BottomDialect>,
+        ps: &mut crate::syntax::parser::Parser<BottomDialect>,
     ) -> Result<crate::type_check::Type<BottomDialect>> {
         Err(anyhow!("calling parser_ty on BottomExtension; shouldn't happen"))
     }

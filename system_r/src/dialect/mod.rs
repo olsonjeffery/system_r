@@ -3,7 +3,7 @@ use std::hash;
 
 use crate::{
     patterns::{PatTyStack, Pattern},
-    syntax::parser::ParserState,
+    syntax::parser::Parser,
     terms::Term,
     type_check::{
         patterns::Matrix,
@@ -40,11 +40,11 @@ pub trait SystemRExtension<TExtDialect: SystemRDialect>: Copy + Clone + Default 
     fn lex_extended_single(&mut self, data: &str) -> TExtDialect::TokenKind;
     fn lex_ext_keyword(&mut self, data: &str) -> Result<TExtDialect::TokenKind>;
     fn parser_has_ext_parse(&self, tk: &TExtDialect::TokenKind) -> Result<bool>;
-    fn parser_ext_parse(&mut self, ps: &mut ParserState<TExtDialect>) -> Result<Term<TExtDialect>>;
+    fn parser_ext_parse(&mut self, ps: &mut Parser<TExtDialect>) -> Result<Term<TExtDialect>>;
     fn parser_has_ext_atom(&self, tk: &TExtDialect::TokenKind) -> bool;
-    fn parser_ext_atom(&mut self, ps: &mut ParserState<TExtDialect>) -> Result<Term<TExtDialect>>;
-    fn parser_ty(&mut self, ps: &mut ParserState<TExtDialect>) -> Result<Type<TExtDialect>>;
-    fn parser_ty_bump_if(&mut self, ps: &mut ParserState<TExtDialect>) -> bool;
+    fn parser_ext_atom(&mut self, ps: &mut Parser<TExtDialect>) -> Result<Term<TExtDialect>>;
+    fn parser_ty(&mut self, ps: &mut Parser<TExtDialect>) -> Result<Type<TExtDialect>>;
+    fn parser_ty_bump_if(&mut self, ps: &mut Parser<TExtDialect>) -> bool;
     fn pat_add_ext_pattern<'a>(
         &'a self,
         parent: &crate::type_check::patterns::Matrix<'a, TExtDialect>,

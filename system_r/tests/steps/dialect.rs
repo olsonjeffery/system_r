@@ -10,7 +10,7 @@ use system_r::{
         },
         SystemRDialect, SystemRExtension, SystemRResolver,
     },
-    syntax::parser::ParserState,
+    syntax::parser::Parser,
     terms::Term,
     type_check::{Type, TypeChecker},
 };
@@ -29,7 +29,7 @@ static TYPE_ALIAS_CTX_NAME: &'static str = "TypeAlias";
 
 pub fn parse_for_extension<'s, TExtDialect: SystemRDialect, TLE: SystemRExtension<TExtDialect>>(
     input: &str,
-    ps: &mut ParserState<'s, TExtDialect>,
+    ps: &mut Parser<'s, TExtDialect>,
     ext: &mut TLE,
 ) -> Result<Term<TExtDialect>>
 where
@@ -73,7 +73,7 @@ fn when_it_is_processed_for_type_alias(world: &mut common::SpecsWorld) {
     let mut ext = TypeAliasExtension;
     let pb = world.platform_bindings.clone();
 
-    let mut ps = ParserState::ext_new(&pb, &input, &mut ext);
+    let mut ps = Parser::ext_new(&pb, &input, &mut ext);
 
     let res = parse_for_extension(&input, &mut ps, &mut ext);
     let _term = match res {

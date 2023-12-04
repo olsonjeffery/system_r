@@ -6,8 +6,7 @@ use crate::{
     patterns::Pattern,
     syntax::{
         error::Error,
-        parser,
-        parser::{ErrorKind, ParserState},
+        parser::{ErrorKind, Parser},
         TokenKind,
     },
     terms::{Kind, Term},
@@ -154,11 +153,11 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         Ok(tk == &TypeAliasTokenKind::TypeAliasKeyword)
     }
 
-    fn parser_ext_parse<'s>(&mut self, ps: &mut ParserState<TypeAliasDialect>) -> Result<Term<TypeAliasDialect>> {
+    fn parser_ext_parse<'s>(&mut self, ps: &mut Parser<TypeAliasDialect>) -> Result<Term<TypeAliasDialect>> {
         let sp = ps.span;
         ps.expect(self, TokenKind::Extended(TypeAliasTokenKind::TypeAliasKeyword))?;
 
-        let struct_ident = ps.once(|p| parser::atom(p, self), "missing struct identifier $Binding")?;
+        let struct_ident = ps.once(|p| p.atom(self), "missing struct identifier $Binding")?;
         let struct_ident = match struct_ident.kind {
             Kind::Extended(TypeAliasKind::StructIdent(s)) => s,
             e => {
@@ -184,7 +183,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         let len = ps.tmvar.len();
         ps.expect(self, TokenKind::In)?;
 
-        let t2 = ps.once(|p| parser::parse(p, self), "type scope body required")?;
+        let t2 = ps.once(|p| p.parse(self), "type scope body required")?;
         while ps.tmvar.len() > len {
             ps.tmvar.pop();
         }
@@ -202,7 +201,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         false
     }
 
-    fn parser_ext_atom(&mut self, ps: &mut ParserState<'_, TypeAliasDialect>) -> Result<Term<TypeAliasDialect>> {
+    fn parser_ext_atom(&mut self, ps: &mut Parser<'_, TypeAliasDialect>) -> Result<Term<TypeAliasDialect>> {
         let name_tok = ps.token.clone();
         let name_val = match name_tok.kind.clone() {
             TokenKind::Extended(n) => match n {
@@ -238,14 +237,14 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         })
     }
 
-    fn parser_ty_bump_if(&mut self, ps: &mut ParserState<TypeAliasDialect>) -> bool {
+    fn parser_ty_bump_if(&mut self, ps: &mut Parser<TypeAliasDialect>) -> bool {
         matches!(
             &ps.token.kind,
             TokenKind::Extended(TypeAliasTokenKind::TypeBindingVar(_))
         )
     }
 
-    fn parser_ty(&mut self, ps: &mut ParserState<TypeAliasDialect>) -> Result<Type<TypeAliasDialect>> {
+    fn parser_ty(&mut self, ps: &mut Parser<TypeAliasDialect>) -> Result<Type<TypeAliasDialect>> {
         let binding = ps.token.kind.clone();
 
         let TokenKind::Extended(TypeAliasTokenKind::TypeBindingVar(type_decl_key)) = binding else {
@@ -499,7 +498,7 @@ pub fn get_holed_type_from(ps: &TypeAliasDialectState, key: &str) -> Result<(usi
 }
 
 pub fn set_holed_type_for(
-    ps: &mut ParserState<TypeAliasDialect>,
+    ps: &mut Parser<TypeAliasDialect>,
     key: &str,
     ty: (usize, Type<TypeAliasDialect>),
 ) -> Result<()> {
@@ -562,14 +561,14 @@ pub fn reify_type(
 }
 
 pub fn pulls_types_from_tyapp(
-    ps: &mut ParserState<TypeAliasDialect>,
+    ps: &mut Parser<TypeAliasDialect>,
     ext: &mut TypeAliasExtension,
 ) -> Result<Vec<Type<TypeAliasDialect>>> {
     ps.expect(ext, TokenKind::LSquare)?;
 
     let mut ret_val = Vec::new();
     loop {
-        let ty = parser::ty(ps, ext)?;
+        let ty = ps.ty(ext)?;
         ret_val.push(ty);
 
         if ps.token.kind == TokenKind::RSquare {
@@ -592,7 +591,7 @@ pub fn pulls_types_from_tyapp(
 }
 
 pub fn extract_tyabs_for_type_shape(
-    ps: &mut ParserState<'_, TypeAliasDialect>,
+    ps: &mut Parser<'_, TypeAliasDialect>,
     ext: &mut TypeAliasExtension,
 ) -> Result<usize> {
     let mut ext_2 = *ext;
@@ -601,7 +600,7 @@ pub fn extract_tyabs_for_type_shape(
         ps.expect(ext, TokenKind::Lambda)?;
         tyabs = ps.once_or_more(
             |p| {
-                let tyvar = parser::uppercase_id(p, ext)?;
+                let tyvar = p.uppercase_id(ext)?;
                 p.tyvar.push(tyvar);
                 Ok(())
             },
@@ -613,7 +612,7 @@ pub fn extract_tyabs_for_type_shape(
 }
 
 pub fn parse_holed_type_from_decl(
-    ps: &mut ParserState<'_, TypeAliasDialect>,
+    ps: &mut Parser<'_, TypeAliasDialect>,
     ext: &mut TypeAliasExtension,
 ) -> Result<(usize, Type<TypeAliasDialect>)> {
     let sp = ps.span;
@@ -621,7 +620,7 @@ pub fn parse_holed_type_from_decl(
 
     // type def
     let type_shape = ps.once(
-        |p| parser::ty_atom(p, &mut TypeAliasExtension),
+        |p| p.ty_atom(&mut TypeAliasExtension),
         "abstraction body required",
     )?;
 

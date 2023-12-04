@@ -20,7 +20,7 @@ use crate::{
     diagnostics::Diagnostic,
     eval,
     platform_bindings::PlatformBindings,
-    syntax::parser::{ParserState, self},
+    syntax::parser::Parser,
     terms::{visit::InjRewriter, Term},
     type_check::{self, Type},
     visit::MutTermVisitor,
@@ -77,19 +77,19 @@ pub fn dealias_and_type_check_term<TExtDialect: SystemRDialect, TExt: SystemRExt
 
 pub fn operate_parser_for<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
     input: &str,
-    ps: &mut ParserState<TExtDialect>,
+    ps: &mut Parser<TExtDialect>,
     ext: &mut TExt,
 ) -> Result<Term<TExtDialect>>
 where
     <TExtDialect as SystemRDialect>::TokenKind: 'static,
 {
-    parser::parse(ps, ext)
+    ps.parse(ext)
 }
 
 pub fn parse_single_block(platform_bindings: &PlatformBindings, input: &str) -> Result<Term<BottomDialect>> {
-    let mut ps = ParserState::<'_, BottomDialect>::new(platform_bindings, input);
+    let mut ps = Parser::<'_, BottomDialect>::new(platform_bindings, input);
     let mut ext = BottomExtension;
-    parser::parse(&mut ps, &mut ext)
+    ps.parse(&mut ext)
 }
 
 pub fn do_bottom_eval(
