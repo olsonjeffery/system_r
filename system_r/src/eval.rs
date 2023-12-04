@@ -117,7 +117,9 @@ impl<'ctx> Eval<'ctx> {
                                     Err(e) => Err(e),
                                 }
                             }
-                            _ => Err(anyhow!("unable to get platform_binding with idx after parsing; shouldn't happen"))
+                            _ => Err(anyhow!(
+                                "unable to get platform_binding with idx after parsing; shouldn't happen"
+                            )),
                         },
                         Kind::Primitive(p) => self.eval_primitive(p, *t2),
                         _ => match self.small_step(*t1)? {

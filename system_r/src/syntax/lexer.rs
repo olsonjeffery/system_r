@@ -134,10 +134,10 @@ impl<'s, TExtDialect: SystemRDialect> Lexer<'s, TExtDialect> {
             data if ext.lex_is_ext_keyword(data) => {
                 let output = match ext.lex_ext_keyword(data) {
                     Ok(t) => t,
-                    Err(e) => panic!("lexer: got err result from lex_ext_keyword: {:?}", e)
+                    Err(e) => panic!("lexer: got err result from lex_ext_keyword: {:?}", e),
                 };
                 TokenKind::Extended(output)
-            },
+            }
             "if" => TokenKind::If,
             "then" => TokenKind::Then,
             "else" => TokenKind::Else,

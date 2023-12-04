@@ -45,7 +45,12 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> PatternVi
         self.inner.push(var.to_owned());
     }
 
-    fn visit_ext(&mut self, pat: &Pattern<TExtDialect>, ext: &mut TExt, ext_state: &<TExtDialect as SystemRDialect>::DialectState) {
+    fn visit_ext(
+        &mut self,
+        pat: &Pattern<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &<TExtDialect as SystemRDialect>::DialectState,
+    ) {
         panic!("not implemented")
     }
 }
@@ -73,7 +78,12 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> PatternVi
         self.0 += 1;
     }
 
-    fn visit_ext(&mut self, pat: &Pattern<TExtDialect>, ext: &mut TExt, ext_state: &<TExtDialect as SystemRDialect>::DialectState) {
+    fn visit_ext(
+        &mut self,
+        pat: &Pattern<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &<TExtDialect as SystemRDialect>::DialectState,
+    ) {
         panic!("not implemented")
     }
 }

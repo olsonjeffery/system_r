@@ -156,7 +156,9 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
         target: &<BottomDialect as SystemRDialect>::Type,
         tm: &Term<BottomDialect>,
     ) -> Result<crate::type_check::Type<BottomDialect>> {
-        Err(anyhow!("type_check_injection_to_ext for BottomDialect; should never be called"))
+        Err(anyhow!(
+            "type_check_injection_to_ext for BottomDialect; should never be called"
+        ))
     }
 
     fn pat_visit_constructor_of_ext(

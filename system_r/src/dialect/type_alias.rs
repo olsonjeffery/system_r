@@ -125,7 +125,9 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         if data == KEYWORD_TYPE {
             return Ok(TypeAliasTokenKind::TypeAliasKeyword);
         }
-        Err(anyhow!("called lex_ext_keyword with a data str that wasn't TypeAlias-related; shouldn't happen"))
+        Err(anyhow!(
+            "called lex_ext_keyword with a data str that wasn't TypeAlias-related; shouldn't happen"
+        ))
     }
 
     fn pat_ext_pattern_type_eq(
@@ -619,10 +621,7 @@ pub fn parse_holed_type_from_decl(
     let push_count = extract_tyabs_for_type_shape(ps, ext)?;
 
     // type def
-    let type_shape = ps.once(
-        |p| p.ty_atom(&mut TypeAliasExtension),
-        "abstraction body required",
-    )?;
+    let type_shape = ps.once(|p| p.ty_atom(&mut TypeAliasExtension), "abstraction body required")?;
 
     // pop off the tyabs var, since they only apply for the purpose of defining
     // "type holes" in the type def
