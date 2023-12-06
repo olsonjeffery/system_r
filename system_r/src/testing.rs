@@ -70,7 +70,7 @@ pub fn dealias_and_type_check_term<TExtDialect: SystemRDialect, TExt: SystemRExt
 ) -> Result<Type<TExtDialect>> {
     // Step 0
     ctx.de_alias(term, ext);
-    InjRewriter(Default::default(), Default::default()).visit(term, ext, &ctx.ext_state);
+    InjRewriter(Default::default(), Default::default()).visit(term, ext, &ctx.ext_state)?;
 
     type_check_term(ctx, term, ext)
 }

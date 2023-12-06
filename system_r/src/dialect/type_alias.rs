@@ -371,7 +371,9 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         };
         pts.ty = reified_type.clone();
 
-        pts.visit_constructor(label, pat, self, ext_state);
+        if let Err(e) = pts.visit_constructor(label, pat, self, ext_state) {
+            panic!("need results here")
+        }
 
         pts.ty = ty;
     }
@@ -422,7 +424,9 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
             _ => return,
         };
         *ext_ty = reified;
-        subst_visitor.visit(ext_ty, self, ext_state);
+        if let Err(e) = subst_visitor.visit(ext_ty, self, ext_state) {
+            panic!("need results here")
+        }
     }
 
     fn ty_aliaser_visit_ext(
@@ -438,7 +442,9 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
             Ok(t) => t,
             _ => return,
         };
-        aliaser.visit(&mut reified, self, ext_state);
+        if let Err(e) = aliaser.visit(&mut reified, self, ext_state) {
+            panic!("need results here")
+        }
     }
 
     fn ty_shift_visit_ext(
@@ -456,7 +462,9 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         };
         shift.cutoff += 1;
         *ext_ty = reified; // :3
-        shift.visit(ext_ty, self, ext_state);
+        if let Err(e) = shift.visit(ext_ty, self, ext_state) {
+            panic!("need results here")
+        }
         shift.cutoff -= 1;
     }
 
@@ -555,9 +563,11 @@ pub fn reify_type(
         let abstract_type = holed_type.clone();
         let mut subst_visitor = Subst::new(working_ty.clone());
         subst_visitor.cutoff = desired_cutoff;
-        subst_visitor.visit(&mut holed_type, &mut ext, ext_state);
+        if let Err(e) = subst_visitor.visit(&mut holed_type, &mut ext, ext_state) {
+            panic!("need result here {:?}", e)
+        }
     }
-    holed_type = VarWrapReplacingVisitor.visit(&holed_type);
+    holed_type = VarWrapReplacingVisitor.visit(&holed_type)?;
 
     Ok(holed_type)
 }
@@ -638,7 +648,7 @@ impl SystemRResolver<TypeAliasDialect, BottomDialect> for TypeAliasToBottomDiale
     fn resolve(&self, ext_state: TypeAliasDialectState, tm: Term<TypeAliasDialect>) -> Result<Term<BottomDialect>> {
         //let out_tm = Term::unit();
         let ttv = TatbTermVisitor::new(ext_state);
-        Ok(ttv.visit(&tm))
+        ttv.visit(&tm)
     }
 }
 
@@ -647,8 +657,8 @@ pub struct TatbPatVisitor {
 }
 
 impl DialectChangingPatternVisitor<TypeAliasDialect, BottomDialect> for TatbPatVisitor {
-    fn visit_ext(&self, pat: &Pattern<TypeAliasDialect>) -> Pattern<BottomDialect> {
-        panic!("pattern visit_ext not impl, {:?}", self.ext_state.as_ref())
+    fn visit_ext(&self, pat: &Pattern<TypeAliasDialect>) -> Result<Pattern<BottomDialect>> {
+        Err(anyhow!("pattern visit_ext not impl, {:?}", self.ext_state.as_ref()))
     }
 }
 
@@ -658,16 +668,16 @@ pub struct TatbTypeVisitor {
 
 pub struct VarWrapReplacingVisitor;
 impl DialectChangingTypeVisitor<TypeAliasDialect, TypeAliasDialect> for VarWrapReplacingVisitor {
-    fn visit_ext(&self, ty: &Type<TypeAliasDialect>) -> Type<TypeAliasDialect> {
+    fn visit_ext(&self, ty: &Type<TypeAliasDialect>) -> Result<Type<TypeAliasDialect>> {
         match ty {
-            Type::Extended(TypeAliasType::VarWrap(v)) => Type::Var(*v),
-            v => v.clone(),
+            Type::Extended(TypeAliasType::VarWrap(v)) => Ok(Type::Var(*v)),
+            v => Ok(v.clone()),
         }
     }
 }
 
 impl DialectChangingTypeVisitor<TypeAliasDialect, BottomDialect> for TatbTypeVisitor {
-    fn visit_ext(&self, ty: &Type<TypeAliasDialect>) -> Type<BottomDialect> {
+    fn visit_ext(&self, ty: &Type<TypeAliasDialect>) -> Result<Type<BottomDialect>> {
         match ty {
             Type::Extended(TypeAliasType::TypeAliasApp(label, applied_types)) => {
                 let ext_state = &*self.ext_state.as_ref().borrow();
@@ -695,19 +705,19 @@ impl TatbTermVisitor {
 }
 
 impl DialectChangingTermVisitor<TypeAliasDialect, BottomDialect, TatbTypeVisitor, TatbPatVisitor> for TatbTermVisitor {
-    fn get_type_visitor(&self) -> TatbTypeVisitor {
-        TatbTypeVisitor {
+    fn get_type_visitor(&self) -> Result<TatbTypeVisitor> {
+        Ok(TatbTypeVisitor {
             ext_state: self.ext_state.clone(),
-        }
+        })
     }
 
-    fn get_pat_visitor(&self) -> TatbPatVisitor {
-        TatbPatVisitor {
+    fn get_pat_visitor(&self) -> Result<TatbPatVisitor> {
+        Ok(TatbPatVisitor {
             ext_state: self.ext_state.clone(),
-        }
+        })
     }
 
-    fn visit_ext(&self, term: &Term<TypeAliasDialect>) -> Term<BottomDialect> {
-        panic!("no extended kinds should have persisted beyond parse phase");
+    fn visit_ext(&self, term: &Term<TypeAliasDialect>) -> Result<Term<BottomDialect>> {
+        Err(anyhow!("no extended kinds should have persisted beyond parse phase"))
     }
 }

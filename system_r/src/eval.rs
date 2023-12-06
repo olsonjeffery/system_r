@@ -343,16 +343,24 @@ impl<'ctx> Eval<'ctx> {
 fn term_subst(mut s: Term<BottomDialect>, t: &mut Term<BottomDialect>) {
     let mut ext = BottomExtension;
     let state = BottomState;
-    Shift::new(1).visit(&mut s, &mut ext, &state);
-    Subst::new(s).visit(t, &mut ext, &state);
-    Shift::new(-1).visit(t, &mut ext, &state);
+    Shift::new(1).visit(&mut s, &mut ext, &state).expect("need result here");
+    Subst::new(s).visit(t, &mut ext, &state).expect("need result here");
+    Shift::new(-1).visit(t, &mut ext, &state).expect("need result here");
 }
 
 fn type_subst(s: Type<BottomDialect>, t: &mut Term<BottomDialect>) {
     let mut ext = BottomExtension;
     let state = BottomState;
-    TyTermSubst::new(s, &mut ext, &state).visit(t, &mut ext, &state);
-    Shift::new(-1).visit(t, &mut ext, &state);
+    let mut tts = match TyTermSubst::new(s, &mut ext, &state) {
+        Ok(t) => t,
+        Err(e) => panic!("need result here {:?}", e),
+    };
+    if let Err(e) = tts.visit(t, &mut ext, &state) {
+        panic!("need result here {:?}", e)
+    }
+    if let Err(e) = Shift::new(-1).visit(t, &mut ext, &state) {
+        panic!("need result here {:?}", e)
+    }
 }
 
 #[cfg(test)]

@@ -43,6 +43,7 @@ use crate::patterns::Pattern;
 use crate::system_r_util::span::Span;
 use crate::terms::{Arm, Kind, Literal, Primitive, Term};
 use crate::type_check::{Type, Variant};
+use anyhow::Result;
 
 pub trait MutTypeVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>: Sized {
     fn visit_pb(
@@ -51,10 +52,15 @@ pub trait MutTypeVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TEx
         r: &mut Type<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
+    ) -> Result<()> {
+        Ok(())
     }
-    fn visit_var(&mut self, var: &mut usize, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {}
-    fn visit_alias(&mut self, alias: &mut String, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {}
+    fn visit_var(&mut self, var: &mut usize, ext: &mut TExt, ext_state: &TExtDialect::DialectState) -> Result<()> {
+        Ok(())
+    }
+    fn visit_alias(&mut self, alias: &mut String, ext: &mut TExt, ext_state: &TExtDialect::DialectState) -> Result<()> {
+        Ok(())
+    }
 
     fn visit_arrow(
         &mut self,
@@ -62,9 +68,10 @@ pub trait MutTypeVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TEx
         ty2: &mut Type<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
-        self.visit(ty1, ext, ext_state);
-        self.visit(ty2, ext, ext_state);
+    ) -> Result<()> {
+        self.visit(ty1, ext, ext_state)?;
+        self.visit(ty2, ext, ext_state)?;
+        Ok(())
     }
 
     fn visit_universal(
@@ -72,8 +79,9 @@ pub trait MutTypeVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TEx
         inner: &mut Type<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
-        self.visit(inner, ext, ext_state);
+    ) -> Result<()> {
+        self.visit(inner, ext, ext_state)?;
+        Ok(())
     }
 
     fn visit_existential(
@@ -81,8 +89,9 @@ pub trait MutTypeVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TEx
         inner: &mut Type<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
-        self.visit(inner, ext, ext_state);
+    ) -> Result<()> {
+        self.visit(inner, ext, ext_state)?;
+        Ok(())
     }
 
     fn visit_variant(
@@ -90,10 +99,11 @@ pub trait MutTypeVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TEx
         variant: &mut Vec<Variant<TExtDialect>>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
+    ) -> Result<()> {
         for v in variant {
-            self.visit(&mut v.ty, ext, ext_state);
+            self.visit(&mut v.ty, ext, ext_state)?;
         }
+        Ok(())
     }
 
     fn visit_product(
@@ -101,21 +111,38 @@ pub trait MutTypeVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TEx
         product: &mut Vec<Type<TExtDialect>>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
+    ) -> Result<()> {
         for v in product {
-            self.visit(v, ext, ext_state);
+            self.visit(v, ext, ext_state)?;
         }
+        Ok(())
     }
 
-    fn visit_rec(&mut self, ty: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
-        self.visit(ty, ext, ext_state);
+    fn visit_rec(
+        &mut self,
+        ty: &mut Type<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &TExtDialect::DialectState,
+    ) -> Result<()> {
+        self.visit(ty, ext, ext_state)?;
+        Ok(())
     }
 
-    fn visit_ext(&mut self, ty: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::DialectState);
+    fn visit_ext(
+        &mut self,
+        ty: &mut Type<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &TExtDialect::DialectState,
+    ) -> Result<()>;
 
-    fn visit(&mut self, ty: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
+    fn visit(
+        &mut self,
+        ty: &mut Type<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &TExtDialect::DialectState,
+    ) -> Result<()> {
         match ty {
-            Type::Unit | Type::Bool | Type::Nat | Type::Tag(_) | Type::Bytes => {}
+            Type::Unit | Type::Bool | Type::Nat | Type::Tag(_) | Type::Bytes => Ok(()),
             Type::PlatformBinding(i, r) => self.visit_pb(i, r, ext, ext_state),
             Type::Var(v) => self.visit_var(v, ext, ext_state),
             Type::Variant(v) => self.visit_variant(v, ext, ext_state),
@@ -131,9 +158,33 @@ pub trait MutTypeVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TEx
 }
 
 pub trait MutTermVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>: Sized {
-    fn visit_lit(&mut self, sp: &mut Span, lit: &mut Literal, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {}
-    fn visit_var(&mut self, sp: &mut Span, var: &mut usize, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {}
-    fn visit_pb(&mut self, sp: &mut Span, idx: &mut usize, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {}
+    fn visit_lit(
+        &mut self,
+        sp: &mut Span,
+        lit: &mut Literal,
+        ext: &mut TExt,
+        ext_state: &TExtDialect::DialectState,
+    ) -> Result<()> {
+        Ok(())
+    }
+    fn visit_var(
+        &mut self,
+        sp: &mut Span,
+        var: &mut usize,
+        ext: &mut TExt,
+        ext_state: &TExtDialect::DialectState,
+    ) -> Result<()> {
+        Ok(())
+    }
+    fn visit_pb(
+        &mut self,
+        sp: &mut Span,
+        idx: &mut usize,
+        ext: &mut TExt,
+        ext_state: &TExtDialect::DialectState,
+    ) -> Result<()> {
+        Ok(())
+    }
 
     fn visit_abs(
         &mut self,
@@ -142,8 +193,9 @@ pub trait MutTermVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TEx
         term: &mut Term<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
-        self.visit(term, ext, ext_state);
+    ) -> Result<()> {
+        self.visit(term, ext, ext_state)?;
+        Ok(())
     }
 
     fn visit_app(
@@ -153,9 +205,10 @@ pub trait MutTermVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TEx
         t2: &mut Term<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
-        self.visit(t1, ext, ext_state);
-        self.visit(t2, ext, ext_state);
+    ) -> Result<()> {
+        self.visit(t1, ext, ext_state)?;
+        self.visit(t2, ext, ext_state)?;
+        Ok(())
     }
 
     fn visit_let(
@@ -166,9 +219,10 @@ pub trait MutTermVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TEx
         t2: &mut Term<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
-        self.visit(t1, ext, ext_state);
-        self.visit(t2, ext, ext_state);
+    ) -> Result<()> {
+        self.visit(t1, ext, ext_state)?;
+        self.visit(t2, ext, ext_state)?;
+        Ok(())
     }
 
     fn visit_tyabs(
@@ -177,8 +231,9 @@ pub trait MutTermVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TEx
         term: &mut Term<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
-        self.visit(term, ext, ext_state);
+    ) -> Result<()> {
+        self.visit(term, ext, ext_state)?;
+        Ok(())
     }
 
     fn visit_tyapp(
@@ -188,8 +243,9 @@ pub trait MutTermVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TEx
         ty: &mut Type<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
-        self.visit(term, ext, ext_state);
+    ) -> Result<()> {
+        self.visit(term, ext, ext_state)?;
+        Ok(())
     }
 
     fn visit_primitive(
@@ -198,8 +254,10 @@ pub trait MutTermVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TEx
         prim: &mut Primitive,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
+    ) -> Result<()> {
+        Ok(())
     }
+
     fn visit_injection(
         &mut self,
         sp: &mut Span,
@@ -208,8 +266,9 @@ pub trait MutTermVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TEx
         ty: &mut Type<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
-        self.visit(term, ext, ext_state);
+    ) -> Result<()> {
+        self.visit(term, ext, ext_state)?;
+        Ok(())
     }
 
     fn visit_case(
@@ -219,11 +278,12 @@ pub trait MutTermVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TEx
         arms: &mut Vec<Arm<TExtDialect>>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
-        self.visit(term, ext, ext_state);
+    ) -> Result<()> {
+        self.visit(term, ext, ext_state)?;
         for arm in arms {
-            self.visit(&mut arm.term, ext, ext_state);
+            self.visit(&mut arm.term, ext, ext_state)?;
         }
+        Ok(())
     }
 
     fn visit_product(
@@ -232,10 +292,11 @@ pub trait MutTermVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TEx
         product: &mut Vec<Term<TExtDialect>>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
+    ) -> Result<()> {
         for t in product {
-            self.visit(t, ext, ext_state);
+            self.visit(t, ext, ext_state)?;
         }
+        Ok(())
     }
 
     fn visit_projection(
@@ -245,8 +306,9 @@ pub trait MutTermVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TEx
         index: &mut usize,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
-        self.visit(term, ext, ext_state);
+    ) -> Result<()> {
+        self.visit(term, ext, ext_state)?;
+        Ok(())
     }
 
     fn visit_fold(
@@ -256,8 +318,9 @@ pub trait MutTermVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TEx
         term: &mut Term<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
-        self.visit(term, ext, ext_state);
+    ) -> Result<()> {
+        self.visit(term, ext, ext_state)?;
+        Ok(())
     }
     fn visit_unfold(
         &mut self,
@@ -266,8 +329,9 @@ pub trait MutTermVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TEx
         term: &mut Term<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
-        self.visit(term, ext, ext_state);
+    ) -> Result<()> {
+        self.visit(term, ext, ext_state)?;
+        Ok(())
     }
 
     fn visit_pack(
@@ -278,8 +342,9 @@ pub trait MutTermVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TEx
         signature: &mut Type<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
-        self.visit(evidence, ext, ext_state);
+    ) -> Result<()> {
+        self.visit(evidence, ext, ext_state)?;
+        Ok(())
     }
 
     fn visit_unpack(
@@ -289,13 +354,19 @@ pub trait MutTermVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TEx
         term: &mut Term<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
-        self.visit(package, ext, ext_state);
-        self.visit(term, ext, ext_state);
+    ) -> Result<()> {
+        self.visit(package, ext, ext_state)?;
+        self.visit(term, ext, ext_state)?;
+        Ok(())
     }
 
-    fn visit(&mut self, term: &mut Term<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
-        self.walk(term, ext, ext_state);
+    fn visit(
+        &mut self,
+        term: &mut Term<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &TExtDialect::DialectState,
+    ) -> Result<()> {
+        self.walk(term, ext, ext_state)
     }
 
     fn visit_ext(
@@ -304,9 +375,14 @@ pub trait MutTermVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TEx
         k: &TExtDialect::Kind,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    );
+    ) -> Result<()>;
 
-    fn walk(&mut self, term: &mut Term<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
+    fn walk(
+        &mut self,
+        term: &mut Term<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &TExtDialect::DialectState,
+    ) -> Result<()> {
         let sp = &mut term.span;
         match &mut term.kind {
             Kind::Extended(k) => self.visit_ext(sp, k, ext, ext_state),
@@ -334,18 +410,28 @@ pub trait MutTermVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TEx
 }
 
 pub trait PatternVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>: Sized {
-    fn visit_ext(&mut self, pat: &Pattern<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::DialectState);
-    fn visit_literal(&mut self, lit: &Literal, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {}
-    fn visit_variable(&mut self, var: &str, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {}
+    fn visit_ext(
+        &mut self,
+        pat: &Pattern<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &TExtDialect::DialectState,
+    ) -> Result<()>;
+    fn visit_literal(&mut self, lit: &Literal, ext: &mut TExt, ext_state: &TExtDialect::DialectState) -> Result<()> {
+        Ok(())
+    }
+    fn visit_variable(&mut self, var: &str, ext: &mut TExt, ext_state: &TExtDialect::DialectState) -> Result<()> {
+        Ok(())
+    }
     fn visit_product(
         &mut self,
         pats: &Vec<Pattern<TExtDialect>>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
+    ) -> Result<()> {
         for p in pats {
-            self.visit_pattern(p, ext, ext_state);
+            self.visit_pattern(p, ext, ext_state)?;
         }
+        Ok(())
     }
 
     fn visit_constructor(
@@ -354,13 +440,18 @@ pub trait PatternVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TEx
         pat: &Pattern<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
-        self.visit_pattern(pat, ext, ext_state);
+    ) -> Result<()> {
+        self.visit_pattern(pat, ext, ext_state)
     }
 
-    fn visit_pattern(&mut self, pattern: &Pattern<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
+    fn visit_pattern(
+        &mut self,
+        pattern: &Pattern<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &TExtDialect::DialectState,
+    ) -> Result<()> {
         match pattern {
-            Pattern::Any => {}
+            Pattern::Any => Ok(()),
             Pattern::Constructor(label, pat) => self.visit_constructor(label, pat, ext, ext_state),
             Pattern::Product(pat) => self.visit_product(pat, ext, ext_state),
             Pattern::Literal(lit) => self.visit_literal(lit, ext, ext_state),
@@ -371,99 +462,99 @@ pub trait PatternVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TEx
 }
 
 pub trait DialectChangingPatternVisitor<InDialect: SystemRDialect, OutDialect: SystemRDialect>: Sized {
-    fn visit_ext(&self, pat: &Pattern<InDialect>) -> Pattern<OutDialect>;
+    fn visit_ext(&self, pat: &Pattern<InDialect>) -> Result<Pattern<OutDialect>>;
 
-    fn visit_product(&self, pats: &Vec<Pattern<InDialect>>) -> Pattern<OutDialect> {
+    fn visit_product(&self, pats: &Vec<Pattern<InDialect>>) -> Result<Pattern<OutDialect>> {
         let mut out_pats = Vec::new();
         for p in pats {
-            let out_p = self.visit(p);
+            let out_p = self.visit(p)?;
             out_pats.push(out_p);
         }
-        Pattern::Product(out_pats)
+        Ok(Pattern::Product(out_pats))
     }
 
-    fn visit_constructor(&self, label: &str, pat: &Pattern<InDialect>) -> Pattern<OutDialect> {
-        let out_pat = self.visit(pat);
-        Pattern::Constructor(label.to_owned(), Box::new(out_pat))
+    fn visit_constructor(&self, label: &str, pat: &Pattern<InDialect>) -> Result<Pattern<OutDialect>> {
+        let out_pat = self.visit(pat)?;
+        Ok(Pattern::Constructor(label.to_owned(), Box::new(out_pat)))
     }
 
-    fn visit(&self, pat: &Pattern<InDialect>) -> Pattern<OutDialect> {
+    fn visit(&self, pat: &Pattern<InDialect>) -> Result<Pattern<OutDialect>> {
         match pat {
-            Pattern::Any => Pattern::Any,
+            Pattern::Any => Ok(Pattern::Any),
             Pattern::Constructor(label, pat) => self.visit_constructor(label, pat),
             Pattern::Product(pat) => self.visit_product(pat),
-            Pattern::Literal(lit) => Pattern::Literal(lit.clone()),
-            Pattern::Variable(var) => Pattern::Variable(var.clone()),
+            Pattern::Literal(lit) => Ok(Pattern::Literal(lit.clone())),
+            Pattern::Variable(var) => Ok(Pattern::Variable(var.clone())),
             Pattern::Extended(_) => self.visit_ext(pat),
         }
     }
 }
 
 pub trait DialectChangingTypeVisitor<InDialect: SystemRDialect, OutDialect: SystemRDialect>: Sized {
-    fn visit_pb(&self, i: &Type<InDialect>, r: &Type<InDialect>) -> Type<OutDialect> {
-        let out_i = self.visit(i);
-        let out_r = self.visit(r);
-        Type::PlatformBinding(Box::new(out_i), Box::new(out_r))
+    fn visit_pb(&self, i: &Type<InDialect>, r: &Type<InDialect>) -> Result<Type<OutDialect>> {
+        let out_i = self.visit(i)?;
+        let out_r = self.visit(r)?;
+        Ok(Type::PlatformBinding(Box::new(out_i), Box::new(out_r)))
     }
-    fn visit_var(&self, var: &usize) -> Type<OutDialect> {
-        Type::Var(*var)
+    fn visit_var(&self, var: &usize) -> Result<Type<OutDialect>> {
+        Ok(Type::Var(*var))
     }
-    fn visit_alias(&self, alias: &str) -> Type<OutDialect> {
-        Type::Alias(alias.to_owned())
-    }
-
-    fn visit_arrow(&self, ty1: &Type<InDialect>, ty2: &Type<InDialect>) -> Type<OutDialect> {
-        let out_ty1 = self.visit(ty1);
-        let out_ty2 = self.visit(ty2);
-        Type::Arrow(Box::new(out_ty1), Box::new(out_ty2))
+    fn visit_alias(&self, alias: &str) -> Result<Type<OutDialect>> {
+        Ok(Type::Alias(alias.to_owned()))
     }
 
-    fn visit_universal(&self, inner: &Type<InDialect>) -> Type<OutDialect> {
-        let out_inner = self.visit(inner);
-        Type::Universal(Box::new(out_inner))
+    fn visit_arrow(&self, ty1: &Type<InDialect>, ty2: &Type<InDialect>) -> Result<Type<OutDialect>> {
+        let out_ty1 = self.visit(ty1)?;
+        let out_ty2 = self.visit(ty2)?;
+        Ok(Type::Arrow(Box::new(out_ty1), Box::new(out_ty2)))
     }
 
-    fn visit_existential(&self, inner: &Type<InDialect>) -> Type<OutDialect> {
-        let out_inner = self.visit(inner);
-        Type::Existential(Box::new(out_inner))
+    fn visit_universal(&self, inner: &Type<InDialect>) -> Result<Type<OutDialect>> {
+        let out_inner = self.visit(inner)?;
+        Ok(Type::Universal(Box::new(out_inner)))
     }
 
-    fn visit_variant(&self, variant: &Vec<Variant<InDialect>>) -> Type<OutDialect> {
+    fn visit_existential(&self, inner: &Type<InDialect>) -> Result<Type<OutDialect>> {
+        let out_inner = self.visit(inner)?;
+        Ok(Type::Existential(Box::new(out_inner)))
+    }
+
+    fn visit_variant(&self, variant: &Vec<Variant<InDialect>>) -> Result<Type<OutDialect>> {
         let mut out_variant = Vec::new();
         for v in variant {
-            let out_ty = self.visit(&v.ty);
+            let out_ty = self.visit(&v.ty)?;
             let out_v = Variant {
                 label: v.label.clone(),
                 ty: out_ty,
             };
             out_variant.push(out_v)
         }
-        Type::Variant(out_variant)
+        Ok(Type::Variant(out_variant))
     }
 
-    fn visit_product(&self, product: &Vec<Type<InDialect>>) -> Type<OutDialect> {
+    fn visit_product(&self, product: &Vec<Type<InDialect>>) -> Result<Type<OutDialect>> {
         let mut out_product = Vec::new();
         for v in product {
-            let out_ty = self.visit(v);
+            let out_ty = self.visit(v)?;
             out_product.push(out_ty)
         }
-        Type::Product(out_product)
+        Ok(Type::Product(out_product))
     }
 
-    fn visit_rec(&self, ty: &Type<InDialect>) -> Type<OutDialect> {
-        let out_ty = self.visit(ty);
-        Type::Rec(Box::new(out_ty))
+    fn visit_rec(&self, ty: &Type<InDialect>) -> Result<Type<OutDialect>> {
+        let out_ty = self.visit(ty)?;
+        Ok(Type::Rec(Box::new(out_ty)))
     }
 
-    fn visit_ext(&self, ty: &Type<InDialect>) -> Type<OutDialect>;
+    fn visit_ext(&self, ty: &Type<InDialect>) -> Result<Type<OutDialect>>;
 
-    fn visit(&self, ty: &Type<InDialect>) -> Type<OutDialect> {
+    fn visit(&self, ty: &Type<InDialect>) -> Result<Type<OutDialect>> {
         match ty {
-            Type::Unit => Type::Unit,
-            Type::Bytes => Type::Bytes,
-            Type::Bool => Type::Bool,
-            Type::Nat => Type::Nat,
-            Type::Tag(t) => Type::Tag(t.clone()),
+            Type::Unit => Ok(Type::Unit),
+            Type::Bytes => Ok(Type::Bytes),
+            Type::Bool => Ok(Type::Bool),
+            Type::Nat => Ok(Type::Nat),
+            Type::Tag(t) => Ok(Type::Tag(t.clone())),
             Type::PlatformBinding(i, r) => self.visit_pb(i, r),
             Type::Var(v) => self.visit_var(v),
             Type::Variant(v) => self.visit_variant(v),
@@ -485,29 +576,35 @@ pub trait DialectChangingTermVisitor<
     TPatVisitor: DialectChangingPatternVisitor<InDialect, OutDialect>,
 >: Sized
 {
-    fn get_type_visitor(&self) -> TTypeVisitor;
-    fn get_pat_visitor(&self) -> TPatVisitor;
+    fn get_type_visitor(&self) -> Result<TTypeVisitor>;
+    fn get_pat_visitor(&self) -> Result<TPatVisitor>;
 
-    fn visit_lit(&self, sp: &Span, lit: &Literal) {}
-    fn visit_var(&self, sp: &Span, var: &usize) {}
-    fn visit_pb(&self, sp: &Span, idx: &usize) {}
-
-    fn visit_abs(&self, sp: &Span, ty: &Type<InDialect>, term: &Term<InDialect>) -> Term<OutDialect> {
-        let out_term = self.visit(term);
-        let out_ty = { self.get_type_visitor().visit(ty) };
-        Term {
-            span: *sp,
-            kind: Kind::Abs(Box::new(out_ty), Box::new(out_term)),
-        }
+    fn visit_lit(&self, sp: &Span, lit: &Literal) -> Result<()> {
+        Ok(())
+    }
+    fn visit_var(&self, sp: &Span, var: &usize) -> Result<()> {
+        Ok(())
+    }
+    fn visit_pb(&self, sp: &Span, idx: &usize) -> Result<()> {
+        Ok(())
     }
 
-    fn visit_app(&self, sp: &Span, t1: &Term<InDialect>, t2: &Term<InDialect>) -> Term<OutDialect> {
-        let out_t1 = self.visit(t1);
-        let out_t2 = self.visit(t2);
-        Term {
+    fn visit_abs(&self, sp: &Span, ty: &Type<InDialect>, term: &Term<InDialect>) -> Result<Term<OutDialect>> {
+        let out_term = self.visit(term)?;
+        let out_ty = { self.get_type_visitor()?.visit(ty) }?;
+        Ok(Term {
+            span: *sp,
+            kind: Kind::Abs(Box::new(out_ty), Box::new(out_term)),
+        })
+    }
+
+    fn visit_app(&self, sp: &Span, t1: &Term<InDialect>, t2: &Term<InDialect>) -> Result<Term<OutDialect>> {
+        let out_t1 = self.visit(t1)?;
+        let out_t2 = self.visit(t2)?;
+        Ok(Term {
             span: *sp,
             kind: Kind::App(Box::new(out_t1), Box::new(out_t2)),
-        }
+        })
     }
 
     fn visit_let(
@@ -516,32 +613,32 @@ pub trait DialectChangingTermVisitor<
         pat: &Pattern<InDialect>,
         t1: &Term<InDialect>,
         t2: &Term<InDialect>,
-    ) -> Term<OutDialect> {
-        let out_pat = self.get_pat_visitor().visit(pat);
-        let out_t1 = self.visit(t1);
-        let out_t2 = self.visit(t2);
-        Term {
+    ) -> Result<Term<OutDialect>> {
+        let out_pat = self.get_pat_visitor()?.visit(pat)?;
+        let out_t1 = self.visit(t1)?;
+        let out_t2 = self.visit(t2)?;
+        Ok(Term {
             span: *sp,
             kind: Kind::Let(Box::new(out_pat), Box::new(out_t1), Box::new(out_t2)),
-        }
+        })
     }
 
-    fn visit_tyabs(&self, sp: &Span, term: &Term<InDialect>) -> Term<OutDialect> {
-        let out_term = self.visit(term);
+    fn visit_tyabs(&self, sp: &Span, term: &Term<InDialect>) -> Result<Term<OutDialect>> {
+        let out_term = self.visit(term)?;
 
-        Term {
+        Ok(Term {
             span: *sp,
             kind: Kind::TyAbs(Box::new(out_term)),
-        }
+        })
     }
 
-    fn visit_tyapp(&self, sp: &Span, term: &Term<InDialect>, ty: &Type<InDialect>) -> Term<OutDialect> {
-        let out_term = self.visit(term);
-        let out_ty = self.get_type_visitor().visit(ty);
-        Term {
+    fn visit_tyapp(&self, sp: &Span, term: &Term<InDialect>, ty: &Type<InDialect>) -> Result<Term<OutDialect>> {
+        let out_term = self.visit(term)?;
+        let out_ty = self.get_type_visitor()?.visit(ty)?;
+        Ok(Term {
             span: *sp,
             kind: Kind::TyApp(Box::new(out_term), Box::new(out_ty)),
-        }
+        })
     }
 
     fn visit_injection(
@@ -550,21 +647,21 @@ pub trait DialectChangingTermVisitor<
         label: &String,
         term: &Term<InDialect>,
         ty: &Type<InDialect>,
-    ) -> Term<OutDialect> {
-        let out_term = self.visit(term);
-        let out_ty = self.get_type_visitor().visit(ty);
-        Term {
+    ) -> Result<Term<OutDialect>> {
+        let out_term = self.visit(term)?;
+        let out_ty = self.get_type_visitor()?.visit(ty)?;
+        Ok(Term {
             span: *sp,
             kind: Kind::Injection(label.to_owned(), Box::new(out_term), Box::new(out_ty)),
-        }
+        })
     }
 
-    fn visit_case(&self, sp: &Span, term: &Term<InDialect>, arms: &Vec<Arm<InDialect>>) -> Term<OutDialect> {
-        let out_term = self.visit(term);
+    fn visit_case(&self, sp: &Span, term: &Term<InDialect>, arms: &Vec<Arm<InDialect>>) -> Result<Term<OutDialect>> {
+        let out_term = self.visit(term)?;
         let mut out_arms = Vec::new();
         for arm in arms {
-            let out_arm_term = self.visit(&arm.term);
-            let out_pat = self.get_pat_visitor().visit(&arm.pat);
+            let out_arm_term = self.visit(&arm.term)?;
+            let out_pat = self.get_pat_visitor()?.visit(&arm.pat)?;
             let out_arm = Arm {
                 pat: out_pat,
                 span: arm.span,
@@ -573,51 +670,52 @@ pub trait DialectChangingTermVisitor<
             out_arms.push(out_arm);
         }
 
-        Term {
+        Ok(Term {
             span: *sp,
             kind: Kind::Case(Box::new(out_term), out_arms),
-        }
+        })
     }
 
-    fn visit_product(&self, sp: &Span, product: &Vec<Term<InDialect>>) -> Term<OutDialect> {
+    fn visit_product(&self, sp: &Span, product: &Vec<Term<InDialect>>) -> Result<Term<OutDialect>> {
         let mut out_product = Vec::new();
 
         for t in product {
-            let out_t = self.visit(t);
+            let out_t = self.visit(t)?;
             out_product.push(out_t);
         }
 
-        Term {
+        Ok(Term {
             span: *sp,
             kind: Kind::Product(out_product),
-        }
+        })
     }
 
-    fn visit_projection(&self, sp: &Span, term: &Term<InDialect>, index: &usize) -> Term<OutDialect> {
-        let out_term = self.visit(term);
-        Term {
+    fn visit_projection(&self, sp: &Span, term: &Term<InDialect>, index: &usize) -> Result<Term<OutDialect>> {
+        let out_term = self.visit(term)?;
+        Ok(Term {
             span: *sp,
             kind: Kind::Projection(Box::new(out_term), *index),
-        }
+        })
     }
 
-    fn visit_fold(&self, sp: &Span, ty: &Type<InDialect>, term: &Term<InDialect>) -> Term<OutDialect> {
-        let out_ty = self.get_type_visitor().visit(ty);
-        let out_term = self.visit(term);
+    fn visit_fold(&self, sp: &Span, ty: &Type<InDialect>, term: &Term<InDialect>) -> Result<Term<OutDialect>> {
+        let out_ty = self.get_type_visitor()?.visit(ty)?;
+        let out_term = self.visit(term)?;
 
-        Term {
+        Ok(Term {
             span: *sp,
             kind: Kind::Fold(Box::new(out_ty), Box::new(out_term)),
-        }
+        })
     }
-    fn visit_unfold(&self, sp: &Span, ty: &Type<InDialect>, term: &Term<InDialect>) -> Term<OutDialect> {
-        let out_ty = self.get_type_visitor().visit(ty);
-        let out_term = self.visit(term);
 
-        Term {
+    fn visit_unfold(&self, sp: &Span, ty: &Type<InDialect>, term: &Term<InDialect>) -> Result<Term<OutDialect>> {
+        let out_ty = self.get_type_visitor()?.visit(ty)?;
+        let out_term = self.visit(term)?;
+
+        Ok(Term {
             span: *sp,
             kind: Kind::Unfold(Box::new(out_ty), Box::new(out_term)),
-        }
+        })
     }
 
     fn visit_pack(
@@ -626,51 +724,51 @@ pub trait DialectChangingTermVisitor<
         witness: &Type<InDialect>,
         evidence: &Term<InDialect>,
         signature: &Type<InDialect>,
-    ) -> Term<OutDialect> {
-        let ty_visitor = self.get_type_visitor();
-        let witness = ty_visitor.visit(witness);
-        let signature = ty_visitor.visit(signature);
-        let evidence = self.visit(evidence);
+    ) -> Result<Term<OutDialect>> {
+        let ty_visitor = self.get_type_visitor()?;
+        let witness = ty_visitor.visit(witness)?;
+        let signature = ty_visitor.visit(signature)?;
+        let evidence = self.visit(evidence)?;
         let k = Kind::Pack(Box::new(witness), Box::new(evidence), Box::new(signature));
-        Term { span: *sp, kind: k }
+        Ok(Term { span: *sp, kind: k })
     }
 
-    fn visit_unpack(&self, sp: &Span, package: &Term<InDialect>, term: &Term<InDialect>) -> Term<OutDialect> {
-        let pkg = self.visit(package);
-        let t = self.visit(term);
+    fn visit_unpack(&self, sp: &Span, package: &Term<InDialect>, term: &Term<InDialect>) -> Result<Term<OutDialect>> {
+        let pkg = self.visit(package)?;
+        let t = self.visit(term)?;
         let k = Kind::Unpack(Box::new(pkg), Box::new(t));
-        Term { span: *sp, kind: k }
+        Ok(Term { span: *sp, kind: k })
     }
 
-    fn visit_ext(&self, term: &Term<InDialect>) -> Term<OutDialect>;
+    fn visit_ext(&self, term: &Term<InDialect>) -> Result<Term<OutDialect>>;
 
-    fn visit(&self, term: &Term<InDialect>) -> Term<OutDialect> {
+    fn visit(&self, term: &Term<InDialect>) -> Result<Term<OutDialect>> {
         let sp = &term.span;
         match &term.kind {
             Kind::Extended(_) => self.visit_ext(term),
-            Kind::Lit(l) => Term {
+            Kind::Lit(l) => Ok(Term {
                 span: *sp,
                 kind: Kind::Lit(l.clone()),
-            },
-            Kind::Var(v) => Term {
+            }),
+            Kind::Var(v) => Ok(Term {
                 span: *sp,
                 kind: Kind::Var(*v),
-            },
-            Kind::PlatformBinding(v) => Term {
+            }),
+            Kind::PlatformBinding(v) => Ok(Term {
                 span: *sp,
                 kind: Kind::PlatformBinding(*v),
-            },
+            }),
             Kind::Abs(ty, term) => self.visit_abs(sp, ty, term),
             Kind::App(t1, t2) => self.visit_app(sp, t1, t2),
             // Do we need a separate branch?
-            Kind::Fix(term) => Term {
+            Kind::Fix(term) => Ok(Term {
                 span: *sp,
-                kind: Kind::Fix(Box::new(self.visit(term))),
-            },
-            Kind::Primitive(p) => Term {
+                kind: Kind::Fix(Box::new(self.visit(term)?)),
+            }),
+            Kind::Primitive(p) => Ok(Term {
                 span: *sp,
                 kind: Kind::Primitive(*p),
-            },
+            }),
             Kind::Injection(label, tm, ty) => self.visit_injection(sp, label, tm, ty),
             Kind::Projection(term, idx) => self.visit_projection(sp, term, idx),
             Kind::Product(terms) => self.visit_product(sp, terms),

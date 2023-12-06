@@ -17,6 +17,9 @@ at your option.
 
 Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in system_r by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
 
+### pre-commit ritual:
+- `cargo fmt && cargo clippy && cargo test`
+
 # Copyright
 
 - All changes are copyright the contributors

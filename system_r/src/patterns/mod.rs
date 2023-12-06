@@ -3,6 +3,7 @@ use crate::system_r_util::span::Span;
 use crate::terms::{Kind, Literal, Term};
 use crate::type_check::{variant_field, Type};
 use crate::visit::PatternVisitor;
+use anyhow::Result;
 
 /// Patterns for case and let expressions
 #[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Hash)]
@@ -33,7 +34,9 @@ impl<TExtDialect: SystemRDialect> PatVarStack<TExtDialect> {
         ext_state: &TExtDialect::DialectState,
     ) -> Vec<String> {
         let mut p = Self::default();
-        p.visit_pattern(pat, ext, ext_state);
+        if let Err(e) = p.visit_pattern(pat, ext, ext_state) {
+            panic!("need result here {:?}", e)
+        }
         p.inner
     }
 }
@@ -41,8 +44,9 @@ impl<TExtDialect: SystemRDialect> PatVarStack<TExtDialect> {
 impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> PatternVisitor<TExtDialect, TExt>
     for PatVarStack<TExtDialect>
 {
-    fn visit_variable(&mut self, var: &str, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
+    fn visit_variable(&mut self, var: &str, ext: &mut TExt, ext_state: &TExtDialect::DialectState) -> Result<()> {
         self.inner.push(var.to_owned());
+        Ok(())
     }
 
     fn visit_ext(
@@ -50,8 +54,8 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> PatternVi
         pat: &Pattern<TExtDialect>,
         ext: &mut TExt,
         ext_state: &<TExtDialect as SystemRDialect>::DialectState,
-    ) {
-        panic!("not implemented")
+    ) -> Result<()> {
+        Err(anyhow!("not implemented"))
     }
 }
 
@@ -66,7 +70,9 @@ impl<TExtDialect: SystemRDialect> PatternCount<TExtDialect> {
         ext_state: &TExtDialect::DialectState,
     ) -> usize {
         let mut p = PatternCount(0, Default::default(), Default::default());
-        p.visit_pattern(pat, ext, ext_state);
+        if let Err(e) = p.visit_pattern(pat, ext, ext_state) {
+            panic!("need result here {:?}", e)
+        }
         p.0
     }
 }
@@ -74,8 +80,9 @@ impl<TExtDialect: SystemRDialect> PatternCount<TExtDialect> {
 impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> PatternVisitor<TExtDialect, TExt>
     for PatternCount<TExtDialect>
 {
-    fn visit_variable(&mut self, var: &str, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
+    fn visit_variable(&mut self, var: &str, ext: &mut TExt, ext_state: &TExtDialect::DialectState) -> Result<()> {
         self.0 += 1;
+        Ok(())
     }
 
     fn visit_ext(
@@ -83,8 +90,8 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> PatternVi
         pat: &Pattern<TExtDialect>,
         ext: &mut TExt,
         ext_state: &<TExtDialect as SystemRDialect>::DialectState,
-    ) {
-        panic!("not implemented")
+    ) -> Result<()> {
+        Err(anyhow!("not implemented"))
     }
 }
 
@@ -138,7 +145,9 @@ impl<'ty, TExtDialect: SystemRDialect> PatTyStack<TExtDialect> {
             ty: ty.clone(),
             inner: Vec::with_capacity(16),
         };
-        p.visit_pattern(pat, ext, ext_state);
+        if let Err(e) = p.visit_pattern(pat, ext, ext_state) {
+            panic!("need result here {:?}", e)
+        }
         p.inner
     }
 }
@@ -151,15 +160,16 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> PatternVi
         pats: &Vec<Pattern<TExtDialect>>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
+    ) -> Result<()> {
         if let Type::Product(tys) = self.ty.clone() {
             let ty = Type::Product(tys.clone());
             for (ty, pat) in tys.iter().zip(pats.iter()) {
                 self.ty = ty.clone();
-                self.visit_pattern(pat, ext, ext_state);
+                self.visit_pattern(pat, ext, ext_state)?;
             }
             self.ty = ty;
         }
+        Ok(())
     }
 
     fn visit_constructor(
@@ -168,29 +178,44 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> PatternVi
         pat: &Pattern<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
+    ) -> Result<()> {
         match self.ty.clone() {
             Type::Variant(vs) => {
                 let ty = self.ty.clone();
                 self.ty = variant_field::<TExtDialect>(&vs, label, Span::zero()).unwrap().clone();
-                self.visit_pattern(pat, ext, ext_state);
+                self.visit_pattern(pat, ext, ext_state)?;
                 self.ty = ty;
+                Ok(())
             }
             Type::Extended(v) => {
                 ext.pat_visit_constructor_of_ext(ext_state, self, label, pat, &v);
+                Ok(())
             }
-            _ => {}
+            _ => Ok(()),
         }
     }
 
-    fn visit_ext(&mut self, p: &Pattern<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
-        panic!("not impl")
+    fn visit_ext(
+        &mut self,
+        p: &Pattern<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &TExtDialect::DialectState,
+    ) -> Result<()> {
+        Err(anyhow!("not impl"))
     }
 
-    fn visit_pattern(&mut self, pattern: &Pattern<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
+    fn visit_pattern(
+        &mut self,
+        pattern: &Pattern<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &TExtDialect::DialectState,
+    ) -> Result<()> {
         match pattern {
-            Pattern::Any | Pattern::Literal(_) => {}
-            Pattern::Variable(_) => self.inner.push(self.ty.clone()),
+            Pattern::Any | Pattern::Literal(_) => Ok(()),
+            Pattern::Variable(_) => {
+                self.inner.push(self.ty.clone());
+                Ok(())
+            }
             Pattern::Constructor(label, pat) => self.visit_constructor(label, pat, ext, ext_state),
             Pattern::Product(pats) => self.visit_product(pats, ext, ext_state),
             Pattern::Extended(_) => self.visit_ext(pattern, ext, ext_state),

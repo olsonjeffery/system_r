@@ -4,6 +4,7 @@ use crate::system_r_util::span::Span;
 use crate::terms::{Arm, Kind, Term};
 use crate::type_check::Type;
 use crate::visit::{MutTermVisitor, MutTypeVisitor};
+use anyhow::Result;
 
 pub struct Shift {
     cutoff: usize,
@@ -17,10 +18,17 @@ impl Shift {
 }
 
 impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVisitor<TExtDialect, TExt> for Shift {
-    fn visit_var(&mut self, sp: &mut Span, var: &mut usize, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
+    fn visit_var(
+        &mut self,
+        sp: &mut Span,
+        var: &mut usize,
+        ext: &mut TExt,
+        ext_state: &TExtDialect::DialectState,
+    ) -> Result<()> {
         if *var >= self.cutoff {
             *var = (*var as isize + self.shift) as usize;
         }
+        Ok(())
     }
 
     fn visit_abs(
@@ -30,10 +38,11 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
         term: &mut Term<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
+    ) -> Result<(), anyhow::Error> {
         self.cutoff += 1;
-        self.visit(term, ext, ext_state);
+        self.visit(term, ext, ext_state)?;
         self.cutoff -= 1;
+        Ok(())
     }
 
     fn visit_let(
@@ -44,12 +53,13 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
         t2: &mut Term<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
-        self.visit(t1, ext, ext_state);
+    ) -> Result<()> {
+        self.visit(t1, ext, ext_state)?;
         let c = PatternCount::<TExtDialect>::collect(pat, ext, ext_state);
         self.cutoff += c;
-        self.visit(t2, ext, ext_state);
+        self.visit(t2, ext, ext_state)?;
         self.cutoff -= c;
+        Ok(())
     }
 
     fn visit_case(
@@ -59,14 +69,15 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
         arms: &mut Vec<Arm<TExtDialect>>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
-        self.visit(term, ext, ext_state);
+    ) -> Result<()> {
+        self.visit(term, ext, ext_state)?;
         for arm in arms {
             let c = PatternCount::<TExtDialect>::collect(&arm.pat, ext, ext_state);
             self.cutoff += c;
-            self.visit(&mut arm.term, ext, ext_state);
+            self.visit(&mut arm.term, ext, ext_state)?;
             self.cutoff -= c;
         }
+        Ok(())
     }
 
     fn visit_unpack(
@@ -76,11 +87,12 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
         term: &mut Term<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
-        self.visit(package, ext, ext_state);
+    ) -> Result<()> {
+        self.visit(package, ext, ext_state)?;
         self.cutoff += 1;
-        self.visit(term, ext, ext_state);
+        self.visit(term, ext, ext_state)?;
         self.cutoff -= 1;
+        Ok(())
     }
 
     fn visit_ext(
@@ -89,8 +101,8 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
         k: &<TExtDialect as SystemRDialect>::Kind,
         ext: &mut TExt,
         ext_state: &<TExtDialect as SystemRDialect>::DialectState,
-    ) {
-        panic!("not implemented")
+    ) -> Result<(), anyhow::Error> {
+        Err(anyhow!("not implemented"))
     }
 }
 
@@ -115,10 +127,11 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
         term: &mut Term<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
+    ) -> Result<()> {
         self.cutoff += 1;
-        self.visit(term, ext, ext_state);
+        self.visit(term, ext, ext_state)?;
         self.cutoff -= 1;
+        Ok(())
     }
 
     fn visit_let(
@@ -129,12 +142,13 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
         t2: &mut Term<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
-        self.visit(t1, ext, ext_state);
+    ) -> Result<()> {
+        self.visit(t1, ext, ext_state)?;
         let c = PatternCount::<TExtDialect>::collect(pat, ext, ext_state);
         self.cutoff += c;
-        self.visit(t2, ext, ext_state);
+        self.visit(t2, ext, ext_state)?;
         self.cutoff -= c;
+        Ok(())
     }
 
     fn visit_case(
@@ -144,14 +158,15 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
         arms: &mut Vec<Arm<TExtDialect>>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
-        self.visit(term, ext, ext_state);
+    ) -> Result<()> {
+        self.visit(term, ext, ext_state)?;
         for arm in arms {
             let c = PatternCount::<TExtDialect>::collect(&arm.pat, ext, ext_state);
             self.cutoff += c;
-            self.visit(&mut arm.term, ext, ext_state);
+            self.visit(&mut arm.term, ext, ext_state)?;
             self.cutoff -= c;
         }
+        Ok(())
     }
 
     fn visit_unpack(
@@ -161,19 +176,26 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
         term: &mut Term<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
-        self.visit(package, ext, ext_state);
+    ) -> Result<()> {
+        self.visit(package, ext, ext_state)?;
         self.cutoff += 1;
-        self.visit(term, ext, ext_state);
+        self.visit(term, ext, ext_state)?;
         self.cutoff -= 1;
+        Ok(())
     }
 
-    fn visit(&mut self, term: &mut Term<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
+    fn visit(
+        &mut self,
+        term: &mut Term<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &TExtDialect::DialectState,
+    ) -> Result<(), anyhow::Error> {
         let sp = &mut term.span;
         match &mut term.kind {
             Kind::Var(v) if *v == self.cutoff => {
-                Shift::new(self.cutoff as isize).visit(&mut self.term, ext, ext_state);
+                Shift::new(self.cutoff as isize).visit(&mut self.term, ext, ext_state)?;
                 *term = self.term.clone();
+                Ok(())
             }
             _ => self.walk(term, ext, ext_state),
         }
@@ -185,8 +207,8 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
         k: &<TExtDialect as SystemRDialect>::Kind,
         ext: &mut TExt,
         ext_state: &<TExtDialect as SystemRDialect>::DialectState,
-    ) {
-        panic!("not implemented")
+    ) -> Result<(), anyhow::Error> {
+        Err(anyhow!("not implemented"))
     }
 }
 
@@ -200,11 +222,11 @@ impl<TExtDialect: SystemRDialect> TyTermSubst<TExtDialect> {
         ty: Type<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) -> TyTermSubst<TExtDialect> {
+    ) -> Result<TyTermSubst<TExtDialect>> {
         use crate::type_check::visit::*;
         let mut ty = ty;
-        Shift::new(1).visit(&mut ty, ext, ext_state);
-        TyTermSubst { cutoff: 0, ty }
+        Shift::new(1).visit(&mut ty, ext, ext_state)?;
+        Ok(TyTermSubst { cutoff: 0, ty })
     }
 
     fn visit_ty<TExt: SystemRExtension<TExtDialect>>(
@@ -212,12 +234,12 @@ impl<TExtDialect: SystemRDialect> TyTermSubst<TExtDialect> {
         ty: &mut Type<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
+    ) -> Result<()> {
         let mut s = crate::type_check::visit::Subst {
             cutoff: self.cutoff,
             ty: self.ty.clone(),
         };
-        s.visit(ty, ext, ext_state);
+        s.visit(ty, ext, ext_state)
     }
 }
 
@@ -231,10 +253,10 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
         term: &mut Term<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
+    ) -> Result<()> {
         // self.cutoff += 1;
-        self.visit_ty(ty, ext, ext_state);
-        self.visit(term, ext, ext_state);
+        self.visit_ty(ty, ext, ext_state)?;
+        self.visit(term, ext, ext_state)
         // self.cutoff -= 1;
     }
 
@@ -245,9 +267,9 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
         ty: &mut Type<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
-        self.visit_ty(ty, ext, ext_state);
-        self.visit(term, ext, ext_state);
+    ) -> Result<()> {
+        self.visit_ty(ty, ext, ext_state)?;
+        self.visit(term, ext, ext_state)
     }
 
     fn visit_tyabs(
@@ -256,10 +278,11 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
         term: &mut Term<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
+    ) -> Result<()> {
         self.cutoff += 1;
-        self.visit(term, ext, ext_state);
+        self.visit(term, ext, ext_state)?;
         self.cutoff -= 1;
+        Ok(())
     }
 
     fn visit_fold(
@@ -269,9 +292,9 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
         term: &mut Term<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
-        self.visit_ty(ty, ext, ext_state);
-        self.visit(term, ext, ext_state);
+    ) -> Result<()> {
+        self.visit_ty(ty, ext, ext_state)?;
+        self.visit(term, ext, ext_state)
     }
 
     fn visit_unfold(
@@ -281,9 +304,9 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
         term: &mut Term<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
-        self.visit_ty(ty, ext, ext_state);
-        self.visit(term, ext, ext_state);
+    ) -> Result<()> {
+        self.visit_ty(ty, ext, ext_state)?;
+        self.visit(term, ext, ext_state)
     }
 
     fn visit_unpack(
@@ -293,11 +316,12 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
         term: &mut Term<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
-        self.visit(package, ext, ext_state);
+    ) -> Result<()> {
+        self.visit(package, ext, ext_state)?;
         self.cutoff += 1;
-        self.visit(term, ext, ext_state);
+        self.visit(term, ext, ext_state)?;
         self.cutoff -= 1;
+        Ok(())
     }
 
     fn visit_pack(
@@ -308,10 +332,10 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
         sig: &mut Type<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
-        self.visit_ty(wit, ext, ext_state);
-        self.visit(body, ext, ext_state);
-        self.visit_ty(sig, ext, ext_state);
+    ) -> Result<()> {
+        self.visit_ty(wit, ext, ext_state)?;
+        self.visit(body, ext, ext_state)?;
+        self.visit_ty(sig, ext, ext_state)
     }
 
     fn visit_injection(
@@ -322,9 +346,9 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
         ty: &mut Type<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
-        self.visit_ty(ty, ext, ext_state);
-        self.visit(term, ext, ext_state);
+    ) -> Result<()> {
+        self.visit_ty(ty, ext, ext_state)?;
+        self.visit(term, ext, ext_state)
     }
 
     fn visit_ext(
@@ -333,8 +357,8 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
         k: &<TExtDialect as SystemRDialect>::Kind,
         ext: &mut TExt,
         ext_state: &<TExtDialect as SystemRDialect>::DialectState,
-    ) {
-        panic!("not implemented")
+    ) -> Result<()> {
+        Err(anyhow!("not implemented"))
     }
 }
 
@@ -348,7 +372,12 @@ pub struct InjRewriter<TExtDialect: SystemRDialect>(pub TExtDialect::Pattern, pu
 impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVisitor<TExtDialect, TExt>
     for InjRewriter<TExtDialect>
 {
-    fn visit(&mut self, term: &mut Term<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
+    fn visit(
+        &mut self,
+        term: &mut Term<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &TExtDialect::DialectState,
+    ) -> Result<()> {
         match &mut term.kind {
             Kind::Injection(label, val, ty) => {
                 if let Type::Rec(inner) = *ty.clone() {
@@ -360,7 +389,7 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
 
                     *term = Term::new(Kind::Fold(ty.clone(), Box::new(rewrite_ty)), term.span);
                 }
-                self.walk(term, ext, ext_state);
+                self.walk(term, ext, ext_state)
             }
             _ => self.walk(term, ext, ext_state),
         }
@@ -372,7 +401,7 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
         k: &<TExtDialect as SystemRDialect>::Kind,
         ext: &mut TExt,
         ext_state: &<TExtDialect as SystemRDialect>::DialectState,
-    ) {
-        panic!("not implemented")
+    ) -> Result<()> {
+        Err(anyhow!("not implemented"))
     }
 }

@@ -103,7 +103,10 @@ impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
     }
 
     pub fn de_alias<TExt: SystemRExtension<TExtDialect>>(&mut self, term: &mut Term<TExtDialect>, ext: &mut TExt) {
-        crate::visit::MutTermVisitor::visit(self, term, ext, &self.ext_state.clone())
+        match crate::visit::MutTermVisitor::visit(self, term, ext, &self.ext_state.clone()) {
+            Ok(t) => t,
+            Err(e) => panic!("unimpl panic handler {:?}", e),
+        }
     }
 
     pub fn to_ext_state(self) -> TExtDialect::DialectState {
@@ -335,9 +338,15 @@ impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
                 let ty1 = self.type_check(term, ext)?;
                 match ty1 {
                     Type::Universal(mut ty12) => {
-                        Shift::new(1).visit(&mut ty, ext, &self.ext_state);
-                        Subst::new(*ty.clone()).visit(&mut ty12, ext, &self.ext_state);
-                        Shift::new(-1).visit(&mut ty12, ext, &self.ext_state);
+                        if let Err(e) = Shift::new(1).visit(&mut ty, ext, &self.ext_state) {
+                            panic!("need result here {:?}", e)
+                        }
+                        if let Err(e) = Subst::new(*ty.clone()).visit(&mut ty12, ext, &self.ext_state) {
+                            panic!("need result here {:?}", e)
+                        }
+                        if let Err(e) = Shift::new(-1).visit(&mut ty12, ext, &self.ext_state) {
+                            panic!("need result here {:?}", e)
+                        }
                         Ok(*ty12)
                     }
                     _ => Err(Diagnostic::error(term.span, format!("Expected a universal type, not {:?}", ty1)).into()),
@@ -426,9 +435,15 @@ pub fn subst<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
     ext: &mut TExt,
     ext_state: &TExtDialect::DialectState,
 ) -> Type<TExtDialect> {
-    Shift::new(1).visit(&mut s, ext, ext_state);
-    Subst::new(s).visit(&mut t, ext, ext_state);
-    Shift::new(-1).visit(&mut t, ext, ext_state);
+    if let Err(e) = Shift::new(1).visit(&mut s, ext, ext_state) {
+        panic!("need result here {:?}", e)
+    }
+    if let Err(e) = Subst::new(s).visit(&mut t, ext, ext_state) {
+        panic!("need result here {:?}", e)
+    }
+    if let Err(e) = Shift::new(-1).visit(&mut t, ext, ext_state) {
+        panic!("need result here {:?}", e)
+    }
     t
 }
 
@@ -444,19 +459,26 @@ impl<'ctx, TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> Mut
         ty: &mut Type<TExtDialect>,
         ext: &mut TExt,
         ext_state: &<TExtDialect as SystemRDialect>::DialectState,
-    ) {
+    ) -> Result<()> {
         ext.ty_aliaser_visit_ext(self, ty, ext_state);
+        Ok(())
     }
 
-    fn visit(&mut self, ty: &mut Type<TExtDialect>, ext: &mut TExt, ext_state: &TExtDialect::DialectState) {
+    fn visit(
+        &mut self,
+        ty: &mut Type<TExtDialect>,
+        ext: &mut TExt,
+        ext_state: &TExtDialect::DialectState,
+    ) -> Result<()> {
         match ty {
-            Type::Unit | Type::Bool | Type::Nat | Type::Tag(_) | Type::Bytes => {}
-            Type::Var(v) => {}
-            Type::PlatformBinding(i, r) => {}
+            Type::Unit | Type::Bool | Type::Nat | Type::Tag(_) | Type::Bytes => Ok(()),
+            Type::Var(v) => Ok(()),
+            Type::PlatformBinding(i, r) => Ok(()),
             Type::Alias(v) => {
                 if let Some(aliased) = self.map.get(v) {
                     *ty = aliased.clone();
                 }
+                Ok(())
             }
             Type::Variant(v) => self.visit_variant(v, ext, ext_state),
             Type::Product(v) => self.visit_product(v, ext, ext_state),
@@ -480,9 +502,9 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
         term: &mut Term<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
-        self.aliaser().visit(ty, ext, ext_state);
-        self.visit(term, ext, ext_state);
+    ) -> Result<()> {
+        self.aliaser().visit(ty, ext, ext_state)?;
+        self.visit(term, ext, ext_state)
     }
 
     fn visit_tyapp(
@@ -492,9 +514,9 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
         ty: &mut Type<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
-        self.aliaser().visit(ty, ext, ext_state);
-        self.visit(term, ext, ext_state);
+    ) -> Result<()> {
+        self.aliaser().visit(ty, ext, ext_state)?;
+        self.visit(term, ext, ext_state)
     }
 
     fn visit_injection(
@@ -505,9 +527,9 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
         ty: &mut Type<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
-        self.aliaser().visit(ty, ext, ext_state);
-        self.visit(term, ext, ext_state);
+    ) -> Result<()> {
+        self.aliaser().visit(ty, ext, ext_state)?;
+        self.visit(term, ext, ext_state)
     }
 
     fn visit_fold(
@@ -517,9 +539,9 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
         tm: &mut Term<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
-        self.aliaser().visit(ty, ext, ext_state);
-        self.visit(tm, ext, ext_state);
+    ) -> Result<()> {
+        self.aliaser().visit(ty, ext, ext_state)?;
+        self.visit(tm, ext, ext_state)
     }
 
     fn visit_unfold(
@@ -529,9 +551,9 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
         tm: &mut Term<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) {
-        self.aliaser().visit(ty, ext, ext_state);
-        self.visit(tm, ext, ext_state);
+    ) -> Result<()> {
+        self.aliaser().visit(ty, ext, ext_state)?;
+        self.visit(tm, ext, ext_state)
     }
 
     fn visit_ext(
@@ -540,8 +562,8 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
         k: &<TExtDialect as SystemRDialect>::Kind,
         ext: &mut TExt,
         ext_state: &<TExtDialect as SystemRDialect>::DialectState,
-    ) {
-        panic!("not implemented")
+    ) -> Result<()> {
+        Err(anyhow!("not implemented"))
     }
 }
 
