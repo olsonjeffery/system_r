@@ -4,6 +4,10 @@ Feature: Technical Debt
     # Incomplete list:
     # - pervasive Result<> everywhere;
     #   - panic removal/convert-API to result (45 remaining)
+    #     - Add SystemRError
+    #       - SystemRResult newtype for anyhow::Result<T> with conversion of all errors into a SystemRError, should subsume ALL panics
+    #       - abstract-away all error emissions from system_r, require trait impl for err reporting (ie into romeo)
+    #       - really dense POTENTIAL error information; should be suitable to be subsumed by romeo and do proper error reporting
     #     - PatternCount & all collects that take ext
     #     - dialect
     #         - lexer->parser
@@ -14,4 +18,4 @@ Feature: Technical Debt
     #    - #[deny(missing_docs)]
     #    - add DOCUMENTATION.md with executable/test-code recreating what's in testing.mod for some bottom dialect code
     # - clone->Rc, audit for removal
-    # - specs become freestanding crate, have feature romeo feature where
+    # - specs become freestanding crate, double-up testing for romeo-interp & wasm backends

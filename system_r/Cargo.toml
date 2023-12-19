@@ -13,7 +13,7 @@ anyhow = { version = "1.0.75" }
 [dev-dependencies]
 futures = "0.3"
 chrono = "0.4"
-cucumber = { version = "0.20.1", features = ["output-json"] }
+cucumber = { version = "0.20.2", features = ["output-json"] }
 
 [[test]]
 name = "specs"
