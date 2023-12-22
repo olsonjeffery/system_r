@@ -1,5 +1,9 @@
+/// Pattern content shared throughout the crate;
+/// cyclicly dependent with pattern-related code in
+/// both syntax & typecheck::patterns
+
 use crate::dialect::{SystemRDialect, SystemRExtension};
-use crate::system_r_util::span::Span;
+use crate::util::span::Span;
 use crate::terms::{Kind, Literal, Term};
 use crate::type_check::{variant_field, Type};
 use crate::visit::PatternVisitor;
@@ -24,7 +28,7 @@ pub enum Pattern<TExtDialect: SystemRDialect> {
 #[derive(Clone, Debug, Default)]
 pub struct PatVarStack<TExtDialect: SystemRDialect> {
     pub inner: Vec<String>,
-    _d: TExtDialect,
+    _d: TExtDialect, // :3
 }
 
 impl<TExtDialect: SystemRDialect> PatVarStack<TExtDialect> {

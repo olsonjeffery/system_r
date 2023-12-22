@@ -16,7 +16,7 @@ use std::collections::HashMap;
 
 use crate::bottom::BottomDialect;
 use crate::dialect::SystemRDialect;
-use crate::system_r_util::span::Span;
+use crate::util::span::Span;
 use crate::terms::Term;
 use crate::type_check::Variant;
 use crate::{

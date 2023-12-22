@@ -40,7 +40,7 @@ limitations under the License.
 
 use crate::dialect::{SystemRDialect, SystemRExtension};
 use crate::patterns::Pattern;
-use crate::system_r_util::span::Span;
+use crate::util::span::Span;
 use crate::terms::{Arm, Kind, Literal, Primitive, Term};
 use crate::type_check::{Type, Variant};
 use anyhow::Result;

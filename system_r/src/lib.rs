@@ -48,7 +48,7 @@ pub mod eval;
 pub mod patterns;
 pub mod platform_bindings;
 pub mod syntax;
-pub mod system_r_util;
+pub mod util;
 pub mod terms;
 pub mod testing;
 pub mod type_check;

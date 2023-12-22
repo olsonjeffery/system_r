@@ -1,6 +1,6 @@
 use std::{error::Error, fmt::Display};
 
-use crate::system_r_util::span::Span;
+use crate::util::span::Span;
 #[derive(Debug, Default, Copy, Clone)]
 pub enum Level {
     #[default]

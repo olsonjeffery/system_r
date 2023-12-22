@@ -366,7 +366,7 @@ fn type_subst(s: Type<BottomDialect>, t: &mut Term<BottomDialect>) {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::system_r_util::span::Span;
+    use crate::util::span::Span;
 
     #[test]
     fn literal() {

@@ -1,7 +1,7 @@
 use super::{Token, TokenKind};
 use crate::dialect::SystemRDialect;
 use crate::dialect::SystemRExtension;
-use crate::system_r_util::span::{Location, Span};
+use crate::util::span::{Location, Span};
 use std::char;
 use std::iter::Peekable;
 use std::str::Chars;

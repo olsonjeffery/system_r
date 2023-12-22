@@ -1,7 +1,7 @@
 //! Diagnostic handling for errors detected in source code.
 //!
 //! Dropping a [`Diagnostic`] without calling `emit` will cause a [`panic`]!
-use crate::system_r_util::span::*;
+use crate::util::span::*;
 
 /// Struct that handles collecting and reporting Parser errors and diagnostics
 #[derive(Clone, Debug, Default)]

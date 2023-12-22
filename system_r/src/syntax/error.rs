@@ -1,6 +1,6 @@
 use core::fmt;
 
-use crate::{dialect::ExtendedTokenKind, system_r_util::span::Span};
+use crate::{dialect::ExtendedTokenKind, util::span::Span};
 
 use super::{parser::ErrorKind, Token};
 

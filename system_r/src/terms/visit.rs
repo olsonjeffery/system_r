@@ -1,6 +1,6 @@
 use crate::dialect::{SystemRDialect, SystemRExtension};
 use crate::patterns::{Pattern, PatternCount};
-use crate::system_r_util::span::Span;
+use crate::util::span::Span;
 use crate::terms::{Arm, Kind, Term};
 use crate::type_check::Type;
 use crate::visit::{MutTermVisitor, MutTypeVisitor};

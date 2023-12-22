@@ -5,7 +5,7 @@ pub mod visit;
 use crate::diagnostics::*;
 use crate::dialect::{SystemRDialect, SystemRExtension};
 use crate::platform_bindings::Bindings;
-use crate::system_r_util::span::Span;
+use crate::util::span::Span;
 use crate::terms::{Kind, Literal, Primitive, Term};
 use crate::visit::{MutTermVisitor, MutTypeVisitor};
 use anyhow::Result;

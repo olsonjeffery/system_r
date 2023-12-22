@@ -5,8 +5,8 @@ use super::{Token, TokenKind};
 use crate::bottom::{BottomDialect, BottomExtension};
 use crate::dialect::{ExtendedTokenKind, SystemRDialect, SystemRExtension};
 
-use crate::system_r_util::diagnostic::Diagnostic;
-use crate::system_r_util::span::*;
+use crate::util::diagnostic::Diagnostic;
+use crate::util::span::*;
 use core::fmt;
 
 use crate::patterns::{PatVarStack, Pattern};
