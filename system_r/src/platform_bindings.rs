@@ -20,8 +20,7 @@ use crate::util::span::Span;
 use crate::terms::Term;
 use crate::type_check::Variant;
 use crate::{
-    diagnostics::Diagnostic,
-    type_check::{Type, TypeChecker},
+    type_check::{Type, TypeChecker, error::TypeCheckerDiagnosticInfo},
 };
 use anyhow::Result;
 
@@ -88,7 +87,7 @@ impl<'a> Bindings {
 
 fn resolve_pb_type<TExtDialect: SystemRDialect>(ty_in: Type<BottomDialect>) -> Result<Type<TExtDialect>> {
     match ty_in {
-        Type::Extended(v) => Err(Diagnostic::error(
+        Type::Extended(v) => Err(TypeCheckerDiagnosticInfo::error(
             Default::default(),
             "Platform binding with extended args type; not allowed",
         )
@@ -102,7 +101,7 @@ fn resolve_pb_type<TExtDialect: SystemRDialect>(ty_in: Type<BottomDialect>) -> R
         Type::Bool => Ok(Type::Bool),
         Type::Existential(a) => Ok(Type::Existential(Box::new(resolve_pb_type(*a)?))),
         Type::Nat => Ok(Type::Nat),
-        Type::PlatformBinding(_, _) => Err(Diagnostic::error(
+        Type::PlatformBinding(_, _) => Err(TypeCheckerDiagnosticInfo::error(
             Default::default(),
             "Platforming with platform-binding-type vars; shouldn't happen",
         )
@@ -141,7 +140,7 @@ impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
                 let ret_resolved = resolve_pb_type(wc.2.clone())?;
                 Ok(Type::PlatformBinding(Box::new(args_resolved), Box::new(ret_resolved)))
             }
-            None => Err(Diagnostic::error(
+            None => Err(TypeCheckerDiagnosticInfo::error(
                 *span,
                 format!("No matching platform_binding registration for idx {}", idx),
             )

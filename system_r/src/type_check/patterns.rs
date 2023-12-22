@@ -13,7 +13,7 @@
 //! <http://moscova.inria.fr/~maranget/papers/warn/index.html>
 
 use super::*;
-use crate::diagnostics::*;
+use crate::type_check::error::*;
 use crate::dialect::{SystemRDialect, SystemRExtension};
 use crate::patterns::{PatTyStack, Pattern};
 use crate::terms::*;
@@ -238,11 +238,11 @@ impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
 
                 set.insert(arm_ty);
                 if !matrix.add_pattern(&arm.pat, ext, &mut self.ext_state) {
-                    return Err(Diagnostic::error(arm.span, "unreachable pattern!").into());
+                    return Err(TypeCheckerDiagnosticInfo::error(arm.span, "unreachable pattern!").into());
                 }
             } else {
                 return Err(
-                    Diagnostic::error(expr.span, format!("case binding has a type {:?}", &matrix.expr_ty))
+                    TypeCheckerDiagnosticInfo::error(expr.span, format!("case binding has a type {:?}", &matrix.expr_ty))
                         .message(
                             arm.span,
                             format!(
@@ -256,16 +256,16 @@ impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
         }
 
         if set.len() != 1 {
-            return Err(Diagnostic::error(expr.span, format!("incompatible arms! {:?} expr: {:?}", set, expr)).into());
+            return Err(TypeCheckerDiagnosticInfo::error(expr.span, format!("incompatible arms! {:?} expr: {:?}", set, expr)).into());
         }
 
         if matrix.exhaustive(ext, &mut self.ext_state) {
             match set.into_iter().next() {
                 Some(s) => Ok(s),
-                None => Err(Diagnostic::error(expr.span, "probably unreachable - expected variant type!").into()),
+                None => Err(TypeCheckerDiagnosticInfo::error(expr.span, "probably unreachable - expected variant type!").into()),
             }
         } else {
-            Err(Diagnostic::error(expr.span, "patterns are not exhaustive!").into())
+            Err(TypeCheckerDiagnosticInfo::error(expr.span, "patterns are not exhaustive!").into())
         }
     }
 

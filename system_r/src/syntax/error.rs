@@ -1,3 +1,4 @@
+//! Diagnostic handling for errors detected in source code.
 use core::fmt;
 
 use crate::{dialect::ExtendedTokenKind, util::span::Span};
@@ -5,25 +6,94 @@ use crate::{dialect::ExtendedTokenKind, util::span::Span};
 use super::{parser::ErrorKind, Token};
 
 #[derive(Clone)]
-pub struct Error<TExtTokenKind: ExtendedTokenKind> {
+pub struct ParserError<TExtTokenKind: ExtendedTokenKind> {
     pub span: Span,
     pub tok: Token<TExtTokenKind>,
     pub kind: ErrorKind<TExtTokenKind>,
 }
 
-impl<T: ExtendedTokenKind + fmt::Debug + fmt::Display> std::error::Error for Error<T> {}
+impl<T: ExtendedTokenKind + fmt::Debug + fmt::Display> std::error::Error for ParserError<T> {}
 
-impl<TExtTokenKind: ExtendedTokenKind> fmt::Debug for Error<TExtTokenKind> {
+impl<TExtTokenKind: ExtendedTokenKind> fmt::Debug for ParserError<TExtTokenKind> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Error")
             .field("kind", &format!("{:?}", self.kind))
             .finish()
     }
 }
-impl<TExtTokenKind: ExtendedTokenKind> fmt::Display for Error<TExtTokenKind> {
+impl<TExtTokenKind: ExtendedTokenKind> fmt::Display for ParserError<TExtTokenKind> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Error")
             .field("kind", &format!("{:?}", self.kind))
             .finish()
+    }
+}
+
+use crate::util::span::*;
+
+/// Struct that handles collecting and reporting Parser errors and diagnostics
+#[derive(Clone, Debug, Default)]
+pub struct ParserDiagnosticInfo<'s> {
+    src: &'s str,
+    messages: Vec<Spanned<String>>,
+}
+
+impl ParserDiagnosticInfo<'_> {
+    pub fn new(src: &str) -> ParserDiagnosticInfo<'_> {
+        ParserDiagnosticInfo {
+            src,
+            messages: Vec::new(),
+        }
+    }
+
+    pub fn push<S: Into<String>>(&mut self, msg: S, span: Span) {
+        self.messages.push(Spanned::new(span, msg.into()));
+    }
+
+    pub fn error_count(&self) -> usize {
+        self.messages.len()
+    }
+
+    /// Remove the last error message
+    pub fn pop(&mut self) -> Option<String> {
+        let msg = self.messages.pop()?;
+        let line = self.src.lines().nth(msg.span.start.line as usize)?;
+        Some(format!(
+            "Error occuring at line {}, col: {}: {}\n{}\n{}^{}\n",
+            msg.span.start.line,
+            msg.span.start.col,
+            msg.data,
+            &line,
+            (0..msg.span.start.col).map(|_| ' ').collect::<String>(),
+            (0..msg.span.end.col - msg.span.start.col)
+                .map(|_| '~')
+                .collect::<String>(),
+        ))
+    }
+
+    #[must_use]
+    /// Emit all remaining error message, if there are any
+    pub fn emit(mut self) -> String {
+        let mut s = String::new();
+
+        let lines = self.src.lines().collect::<Vec<&str>>();
+        for i in 0..self.messages.len() {
+            let msg: &Spanned<String> = &self.messages[i];
+            let mut squiggly = (1..msg.span.end.col.saturating_sub(msg.span.start.col))
+                .map(|_| '~')
+                .collect::<String>();
+            squiggly.push('^');
+            s.push_str(&format!(
+                "Error occuring at line {}, col: {}: {} {} {} {}",
+                msg.span.start.line,
+                msg.span.start.col,
+                msg.data,
+                &lines[msg.span.start.line as usize],
+                (0..msg.span.start.col).map(|_| ' ').collect::<String>(),
+                squiggly
+            ));
+        }
+        self.messages.clear();
+        s
     }
 }

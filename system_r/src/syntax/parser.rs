@@ -1,11 +1,11 @@
 use super::debruijn::DeBruijnIndexer;
-use super::error::Error;
+use super::error::ParserError;
 use super::lexer::Lexer;
 use super::{Token, TokenKind};
 use crate::bottom::{BottomDialect, BottomExtension};
 use crate::dialect::{ExtendedTokenKind, SystemRDialect, SystemRExtension};
 
-use crate::util::diagnostic::Diagnostic;
+use crate::syntax::error::ParserDiagnosticInfo;
 use crate::util::span::*;
 use core::fmt;
 
@@ -20,7 +20,7 @@ use anyhow::Result;
 pub struct Parser<'s, TExtDialect: SystemRDialect> {
     pub tmvar: DeBruijnIndexer,
     pub tyvar: DeBruijnIndexer,
-    pub diagnostic: Diagnostic<'s>,
+    pub diagnostic: ParserDiagnosticInfo<'s>,
     pub lexer: Lexer<'s, TExtDialect>,
     pub span: Span,
     pub token: Token<TExtDialect::TokenKind>,
@@ -65,7 +65,7 @@ impl<'s, TExtDialect: SystemRDialect> Parser<'s, TExtDialect> {
         let mut p = Parser {
             tmvar: DeBruijnIndexer::default(),
             tyvar: DeBruijnIndexer::default(),
-            diagnostic: Diagnostic::new(input),
+            diagnostic: ParserDiagnosticInfo::new(input),
             lexer: Lexer::new(input.chars()),
             span: Span::default(),
             token: Token::dummy(),
@@ -105,7 +105,7 @@ impl<'s, TExtDialect: SystemRDialect> Parser<'s, TExtDialect> {
         }
     }
 
-    pub fn diagnostic(self) -> Diagnostic<'s> {
+    pub fn diagnostic(self) -> ParserDiagnosticInfo<'s> {
         self.diagnostic
     }
 
@@ -113,7 +113,7 @@ impl<'s, TExtDialect: SystemRDialect> Parser<'s, TExtDialect> {
     where
         <TExtDialect as SystemRDialect>::TokenKind: 'static,
     {
-        Err(Error {
+        Err(ParserError {
             span: self.token.span,
             tok: self.token.clone(),
             kind,
@@ -701,7 +701,7 @@ impl<'s, TExtDialect: SystemRDialect> Parser<'s, TExtDialect> {
                         out_bytes.push(n as u8);
                     }
                     e => {
-                        return Err(Error {
+                        return Err(ParserError {
                             span: start_span,
                             tok: start_token,
                             kind: ErrorKind::ExtendedError(format!(
@@ -713,7 +713,7 @@ impl<'s, TExtDialect: SystemRDialect> Parser<'s, TExtDialect> {
                     }
                 },
                 v => {
-                    return Err(Error {
+                    return Err(ParserError {
                         span: start_span,
                         tok: start_token,
                         kind: ErrorKind::ExtendedError(format!(

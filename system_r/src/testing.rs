@@ -17,18 +17,17 @@ use crate::dialect::{SystemRDialect, SystemRExtension};
 
 use crate::{
     bottom::BottomExtension,
-    diagnostics::Diagnostic,
     eval,
     platform_bindings::Bindings,
     syntax::parser::Parser,
     terms::{visit::InjRewriter, Term},
-    type_check::{self, Type},
+    type_check::{self, Type, error::TypeCheckerDiagnosticInfo},
     visit::MutTermVisitor,
 };
 
 use anyhow::Result;
 
-pub fn code_format(src: &str, diag: Diagnostic) -> String {
+pub fn code_format(src: &str, diag: TypeCheckerDiagnosticInfo) -> String {
     let srcl = src.lines().collect::<Vec<&str>>();
 
     let mut msgs = diag.other.clone();
@@ -128,7 +127,7 @@ pub fn type_check_and_eval_single_block(
             "Type change of term pre check typecheck to post-eval: {:?} {:?}",
             pre_ty, fin_ty
         );
-        return Err(Diagnostic::error(fin.span(), msg).into());
+        return Err(TypeCheckerDiagnosticInfo::error(fin.span(), msg).into());
     }
 
     Ok((fin_ty, fin))

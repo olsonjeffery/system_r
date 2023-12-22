@@ -4,7 +4,7 @@ use cucumber::{gherkin::Step, given, then, when};
 
 use system_r::{
     bottom::BottomTokenKind,
-    diagnostics::Diagnostic,
+    type_check::error::TypeCheckerDiagnosticInfo,
     terms::{Kind, Literal, Term},
     testing,
     type_check::Type,
@@ -84,10 +84,10 @@ fn when_it_is_parsed(world: &mut common::SpecsWorld) {
         Err(e) => {
             world.last_parse_success = false;
             world.last_parse_kind = Kind::Lit(Literal::Unit);
-            let output = match e.downcast_ref::<system_r::syntax::error::Error<BottomTokenKind>>() {
+            let output = match e.downcast_ref::<system_r::syntax::error::ParserError<BottomTokenKind>>() {
                 Some(e) => e.to_string(),
                 None => match e.downcast_ref() {
-                    Some(Diagnostic { ..
+                    Some(TypeCheckerDiagnosticInfo { ..
                         /*
                         _level,
                         _primary,

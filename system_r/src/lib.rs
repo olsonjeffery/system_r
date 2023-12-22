@@ -42,7 +42,6 @@ limitations under the License.
 #[macro_use]
 pub mod macros;
 pub mod bottom;
-pub mod diagnostics;
 pub mod dialect;
 pub mod eval;
 pub mod patterns;
