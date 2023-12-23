@@ -22,7 +22,7 @@ Unless you explicitly state otherwise, any contribution intentionally submitted 
 
 # Copyright
 
-- All changes are copyright the contributors
+All changes are copyright the contributors
 
 # Original System F docs from lazear/types-and-programming-languages main README
 
