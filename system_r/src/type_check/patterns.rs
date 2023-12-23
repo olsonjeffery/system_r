@@ -13,7 +13,7 @@
 //! <http://moscova.inria.fr/~maranget/papers/warn/index.html>
 
 use super::*;
-use crate::type_check::error::*;
+use crate::feedback::type_check::*;
 use crate::dialect::{SystemRDialect, SystemRExtension};
 use crate::patterns::{PatTyStack, Pattern};
 use crate::terms::*;

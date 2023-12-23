@@ -4,11 +4,10 @@ use cucumber::{gherkin::Step, given, then, when};
 
 use system_r::{
     bottom::BottomTokenKind,
-    type_check::error::TypeCheckerDiagnosticInfo,
     terms::{Kind, Literal, Term},
     testing,
     type_check::Type,
-    type_check::TypeChecker,
+    type_check::TypeChecker, feedback::{type_check::TypeCheckerDiagnosticInfo, syntax::ParserError},
 };
 
 use crate::common::{self, extensions::OmniTypeChecker};
@@ -84,16 +83,10 @@ fn when_it_is_parsed(world: &mut common::SpecsWorld) {
         Err(e) => {
             world.last_parse_success = false;
             world.last_parse_kind = Kind::Lit(Literal::Unit);
-            let output = match e.downcast_ref::<system_r::syntax::error::ParserError<BottomTokenKind>>() {
+            let output = match e.downcast_ref::<ParserError<BottomTokenKind>>() {
                 Some(e) => e.to_string(),
                 None => match e.downcast_ref() {
                     Some(TypeCheckerDiagnosticInfo { ..
-                        /*
-                        _level,
-                        _primary,
-                        _info,
-                        _other,
-                        */
                     }) => "diagnostic error".to_owned(),
                     None => "unknown".to_owned()
                 },

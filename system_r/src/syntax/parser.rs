@@ -1,11 +1,10 @@
 use super::debruijn::DeBruijnIndexer;
-use super::error::ParserError;
+use crate::feedback::syntax::{ParserDiagnosticInfo, ParserError, ErrorKind};
 use super::lexer::Lexer;
 use super::{Token, TokenKind};
 use crate::bottom::{BottomDialect, BottomExtension};
-use crate::dialect::{ExtendedTokenKind, SystemRDialect, SystemRExtension};
+use crate::dialect::{SystemRDialect, SystemRExtension};
 
-use crate::syntax::error::ParserDiagnosticInfo;
 use crate::util::span::*;
 use core::fmt;
 
@@ -27,19 +26,6 @@ pub struct Parser<'s, TExtDialect: SystemRDialect> {
     pub platform_bindings: Bindings,
     pub ext_state: TExtDialect::DialectState,
     pub ty: TExtDialect::Type,
-}
-
-#[derive(Clone, Debug)]
-pub enum ErrorKind<T: ExtendedTokenKind> {
-    ExpectedAtom,
-    ExpectedIdent,
-    ExpectedType,
-    ExpectedPattern,
-    ExpectedToken(TokenKind<T>),
-    UnboundTypeVar,
-    Unknown,
-    Eof,
-    ExtendedError(String),
 }
 
 impl<'s, TExtDialect: SystemRDialect> Parser<'s, TExtDialect> {

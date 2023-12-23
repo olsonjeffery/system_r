@@ -1,8 +1,7 @@
 use std::{error::Error, fmt::Display};
 
-use crate::{util::span::Span, dialect::SystemRDialect};
+use crate::{util::span::Span, dialect::SystemRDialect, type_check::Type};
 
-use super::Type;
 #[derive(Debug, Default, Copy, Clone)]
 pub enum Level {
     #[default]

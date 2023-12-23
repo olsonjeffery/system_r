@@ -5,14 +5,13 @@ Feature: Technical Debt
     # - pervasive Result<> everywhere;
     #   - panic removal/convert-API to result (45 remaining)
     #     - Add SystemRError
-    #       - SystemRResult newtype for anyhow::Result<T> with conversion of all errors into a SystemRError, should subsume ALL panics
-    #       - abstract-away all error emissions from system_r, require trait impl for err reporting (ie into romeo)
-    #       - really dense POTENTIAL error information; should be suitable to be subsumed by romeo and do proper error reporting
-    #     - PatternCount & all collects that take ext
-    #     - dialect
-    #         - lexer->parser
-    #         - typechecker .. ?
-    #     - eval (lift out to romeo!)
+    #       - unify & subsume all panics, Type/Parser error, DiagnosticInfo types
+    #     - panic sites
+    #       - PatternCount & all collects that take ext
+    #       - dialect
+    #           - lexer->parser
+    #           - typechecker .. ?
+    #       - eval (lift out to romeo!)
     # - adopt git2rs pre-commit hook
     # - rustdoc-documentation of entire API surface
     #    - #[deny(missing_docs)]

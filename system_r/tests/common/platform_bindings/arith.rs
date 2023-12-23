@@ -1,8 +1,9 @@
 use anyhow::Result;
 use system_r::bottom::BottomDialect;
+use system_r::feedback::type_check::TypeCheckerDiagnosticInfo;
 use system_r::util::span::Span;
 use system_r::terms::{Kind, Term};
-use system_r::{type_check::error::TypeCheckerDiagnosticInfo, platform_bindings::WrappedBinding, terms::Literal, type_check::Type};
+use system_r::{platform_bindings::WrappedBinding, terms::Literal, type_check::Type};
 
 pub fn pull_u64_from(args: &Vec<Term<BottomDialect>>, idx: usize, span: &Span) -> Result<u64> {
     let arg_t_raw = match args.get(idx) {

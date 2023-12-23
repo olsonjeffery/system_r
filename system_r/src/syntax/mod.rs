@@ -1,6 +1,5 @@
 //! Extended Lexical analysis and recursive descent parser for System F
 pub mod debruijn;
-pub mod error;
 pub mod lexer;
 pub mod parser;
 use crate::{dialect::ExtendedTokenKind, util::span::Span};

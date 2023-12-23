@@ -16,12 +16,11 @@ use std::collections::HashMap;
 
 use crate::bottom::BottomDialect;
 use crate::dialect::SystemRDialect;
+use crate::feedback::type_check::TypeCheckerDiagnosticInfo;
 use crate::util::span::Span;
 use crate::terms::Term;
 use crate::type_check::Variant;
-use crate::{
-    type_check::{Type, TypeChecker, error::TypeCheckerDiagnosticInfo},
-};
+use crate::type_check::{Type, TypeChecker};
 use anyhow::Result;
 
 pub type WrappedFn = fn(input: Term<BottomDialect>, span: &Span) -> Result<Term<BottomDialect>>;

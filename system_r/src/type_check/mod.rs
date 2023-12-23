@@ -2,8 +2,7 @@
 //! parametric polymorphism
 pub mod patterns;
 pub mod visit;
-pub mod error;
-use crate::type_check::error::*;
+use crate::feedback::type_check::*;
 use crate::dialect::{SystemRDialect, SystemRExtension};
 use crate::platform_bindings::Bindings;
 use crate::util::span::Span;

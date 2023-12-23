@@ -15,13 +15,14 @@ limitations under the License.
 use crate::bottom::BottomDialect;
 use crate::dialect::{SystemRDialect, SystemRExtension};
 
+use crate::feedback::type_check::TypeCheckerDiagnosticInfo;
 use crate::{
     bottom::BottomExtension,
     eval,
     platform_bindings::Bindings,
     syntax::parser::Parser,
     terms::{visit::InjRewriter, Term},
-    type_check::{self, Type, error::TypeCheckerDiagnosticInfo},
+    type_check::{self, Type},
     visit::MutTermVisitor,
 };
 

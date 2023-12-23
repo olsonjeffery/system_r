@@ -3,13 +3,10 @@ use std::{cell::RefCell, collections::HashMap, fmt::Display, rc::Rc};
 use crate::{
     bottom::{BottomDialect, BottomKind, BottomPattern, BottomTokenKind},
     patterns::Pattern,
-    syntax::{
-        error::ParserError,
-        parser::{ErrorKind, Parser},
-        TokenKind,
-    },
+    feedback::{syntax::{ErrorKind, ParserError}, type_check::TypeCheckerDiagnosticInfo},
+    syntax::{ parser::Parser, TokenKind },
     terms::{Kind, Term},
-    type_check::{patterns::overlap, visit::Subst, Type, TypeChecker, error::TypeCheckerDiagnosticInfo},
+    type_check::{patterns::overlap, visit::Subst, Type, TypeChecker},
     visit::{
         DialectChangingPatternVisitor, DialectChangingTermVisitor, DialectChangingTypeVisitor, MutTypeVisitor,
         PatternVisitor,
