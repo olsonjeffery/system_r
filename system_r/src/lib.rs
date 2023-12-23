@@ -44,15 +44,15 @@ pub mod macros;
 pub mod bottom;
 pub mod dialect;
 pub mod eval;
+pub mod feedback;
 pub mod patterns;
 pub mod platform_bindings;
 pub mod syntax;
-pub mod util;
 pub mod terms;
 pub mod testing;
 pub mod type_check;
+pub mod util;
 pub mod visit;
-pub mod feedback;
 
 #[macro_use]
 extern crate anyhow;

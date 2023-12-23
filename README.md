@@ -4,6 +4,10 @@ An extension of the simply typed lambda calculus with parametric polymorphism (k
 
 Consult the gherkin specs in the `/tests/features` directory for more on system_r's capabilities, embedding, etc.
 
+From original README:
+
+> `system_f` contains a parser, typechecker, and evaluator for the simply typed lambda calculus with parametric polymorphism (System F). The implementation of System F is the most complete so far, and I've tried to write a parser, typechecker and diagnostic system that can given meaningful messages
+
 # Licenses
 
 This project is licensed under either of
@@ -23,7 +27,3 @@ Unless you explicitly state otherwise, any contribution intentionally submitted 
 # Copyright
 
 All changes are copyright the contributors
-
-# Original System F docs from lazear/types-and-programming-languages main README
-
-- `system_f` contains a parser, typechecker, and evaluator for the simply typed lambda calculus with parametric polymorphism (System F). The implementation of System F is the most complete so far, and I've tried to write a parser, typechecker and diagnostic system that can given meaningful messages

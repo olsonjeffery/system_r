@@ -2,9 +2,12 @@ use std::{cell::RefCell, collections::HashMap, fmt::Display, rc::Rc};
 
 use crate::{
     bottom::{BottomDialect, BottomKind, BottomPattern, BottomTokenKind},
+    feedback::{
+        syntax::{ErrorKind, ParserError},
+        type_check::TypeCheckerDiagnosticInfo,
+    },
     patterns::Pattern,
-    feedback::{syntax::{ErrorKind, ParserError}, type_check::TypeCheckerDiagnosticInfo},
-    syntax::{ parser::Parser, TokenKind },
+    syntax::{parser::Parser, TokenKind},
     terms::{Kind, Term},
     type_check::{patterns::overlap, visit::Subst, Type, TypeChecker},
     visit::{
@@ -313,7 +316,9 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
 
         let ps = &mut ctx.ext_state;
         let dealiased = match reify_type(ps, type_alias_label, inner_types) {
-            Err(e) => return Err(TypeCheckerDiagnosticInfo::error(sp, format!("failed to reify type: {:?}", e)).into()),
+            Err(e) => {
+                return Err(TypeCheckerDiagnosticInfo::error(sp, format!("failed to reify type: {:?}", e)).into())
+            }
             Ok(t) => t,
         };
 
@@ -342,7 +347,11 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
                 )
                 .into())
             }
-            v => Err(TypeCheckerDiagnosticInfo::error(sp, format!("expected de-aliased type to be a Varient, was {:?}", v)).into()),
+            v => Err(TypeCheckerDiagnosticInfo::error(
+                sp,
+                format!("expected de-aliased type to be a Varient, was {:?}", v),
+            )
+            .into()),
         }
     }
 

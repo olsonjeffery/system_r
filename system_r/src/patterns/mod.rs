@@ -1,11 +1,10 @@
 /// Pattern content shared throughout the crate;
 /// cyclicly dependent with pattern-related code in
 /// both syntax & typecheck::patterns
-
 use crate::dialect::{SystemRDialect, SystemRExtension};
-use crate::util::span::Span;
 use crate::terms::{Kind, Literal, Term};
 use crate::type_check::{variant_field, Type};
+use crate::util::span::Span;
 use crate::visit::PatternVisitor;
 use anyhow::Result;
 

@@ -2,11 +2,11 @@
 //! parametric polymorphism
 pub mod patterns;
 pub mod visit;
-use crate::feedback::type_check::*;
 use crate::dialect::{SystemRDialect, SystemRExtension};
+use crate::feedback::type_check::*;
 use crate::platform_bindings::Bindings;
-use crate::util::span::Span;
 use crate::terms::{Kind, Literal, Primitive, Term};
+use crate::util::span::Span;
 use crate::visit::{MutTermVisitor, MutTypeVisitor};
 use anyhow::Result;
 use std::collections::{HashMap, VecDeque};
@@ -103,7 +103,10 @@ pub fn variant_field<'vs, TExtDialect: SystemRDialect>(
             return Ok(&f.ty);
         }
     }
-    Err(TypeCheckerDiagnosticInfo::error(span, format!("constructor {} doesn't appear in variant fields", label)).into())
+    Err(
+        TypeCheckerDiagnosticInfo::error(span, format!("constructor {} doesn't appear in variant fields", label))
+            .into(),
+    )
 }
 
 impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
@@ -121,10 +124,9 @@ impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
             Kind::Lit(Literal::Tag(s)) => Ok(Type::Tag(s.clone())),
             Kind::PlatformBinding(idx) => self.type_check_platform_binding(idx, &term.span),
             Kind::Var(idx) => {
-                let result = self
-                    .find(*idx)
-                    .cloned()
-                    .ok_or_else(|| TypeCheckerDiagnosticInfo::error(term.span, format!("type_check: unbound variable {}", idx)))?;
+                let result = self.find(*idx).cloned().ok_or_else(|| {
+                    TypeCheckerDiagnosticInfo::error(term.span, format!("type_check: unbound variable {}", idx))
+                })?;
                 Ok(result)
             }
 
@@ -163,11 +165,14 @@ impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
                                     }
                                 }
                                 _ => {
-                                    let d = TypeCheckerDiagnosticInfo::error(term.span, "Type<TExtDialect> mismatch in application")
-                                        .message(t1.span, format!("Abstraction requires type {:?}", ty11))
-                                        .message(t2.span, format!("Value has a type of {:?}", ty2))
-                                        .message(t1.span, format!("Stack contents: {:?}", self.stack))
-                                        .message(term.span, format!("parent term {:?}", term.kind));
+                                    let d = TypeCheckerDiagnosticInfo::error(
+                                        term.span,
+                                        "Type<TExtDialect> mismatch in application",
+                                    )
+                                    .message(t1.span, format!("Abstraction requires type {:?}", ty11))
+                                    .message(t2.span, format!("Value has a type of {:?}", ty2))
+                                    .message(t1.span, format!("Stack contents: {:?}", self.stack))
+                                    .message(term.span, format!("parent term {:?}", term.kind));
                                     Err(d.into())
                                 }
                             }
@@ -204,8 +209,9 @@ impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
                         if ty1 == ty2 {
                             Ok(*ty1)
                         } else {
-                            let d = TypeCheckerDiagnosticInfo::error(term.span, "Type<TExtDialect> mismatch in fix term")
-                                .message(inner.span, format!("Abstraction requires type {:?}->{:?}", ty1, ty1));
+                            let d =
+                                TypeCheckerDiagnosticInfo::error(term.span, "Type<TExtDialect> mismatch in fix term")
+                                    .message(inner.span, format!("Abstraction requires type {:?}->{:?}", ty1, ty1));
                             Err(d.into())
                         }
                     }
@@ -229,10 +235,15 @@ impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
                             if ty_ == f.ty {
                                 return Ok(*ty.clone());
                             } else {
-                                let d = TypeCheckerDiagnosticInfo::error(term.span, "Invalid associated type in variant").message(
-                                    tm.span,
-                                    format!("variant {} requires type {:?}, but this is {:?}", label, f.ty, ty_),
-                                );
+                                let d =
+                                    TypeCheckerDiagnosticInfo::error(term.span, "Invalid associated type in variant")
+                                        .message(
+                                            tm.span,
+                                            format!(
+                                                "variant {} requires type {:?}, but this is {:?}",
+                                                label, f.ty, ty_
+                                            ),
+                                        );
                                 return Err(d.into());
                             }
                         }
@@ -268,7 +279,11 @@ impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
                     )
                     .into()),
                 },
-                ty => Err(TypeCheckerDiagnosticInfo::error(term.span, format!("Cannot project on non-product type {:?}", ty)).into()),
+                ty => Err(TypeCheckerDiagnosticInfo::error(
+                    term.span,
+                    format!("Cannot project on non-product type {:?}", ty),
+                )
+                .into()),
             },
             Kind::Product(terms) => Ok(Type::Product(
                 terms
@@ -279,7 +294,11 @@ impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
             Kind::Let(pat, t1, t2) => {
                 let ty = self.type_check(t1, ext)?;
                 if !self.pattern_type_eq(pat, &ty, ext) {
-                    return Err(TypeCheckerDiagnosticInfo::error(t1.span, "pattern does not match type of binder".to_string()).into());
+                    return Err(TypeCheckerDiagnosticInfo::error(
+                        t1.span,
+                        "pattern does not match type of binder".to_string(),
+                    )
+                    .into());
                 }
 
                 let height = self.stack.len();
@@ -327,7 +346,11 @@ impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
                         }
                         Ok(*ty12)
                     }
-                    _ => Err(TypeCheckerDiagnosticInfo::error(term.span, format!("Expected a universal type, not {:?}", ty1)).into()),
+                    _ => Err(TypeCheckerDiagnosticInfo::error(
+                        term.span,
+                        format!("Expected a universal type, not {:?}", ty1),
+                    )
+                    .into()),
                 }
             }
             // See src/types/patterns.rs for exhaustiveness and typechecking
@@ -347,7 +370,11 @@ impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
                         Err(d.into())
                     }
                 }
-                _ => Err(TypeCheckerDiagnosticInfo::error(term.span, format!("Expected a recursive type, not {:?}", rec)).into()),
+                _ => Err(TypeCheckerDiagnosticInfo::error(
+                    term.span,
+                    format!("Expected a recursive type, not {:?}", rec),
+                )
+                .into()),
             },
 
             Kind::Fold(rec, tm) => match rec.as_ref() {
@@ -363,7 +390,11 @@ impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
                         Err(d.into())
                     }
                 }
-                _ => Err(TypeCheckerDiagnosticInfo::error(term.span, format!("Expected a recursive type, not {:?}", rec)).into()),
+                _ => Err(TypeCheckerDiagnosticInfo::error(
+                    term.span,
+                    format!("Expected a recursive type, not {:?}", rec),
+                )
+                .into()),
             },
             Kind::Pack(witness, evidence, signature) => {
                 if let Type::Existential(exists) = signature.as_ref() {

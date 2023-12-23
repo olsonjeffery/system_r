@@ -1,9 +1,9 @@
 use super::debruijn::DeBruijnIndexer;
-use crate::feedback::syntax::{ParserDiagnosticInfo, ParserError, ErrorKind};
 use super::lexer::Lexer;
 use super::{Token, TokenKind};
 use crate::bottom::{BottomDialect, BottomExtension};
 use crate::dialect::{SystemRDialect, SystemRExtension};
+use crate::feedback::syntax::{ErrorKind, ParserDiagnosticInfo, ParserError};
 
 use crate::util::span::*;
 use core::fmt;

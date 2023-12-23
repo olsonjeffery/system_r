@@ -40,9 +40,9 @@ limitations under the License.
 
 use crate::dialect::{SystemRDialect, SystemRExtension};
 use crate::patterns::Pattern;
-use crate::util::span::Span;
 use crate::terms::{Arm, Kind, Literal, Primitive, Term};
 use crate::type_check::{Type, Variant};
+use crate::util::span::Span;
 use anyhow::Result;
 
 pub trait MutTypeVisitor<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>: Sized {

@@ -1,8 +1,8 @@
 //! Representation lambda calculus terms
 use crate::dialect::SystemRDialect;
 use crate::patterns::Pattern;
-use crate::util::span::Span;
 use crate::type_check::Type;
+use crate::util::span::Span;
 use std::fmt;
 pub mod visit;
 

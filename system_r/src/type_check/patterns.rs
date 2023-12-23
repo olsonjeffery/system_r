@@ -13,8 +13,8 @@
 //! <http://moscova.inria.fr/~maranget/papers/warn/index.html>
 
 use super::*;
-use crate::feedback::type_check::*;
 use crate::dialect::{SystemRDialect, SystemRExtension};
+use crate::feedback::type_check::*;
 use crate::patterns::{PatTyStack, Pattern};
 use crate::terms::*;
 use anyhow::Result;
@@ -241,28 +241,37 @@ impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
                     return Err(TypeCheckerDiagnosticInfo::error(arm.span, "unreachable pattern!").into());
                 }
             } else {
-                return Err(
-                    TypeCheckerDiagnosticInfo::error(expr.span, format!("case binding has a type {:?}", &matrix.expr_ty))
-                        .message(
-                            arm.span,
-                            format!(
-                                "but this pattern ({:?}) cannot bind a value of type {:?}",
-                                &arm.pat, &matrix.expr_ty
-                            ),
-                        )
-                        .into(),
-                );
+                return Err(TypeCheckerDiagnosticInfo::error(
+                    expr.span,
+                    format!("case binding has a type {:?}", &matrix.expr_ty),
+                )
+                .message(
+                    arm.span,
+                    format!(
+                        "but this pattern ({:?}) cannot bind a value of type {:?}",
+                        &arm.pat, &matrix.expr_ty
+                    ),
+                )
+                .into());
             }
         }
 
         if set.len() != 1 {
-            return Err(TypeCheckerDiagnosticInfo::error(expr.span, format!("incompatible arms! {:?} expr: {:?}", set, expr)).into());
+            return Err(TypeCheckerDiagnosticInfo::error(
+                expr.span,
+                format!("incompatible arms! {:?} expr: {:?}", set, expr),
+            )
+            .into());
         }
 
         if matrix.exhaustive(ext, &mut self.ext_state) {
             match set.into_iter().next() {
                 Some(s) => Ok(s),
-                None => Err(TypeCheckerDiagnosticInfo::error(expr.span, "probably unreachable - expected variant type!").into()),
+                None => Err(TypeCheckerDiagnosticInfo::error(
+                    expr.span,
+                    "probably unreachable - expected variant type!",
+                )
+                .into()),
             }
         } else {
             Err(TypeCheckerDiagnosticInfo::error(expr.span, "patterns are not exhaustive!").into())
