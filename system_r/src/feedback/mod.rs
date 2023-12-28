@@ -20,9 +20,9 @@ pub enum FeedbackSeverity {
 }
 
 #[derive(Default)]
-pub struct SystemRFeedback<TExtDialect: SystemRDialect> {
+pub struct SystemRFeedback<TExtDialect: SystemRDialect + 'static> {
     pub feedback_code: String,
-    pub target_span: Span,
+    pub target_span: Option<Span>,
     pub phase: FeedbackPhase<TExtDialect>,
     pub severity: FeedbackSeverity,
     pub src: Option<String>,
@@ -38,7 +38,7 @@ impl<TExtDialect: SystemRDialect> SystemRFeedback<TExtDialect> {
         message: Option<String>,
     ) -> Self {
         SystemRFeedback {
-            target_span: span,
+            target_span: Some(span),
             feedback_code: feedback_code.to_owned(),
             phase: FeedbackPhase::Parse(tok, kind.clone()),
             severity: FeedbackSeverity::Error(message.unwrap_or(match kind.clone() {
@@ -51,7 +51,7 @@ impl<TExtDialect: SystemRDialect> SystemRFeedback<TExtDialect> {
     }
     fn type_check_error(feedback_code: &str, span: Span, message: &str) -> Self {
         SystemRFeedback {
-            target_span: span,
+            target_span: Some(span),
             feedback_code: feedback_code.to_owned(),
             phase: FeedbackPhase::TypeCheck,
             severity: FeedbackSeverity::Error(message.to_owned()),
@@ -69,7 +69,7 @@ impl<TExtDialect: SystemRDialect> SystemRFeedback<TExtDialect> {
     ) -> Self {
         SystemRFeedback {
             feedback_code,
-            target_span,
+            target_span: Some(target_span),
             phase,
             severity,
             src,
@@ -108,7 +108,7 @@ impl<TExtDialect: SystemRDialect> SystemRFeedback<TExtDialect> {
 }
 
 #[derive(Default, Debug)]
-pub enum FeedbackPhase<TExtDialect: SystemRDialect> {
+pub enum FeedbackPhase<TExtDialect: SystemRDialect + 'static> {
     #[default]
     Unknown,
     Lex,
@@ -116,8 +116,16 @@ pub enum FeedbackPhase<TExtDialect: SystemRDialect> {
     TypeCheck,
     Extended {
         dialect: String,
-        phase: String,
+        phase: ExtendedPhaseContent<TExtDialect>,
     },
+}
+
+#[derive(Default, Debug)]
+pub enum ExtendedPhaseContent<TExtDialect: SystemRDialect + 'static> {
+    #[default]
+    None,
+    Named(String),
+    Parse(Token<TExtDialect::TokenKind>, ErrorKind<TExtDialect::TokenKind>),
 }
 
 #[derive(Clone, Debug)]
@@ -138,14 +146,20 @@ impl<TExtDialect: SystemRDialect> std::error::Error for SystemRFeedback<TExtDial
 impl<TExtDialect: SystemRDialect> fmt::Debug for SystemRFeedback<TExtDialect> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Error")
-            .field("system-r-feedback", &format!("phase: {:?} severity: {:?}", self.phase, self.severity))
+            .field(
+                "system-r-feedback",
+                &format!("phase: {:?} severity: {:?}", self.phase, self.severity),
+            )
             .finish()
     }
 }
 impl<TExtDialect: SystemRDialect> fmt::Display for SystemRFeedback<TExtDialect> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Error")
-            .field("system-r-feedback", &format!("phase: {:?} severity: {:?}", self.phase, self.severity))
+            .field(
+                "system-r-feedback",
+                &format!("phase: {:?} severity: {:?}", self.phase, self.severity),
+            )
             .finish()
     }
 }

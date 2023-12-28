@@ -2,7 +2,6 @@ use std::{cell::RefCell, collections::HashMap, fmt::Display, rc::Rc};
 
 use crate::{
     bottom::{BottomDialect, BottomKind, BottomPattern, BottomTokenKind},
-    feedback::syntax::{ErrorKind, ParserError},
     patterns::Pattern,
     syntax::{parser::Parser, TokenKind},
     terms::{Kind, Term},
@@ -12,6 +11,8 @@ use crate::{
         PatternVisitor,
     },
 };
+
+use self::type_alias_catalog::{syntax, type_check};
 
 use super::{
     ExtendedDialectState, ExtendedKind, ExtendedPattern, ExtendedTokenKind, ExtendedType, SystemRDialect,
@@ -158,17 +159,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         let struct_ident = ps.once(|p| p.atom(self), "missing struct identifier $Binding")?;
         let struct_ident = match struct_ident.kind {
             Kind::Extended(TypeAliasKind::StructIdent(s)) => s,
-            e => {
-                return Err(ParserError {
-                    span: ps.span,
-                    tok: ps.token.clone(),
-                    kind: ErrorKind::ExtendedError::<TypeAliasTokenKind>(format!(
-                        "expected a StructIdent, got {:?}",
-                        e
-                    )),
-                }
-                .into())
-            }
+            e => return Err(syntax::err_02_expected_struct_ident(&ps.span, &ps.token, &e).into()),
         };
 
         ps.expect(self, TokenKind::Equals)?;
@@ -204,29 +195,9 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         let name_val = match name_tok.kind.clone() {
             TokenKind::Extended(n) => match n {
                 TypeAliasTokenKind::TypeBindingVar(name) => name,
-                v => {
-                    return Err(ParserError {
-                        span: name_tok.span,
-                        tok: name_tok.clone(),
-                        kind: ErrorKind::ExtendedError::<TypeAliasTokenKind>(format!(
-                            "Expected a TypeBindingVar, got {:?}",
-                            v
-                        )),
-                    }
-                    .into())
-                }
+                v => return Err(syntax::err_03_expected_typebindingvar(&name_tok.span, &name_tok, &v).into()),
             },
-            v => {
-                return Err(ParserError {
-                    span: name_tok.span,
-                    tok: name_tok.clone(),
-                    kind: ErrorKind::ExtendedError::<TypeAliasTokenKind>(format!(
-                        "Expected a ExtendedTokenKind, got {:?}",
-                        v
-                    )),
-                }
-                .into())
-            }
+            v => return Err(syntax::err_04_expected_extendedtokenkind(&name_tok.span, &name_tok, &v).into()),
         };
         ps.bump(self);
         Ok(Term {
@@ -246,15 +217,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         let binding = ps.token.kind.clone();
 
         let TokenKind::Extended(TypeAliasTokenKind::TypeBindingVar(type_decl_key)) = binding else {
-            return Err(ParserError {
-                span: ps.span,
-                tok: ps.token.clone(),
-                kind: ErrorKind::ExtendedError::<TypeAliasTokenKind>(format!(
-                    "Expected a TypeBindingVar, got {:?}",
-                    binding
-                )),
-            }
-            .into());
+            return Err(syntax::err_04_expected_extendedtokenkind(&ps.span, &ps.token, &binding).into());
         };
         ps.bump(self);
 
@@ -308,12 +271,12 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
     ) -> Result<Type<TypeAliasDialect>> {
         let sp = tm.span;
         let TypeAliasType::TypeAliasApp(type_alias_label, inner_types) = target else {
-            return Err(type_alias_catalog::err_01(sp, target).into());
+            return Err(type_check::err_01(sp, target).into());
         };
 
         let ps = &mut ctx.ext_state;
         let dealiased = match reify_type(ps, type_alias_label, inner_types) {
-            Err(e) => return Err(type_alias_catalog::err_02(sp, &e).into()),
+            Err(e) => return Err(type_check::err_02(sp, &e).into()),
             Ok(t) => t,
         };
 
@@ -328,7 +291,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
                         }
                     }
                 }
-                Err(type_alias_catalog::err_03(
+                Err(type_check::err_03(
                     sp,
                     inj_label,
                     fields
@@ -339,7 +302,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
                 )
                 .into())
             }
-            v => Err(type_alias_catalog::err_04(sp, &v).into()),
+            v => Err(type_check::err_04(sp, &v).into()),
         }
     }
 
@@ -481,22 +444,10 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
     }
 }
 
-pub fn has_holed_type_named(ps: &<TypeAliasDialect as SystemRDialect>::DialectState, key: &str) -> Result<bool> {
-    Ok(get_holed_type_from(ps, key).is_ok())
-}
-
 pub fn get_holed_type_from(ps: &TypeAliasDialectState, key: &str) -> Result<(usize, Type<TypeAliasDialect>)> {
     match ps.type_map.get(key) {
         Some(t) => Ok(t.clone()),
-        None => Err(ParserError {
-            span: Default::default(),
-            tok: Default::default(), // FIXME replace span/tok defaults and propagating it into extensions
-            kind: ErrorKind::ExtendedError::<TypeAliasTokenKind>(format!(
-                "Tried to get holed type named '{:?}', found None",
-                key
-            )),
-        }
-        .into()),
+        None => Err(syntax::err_05_expected_some_holed_type(key).into()),
     }
 }
 
@@ -510,15 +461,7 @@ pub fn set_holed_type_for(
             ps.ext_state.type_map.insert(key.to_owned(), ty);
             Ok(())
         }
-        true => Err(ParserError {
-            span: ps.span,
-            tok: ps.token.clone(),
-            kind: ErrorKind::ExtendedError::<TypeAliasTokenKind>(format!(
-                "key {:?} is already present in types hash",
-                key
-            )),
-        }
-        .into()),
+        true => Err(syntax::err_06_expected_no_entry_for_key(&ps.span, &ps.token, key).into()),
     }
 }
 
@@ -532,16 +475,7 @@ pub fn reify_type(
     let mut ext = TypeAliasExtension; // :3
 
     if applied_types.len() != tyabs_count {
-        return Err(ParserError {
-            span: Default::default(),
-            tok: Default::default(),
-            kind: ErrorKind::ExtendedError::<TypeAliasTokenKind>(format!(
-                "Expected tyabs count in holed type of be {:?}, but was {:?}",
-                applied_types.len(),
-                tyabs_count
-            )),
-        }
-        .into());
+        return Err(type_check::err_05(applied_types.len(), tyabs_count).into());
     }
 
     let cutoffs = (0..applied_types.len()).rev();
@@ -583,12 +517,7 @@ pub fn pulls_types_from_tyapp(
             ps.bump(ext);
             continue;
         }
-        return Err(ParserError {
-            span: ps.span,
-            tok: ps.token.clone(),
-            kind: ErrorKind::ExtendedError("Expected either end of tyapp or comma".to_owned()),
-        }
-        .into());
+        return Err(syntax::err_01_expected_end_of_tyapp_or_comma(&ps.span, &ps.token).into());
     }
 
     ps.expect(ext, TokenKind::RSquare)?;
@@ -716,71 +645,215 @@ impl DialectChangingTermVisitor<TypeAliasDialect, BottomDialect, TatbTypeVisitor
 }
 
 mod type_alias_catalog {
-    use anyhow::Error;
+    pub mod syntax {
+        use crate::{
+            dialect::type_alias::{TypeAliasDialect, TypeAliasTokenKind},
+            feedback::{ErrorKind, ExtendedPhaseContent, FeedbackPhase, FeedbackSeverity, SystemRFeedback},
+            syntax::{Token, TokenKind},
+            terms::Kind,
+            util::span::Span,
+        };
 
-    use crate::{
-        feedback::{FeedbackPhase, FeedbackSeverity, SystemRFeedback},
-        type_check::Type,
-        util::span::Span,
-    };
+        fn build_error(
+            feedback_code: &str,
+            target_span: Span,
+            tok: &Token<TypeAliasTokenKind>,
+            kind: &ErrorKind<TypeAliasTokenKind>,
+            formatted_err_msg: Option<String>,
+        ) -> SystemRFeedback<TypeAliasDialect> {
+            SystemRFeedback {
+                feedback_code: feedback_code.to_owned(),
+                target_span: if target_span == Default::default() {
+                    None
+                } else {
+                    Some(target_span)
+                },
+                phase: FeedbackPhase::Extended {
+                    dialect: "TypeAlias".to_owned(),
+                    phase: ExtendedPhaseContent::Parse(tok.clone(), kind.clone()),
+                },
+                severity: FeedbackSeverity::Error(formatted_err_msg.unwrap_or_default()),
+                src: None,
+                acknowledged: false,
+            }
+        }
 
-    use super::{TypeAliasDialect, TypeAliasType};
+        /// TADPS01
+        pub fn err_01_expected_end_of_tyapp_or_comma(
+            target_span: &Span,
+            tok: &Token<TypeAliasTokenKind>,
+        ) -> SystemRFeedback<TypeAliasDialect> {
+            build_error(
+                "TADPS01",
+                *target_span,
+                tok,
+                &ErrorKind::ExtendedError("Expected either end of tyapp or comma".to_owned()),
+                None,
+            )
+        }
 
-    fn build_error(
-        feedback_code: &str,
-        target_span: Span,
-        formatted_err_msg: String,
-    ) -> SystemRFeedback<TypeAliasDialect> {
-        SystemRFeedback {
-            feedback_code: feedback_code.to_owned(),
-            target_span,
-            phase: FeedbackPhase::Extended {
-                dialect: "TypeAlias".to_owned(),
-                phase: "TC".to_owned(),
-            },
-            severity: FeedbackSeverity::Error(formatted_err_msg),
-            src: None,
-            acknowledged: false,
+        /// TADPS02
+        pub fn err_02_expected_struct_ident(
+            target_span: &Span,
+            tok: &Token<TypeAliasTokenKind>,
+            e: &Kind<TypeAliasDialect>,
+        ) -> SystemRFeedback<TypeAliasDialect> {
+            build_error(
+                "TADPS02",
+                *target_span,
+                tok,
+                &ErrorKind::ExtendedError::<TypeAliasTokenKind>(format!("expected a StructIdent, got {:?}", e)),
+                None,
+            )
+        }
+
+        /// TADPS03
+        pub fn err_03_expected_typebindingvar(
+            target_span: &Span,
+            tok: &Token<TypeAliasTokenKind>,
+            v: &TypeAliasTokenKind,
+        ) -> SystemRFeedback<TypeAliasDialect> {
+            build_error(
+                "TADPS03",
+                *target_span,
+                tok,
+                &ErrorKind::ExtendedError::<TypeAliasTokenKind>(format!("Expected a TypeBindingVar, got {:?}", v)),
+                None,
+            )
+        }
+
+        /// TADPS04
+        pub fn err_04_expected_extendedtokenkind(
+            target_span: &Span,
+            tok: &Token<TypeAliasTokenKind>,
+            v: &TokenKind<TypeAliasTokenKind>,
+        ) -> SystemRFeedback<TypeAliasDialect> {
+            build_error(
+                "TADPS04",
+                *target_span,
+                tok,
+                &ErrorKind::ExtendedError::<TypeAliasTokenKind>(format!("Expected a ExtendedTokenKind, got {:?}", v)),
+                None,
+            )
+        }
+
+        /// TADPS05
+        pub fn err_05_expected_some_holed_type(key: &str) -> SystemRFeedback<TypeAliasDialect> {
+            build_error(
+                "TADPS05",
+                Default::default(),
+                &Default::default(),
+                &ErrorKind::ExtendedError::<TypeAliasTokenKind>(format!(
+                    "Tried to get holed type named '{:?}', found None",
+                    key
+                )),
+                None,
+            )
+        }
+
+        /// TADPS06
+        pub fn err_06_expected_no_entry_for_key(
+            target_span: &Span,
+            tok: &Token<TypeAliasTokenKind>,
+            key: &str,
+        ) -> SystemRFeedback<TypeAliasDialect> {
+            build_error(
+                "TADPS06",
+                *target_span,
+                tok,
+                &ErrorKind::ExtendedError::<TypeAliasTokenKind>(format!(
+                    "key {:?} is already present in types hash",
+                    key
+                )),
+                None,
+            )
         }
     }
 
-    // TADTC01
-    pub fn err_01(sp: Span, input: &TypeAliasType) -> SystemRFeedback<TypeAliasDialect> {
-        build_error(
-            "TADTC01",
-            sp,
-            format!(
-                r#"Expected the type being checked to be a TypeAliasApp type, but was {:?}"#,
-                input
+    pub mod type_check {
+        use anyhow::Error;
+
+        use crate::{
+            feedback::{ExtendedPhaseContent, FeedbackPhase, FeedbackSeverity, SystemRFeedback},
+            type_check::Type,
+            util::span::Span,
+        };
+
+        use super::super::{TypeAliasDialect, TypeAliasType};
+
+        fn build_error(
+            feedback_code: &str,
+            target_span: Span,
+            formatted_err_msg: String,
+        ) -> SystemRFeedback<TypeAliasDialect> {
+            SystemRFeedback {
+                feedback_code: feedback_code.to_owned(),
+                target_span: if target_span == Default::default() {
+                    None
+                } else {
+                    Some(target_span)
+                },
+                phase: FeedbackPhase::Extended {
+                    dialect: "TypeAlias".to_owned(),
+                    phase: ExtendedPhaseContent::Named("TypeCheck".to_owned()),
+                },
+                severity: FeedbackSeverity::Error(formatted_err_msg),
+                src: None,
+                acknowledged: false,
+            }
+        }
+
+        // TADTC01
+        pub fn err_01(sp: Span, input: &TypeAliasType) -> SystemRFeedback<TypeAliasDialect> {
+            build_error(
+                "TADTC01",
+                sp,
+                format!(
+                    r#"Expected the type being checked to be a TypeAliasApp type, but was {:?}"#,
+                    input
+                )
+                .to_owned(),
             )
-            .to_owned(),
-        )
-    }
+        }
 
-    // TADTC02
-    pub fn err_02(sp: Span, e: &Error) -> SystemRFeedback<TypeAliasDialect> {
-        build_error("TADTC02", sp, format!("failed to reify type: {:?}", e).to_owned())
-    }
+        // TADTC02
+        pub fn err_02(sp: Span, e: &Error) -> SystemRFeedback<TypeAliasDialect> {
+            build_error("TADTC02", sp, format!("failed to reify type: {:?}", e).to_owned())
+        }
 
-    // TADTC03
-    pub fn err_03(sp: Span, inj_label: &str, fields_joined: String) -> SystemRFeedback<TypeAliasDialect> {
-        build_error(
-            "TADTC03",
-            sp,
-            format!(
-                "constructor {} does not belong to the variant {:?}",
-                inj_label, fields_joined
+        // TADTC03
+        pub fn err_03(sp: Span, inj_label: &str, fields_joined: String) -> SystemRFeedback<TypeAliasDialect> {
+            build_error(
+                "TADTC03",
+                sp,
+                format!(
+                    "constructor {} does not belong to the variant {:?}",
+                    inj_label, fields_joined
+                )
+                .to_owned(),
             )
-            .to_owned(),
-        )
-    }
+        }
 
-    // TADTC04
-    pub fn err_04(sp: Span, v: &Type<TypeAliasDialect>) -> SystemRFeedback<TypeAliasDialect> {
-        build_error(
-            "TADTC04",
-            sp,
-            format!("expected de-aliased type to be a Varient, was {:?}", v).to_owned(),
-        )
+        // TADTC04
+        pub fn err_04(sp: Span, v: &Type<TypeAliasDialect>) -> SystemRFeedback<TypeAliasDialect> {
+            build_error(
+                "TADTC04",
+                sp,
+                format!("expected de-aliased type to be a Varient, was {:?}", v).to_owned(),
+            )
+        }
+
+        // TADTC05 -- reify type failure
+        pub fn err_05(applied_len: usize, tyabs_len: usize) -> SystemRFeedback<TypeAliasDialect> {
+            build_error(
+                "TADTC05",
+                Default::default(),
+                format!(
+                    "reify type fail: Expected tyabs count in holed type of be {:?}, but was {:?}",
+                    applied_len, tyabs_len
+                )
+                .to_owned(),
+            )
+        }
     }
 }

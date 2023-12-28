@@ -33,11 +33,13 @@ pub fn err_03<TExtDialect: SystemRDialect>(
     SystemRFeedback::type_check_error(
         "TC03",
         span,
-        &format!(r#"Type<TExtDialect> mismatch in ext application, ty11 side
+        &format!(
+            r#"Type<TExtDialect> mismatch in ext application, ty11 side
             "WTF is ty12? {ty12:?}))
             parent term {term_kind:?}
             ctx stack {stack:?}
-            "#),
+            "#
+        ),
     )
 }
 
@@ -55,10 +57,12 @@ pub fn err_04<TExtDialect: SystemRDialect>(
     SystemRFeedback::type_check_error(
         "TC04",
         term_span,
-        &format!(r#"Type<TExtDialect> mismatch in application
+        &format!(
+            r#"Type<TExtDialect> mismatch in application
 {t1_span:?} Abstraction requires type {ty11:?}
 {t2_span:?} Value has a type of {ty2:?}
-    "#),
+    "#
+        ),
     )
 }
 
@@ -77,11 +81,13 @@ pub fn err_05<TExtDialect: SystemRDialect>(
     SystemRFeedback::type_check_error(
         "TC05",
         term_span,
-        &format!(r#"Type<TExtDialect> mismatch in Binding application
+        &format!(
+            r#"Type<TExtDialect> mismatch in Binding application
 {t1_span:?} Binding Abstraction requires type {ty11:?}
 {t2_span:?} Value has a type of {ty2:?}
 stack: {stack:?}
-    "#),
+    "#
+        ),
     )
 }
 
@@ -95,7 +101,9 @@ pub fn err_06<TExtDialect: SystemRDialect>(
     SystemRFeedback::type_check_error(
         "TC06",
         term_span,
-        &format!(r#"SHOULDNT HAPPEN; type_check on Kind::App value with an extended in t1; term: {term} span: {term_span:?} t: {t1:?} ty+stack {stack:?}"#),
+        &format!(
+            r#"SHOULDNT HAPPEN; type_check on Kind::App value with an extended in t1; term: {term} span: {term_span:?} t: {t1:?} ty+stack {stack:?}"#
+        ),
     )
 }
 
@@ -208,13 +216,17 @@ pub fn err_14<TExtDialect: SystemRDialect>(
     ty: &Type<TExtDialect>,
 ) -> SystemRFeedback<TExtDialect> {
     let term_span = term.span;
-    SystemRFeedback::type_check_error("TC13", term_span, &format!(r#"Cannot project on non-product type {ty:?}"#))
+    SystemRFeedback::type_check_error(
+        "TC13",
+        term_span,
+        &format!(r#"Cannot project on non-product type {ty:?}"#),
+    )
 }
 
 /// TC15
 pub fn err_15<TExtDialect: SystemRDialect>(term: &Term<TExtDialect>) -> SystemRFeedback<TExtDialect> {
     let term_span = term.span;
-    SystemRFeedback::type_check_error("TC15", term_span, &format!(r#"pattern does not match type of binder"#))
+    SystemRFeedback::type_check_error("TC15", term_span, r#"pattern does not match type of binder"#)
 }
 
 /// TC16
@@ -236,10 +248,12 @@ pub fn err_17<TExtDialect: SystemRDialect>(
     SystemRFeedback::type_check_error(
         "TC17",
         term_span,
-        &format!(r#"Type<TExtDialect> mismatch in unfold
+        &format!(
+            r#"Type<TExtDialect> mismatch in unfold
 unfold requires type {rec:?}
 term has a type of {ty_:?}
-            "#),
+            "#
+        ),
     )
 }
 
@@ -271,10 +285,12 @@ pub fn err_20<TExtDialect: SystemRDialect>(
     SystemRFeedback::type_check_error(
         "TC20",
         term_span,
-        &format!(r#"Type<TExtDialect> mismatch in fold
+        &format!(
+            r#"Type<TExtDialect> mismatch in fold
 unfold requires type {s:?}
 term has a type of {ty_:?}
-            "#),
+            "#
+        ),
     )
 }
 
@@ -290,10 +306,12 @@ pub fn err_21<TExtDialect: SystemRDialect>(
     SystemRFeedback::type_check_error(
         "TC21",
         term_span,
-        &format!(r#"Type<TExtDialect> mismatch in pack
+        &format!(
+            r#"Type<TExtDialect> mismatch in pack
 signature has type {sig_prime:?}
 {evidence_span:?} but term has a type {evidence_ty:?}
-            "#),
+            "#
+        ),
     )
 }
 
@@ -369,8 +387,10 @@ pub mod pattern {
         SystemRFeedback::<TExtDialect>::type_check_error(
             "TCPAT02",
             span,
-                &format!(r#"case binding has a type {m_content:?}
-                            but this pattern ({a_pat:?}) cannot bind a value of type {m_content:?}."#),
+            &format!(
+                r#"case binding has a type {m_content:?}
+                            but this pattern ({a_pat:?}) cannot bind a value of type {m_content:?}."#
+            ),
         )
     }
 

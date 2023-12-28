@@ -1,46 +1,6 @@
 //! Diagnostic handling for errors detected in source code.
-use core::fmt;
+use crate::util::span::Span;
 
-use crate::{dialect::ExtendedTokenKind, util::span::Span};
-
-use crate::syntax::{Token, TokenKind};
-
-#[derive(Clone)]
-pub struct ParserError<TExtTokenKind: ExtendedTokenKind> {
-    pub span: Span,
-    pub tok: Token<TExtTokenKind>,
-    pub kind: ErrorKind<TExtTokenKind>,
-}
-
-#[derive(Clone, Debug)]
-pub enum ErrorKind<T: ExtendedTokenKind> {
-    ExpectedAtom,
-    ExpectedIdent,
-    ExpectedType,
-    ExpectedPattern,
-    ExpectedToken(TokenKind<T>),
-    UnboundTypeVar,
-    Unknown,
-    Eof,
-    ExtendedError(String),
-}
-
-impl<T: ExtendedTokenKind + fmt::Debug + fmt::Display> std::error::Error for ParserError<T> {}
-
-impl<TExtTokenKind: ExtendedTokenKind> fmt::Debug for ParserError<TExtTokenKind> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Error")
-            .field("kind", &format!("{:?}", self.kind))
-            .finish()
-    }
-}
-impl<TExtTokenKind: ExtendedTokenKind> fmt::Display for ParserError<TExtTokenKind> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Error")
-            .field("kind", &format!("{:?}", self.kind))
-            .finish()
-    }
-}
 
 use crate::util::span::*;
 
