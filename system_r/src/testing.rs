@@ -15,7 +15,6 @@ limitations under the License.
 use crate::bottom::BottomDialect;
 use crate::dialect::{SystemRDialect, SystemRExtension};
 
-use crate::feedback::type_check::TypeCheckerDiagnosticInfo;
 use crate::{
     bottom::BottomExtension,
     eval,
@@ -28,32 +27,7 @@ use crate::{
 
 use anyhow::Result;
 
-pub fn code_format(src: &str, diag: TypeCheckerDiagnosticInfo) -> String {
-    let srcl = src.lines().collect::<Vec<&str>>();
-
-    let mut msgs = diag.other.clone();
-    msgs.insert(0, diag.primary.clone());
-
-    let mut output = "".to_string();
-
-    for line in diag.lines() {
-        for anno in &msgs {
-            if anno.span.start.line != line {
-                continue;
-            }
-            let empty = (0..anno.span.start.col + 3).map(|_| ' ').collect::<String>();
-            let tilde = (1..anno.span.end.col.saturating_sub(anno.span.start.col))
-                .map(|_| '~')
-                .collect::<String>();
-            output += "\r\n";
-            output += &format!("{}^{}^ --- {}", empty, tilde, anno.info);
-        }
-    }
-
-    output
-}
-
-pub fn type_check_term<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
+pub fn type_check_term<TExtDialect: SystemRDialect + 'static, TExt: SystemRExtension<TExtDialect>>(
     ctx: &mut type_check::TypeChecker<TExtDialect>,
     term: &mut Term<TExtDialect>,
     ext: &mut TExt,
@@ -63,7 +37,7 @@ pub fn type_check_term<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtD
     Ok(ty)
 }
 
-pub fn dealias_and_type_check_term<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
+pub fn dealias_and_type_check_term<TExtDialect: SystemRDialect + 'static, TExt: SystemRExtension<TExtDialect>>(
     ctx: &mut type_check::TypeChecker<TExtDialect>,
     term: &mut Term<TExtDialect>,
     ext: &mut TExt,
@@ -128,13 +102,13 @@ pub fn type_check_and_eval_single_block(
             "Type change of term pre check typecheck to post-eval: {:?} {:?}",
             pre_ty, fin_ty
         );
-        return Err(TypeCheckerDiagnosticInfo::error(fin.span(), msg).into());
+        return Err(anyhow!("romeo-level type-check-coordination error"));
     }
 
     Ok((fin_ty, fin))
 }
 
-pub fn do_type_check<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
+pub fn do_type_check<TExtDialect: SystemRDialect + 'static, TExt: SystemRExtension<TExtDialect>>(
     ctx: &mut type_check::TypeChecker<TExtDialect>,
     term: &mut Term<TExtDialect>,
     ext: &mut TExt,

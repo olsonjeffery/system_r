@@ -14,7 +14,7 @@
 
 use super::*;
 use crate::dialect::{SystemRDialect, SystemRExtension};
-use crate::feedback::type_check::*;
+use crate::feedback;
 use crate::patterns::{PatTyStack, Pattern};
 use crate::terms::*;
 use anyhow::Result;
@@ -186,7 +186,7 @@ impl<'pat, TExtDialect: SystemRDialect> Matrix<'pat, TExtDialect> {
     }
 }
 
-impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
+impl<TExtDialect: SystemRDialect + 'static> TypeChecker<TExtDialect> {
     /// Type check a case expression, returning the Type of the arms, assuming
     /// that the case expression is exhaustive and well-typed
     ///
@@ -238,43 +238,26 @@ impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
 
                 set.insert(arm_ty);
                 if !matrix.add_pattern(&arm.pat, ext, &mut self.ext_state) {
-                    return Err(TypeCheckerDiagnosticInfo::error(arm.span, "unreachable pattern!").into());
+                    return Err(feedback::catalog::type_check::pattern::err_01::<TExtDialect>(arm.span).into());
                 }
             } else {
-                return Err(TypeCheckerDiagnosticInfo::error(
-                    expr.span,
-                    format!("case binding has a type {:?}", &matrix.expr_ty),
-                )
-                .message(
-                    arm.span,
-                    format!(
-                        "but this pattern ({:?}) cannot bind a value of type {:?}",
-                        &arm.pat, &matrix.expr_ty
-                    ),
-                )
-                .into());
+                let m_content = matrix.expr_ty.clone();
+                let a_pat = arm.pat.clone();
+                return Err(feedback::catalog::type_check::pattern::err_02(expr.span, m_content, a_pat).into());
             }
         }
 
         if set.len() != 1 {
-            return Err(TypeCheckerDiagnosticInfo::error(
-                expr.span,
-                format!("incompatible arms! {:?} expr: {:?}", set, expr),
-            )
-            .into());
+            return Err(feedback::catalog::type_check::pattern::err_03(expr.span, set, expr).into());
         }
 
         if matrix.exhaustive(ext, &mut self.ext_state) {
             match set.into_iter().next() {
                 Some(s) => Ok(s),
-                None => Err(TypeCheckerDiagnosticInfo::error(
-                    expr.span,
-                    "probably unreachable - expected variant type!",
-                )
-                .into()),
+                None => Err(feedback::catalog::type_check::pattern::err_04::<TExtDialect>(expr.span).into()),
             }
         } else {
-            Err(TypeCheckerDiagnosticInfo::error(expr.span, "patterns are not exhaustive!").into())
+            Err(feedback::catalog::type_check::pattern::err_05::<TExtDialect>(expr.span).into())
         }
     }
 

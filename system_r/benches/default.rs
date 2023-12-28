@@ -4,6 +4,9 @@ extern crate test;
 
 mod platform_bindings;
 
+#[macro_use]
+extern crate anyhow;
+
 #[cfg(test)]
 mod bench {
     use system_r::{platform_bindings::Bindings, terms::Kind, testing, type_check::TypeChecker};

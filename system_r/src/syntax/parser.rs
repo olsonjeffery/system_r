@@ -3,7 +3,8 @@ use super::lexer::Lexer;
 use super::{Token, TokenKind};
 use crate::bottom::{BottomDialect, BottomExtension};
 use crate::dialect::{SystemRDialect, SystemRExtension};
-use crate::feedback::syntax::{ErrorKind, ParserDiagnosticInfo, ParserError};
+use crate::feedback::catalog;
+use crate::feedback::{syntax::ParserDiagnosticInfo, ErrorKind};
 
 use crate::util::span::*;
 use core::fmt;
@@ -16,7 +17,7 @@ use crate::type_check::*;
 use anyhow::Result;
 
 #[derive(Default, Debug, Clone)]
-pub struct Parser<'s, TExtDialect: SystemRDialect> {
+pub struct Parser<'s, TExtDialect: SystemRDialect + 'static> {
     pub tmvar: DeBruijnIndexer,
     pub tyvar: DeBruijnIndexer,
     pub diagnostic: ParserDiagnosticInfo<'s>,
@@ -28,7 +29,7 @@ pub struct Parser<'s, TExtDialect: SystemRDialect> {
     pub ty: TExtDialect::Type,
 }
 
-impl<'s, TExtDialect: SystemRDialect> Parser<'s, TExtDialect> {
+impl<'s, TExtDialect: SystemRDialect + 'static> Parser<'s, TExtDialect> {
     pub fn die(self) -> String {
         let d = self.diagnostic;
         d.emit()
@@ -95,18 +96,6 @@ impl<'s, TExtDialect: SystemRDialect> Parser<'s, TExtDialect> {
         self.diagnostic
     }
 
-    pub fn error<TError>(&self, kind: ErrorKind<TExtDialect::TokenKind>) -> Result<TError>
-    where
-        <TExtDialect as SystemRDialect>::TokenKind: 'static,
-    {
-        Err(ParserError {
-            span: self.token.span,
-            tok: self.token.clone(),
-            kind,
-        }
-        .into())
-    }
-
     pub fn bump<TExt: SystemRExtension<TExtDialect>>(&mut self, ext: &mut TExt) -> TokenKind<TExtDialect::TokenKind> {
         let prev = std::mem::replace(&mut self.token, self.lexer.lex(ext));
         self.span = prev.span;
@@ -150,6 +139,13 @@ impl<'s, TExtDialect: SystemRDialect> Parser<'s, TExtDialect> {
             );
             self.error(ErrorKind::ExpectedToken(kind))
         }
+    }
+
+    pub fn error<TError>(&self, kind: ErrorKind<TExtDialect::TokenKind>) -> Result<TError>
+    where
+        <TExtDialect as SystemRDialect>::TokenKind: 'static,
+    {
+        Err(catalog::syntax::err_02::<TExtDialect>(self.span, self.token.clone(), kind).into())
     }
 
     pub fn ty_variant<TExt: SystemRExtension<TExtDialect>>(&mut self, ext: &mut TExt) -> Result<Variant<TExtDialect>>
@@ -687,26 +683,23 @@ impl<'s, TExtDialect: SystemRDialect> Parser<'s, TExtDialect> {
                         out_bytes.push(n as u8);
                     }
                     e => {
-                        return Err(ParserError {
-                            span: start_span,
-                            tok: start_token,
-                            kind: ErrorKind::ExtendedError(format!(
-                                "expect Nat literals from 0 to 255, got {:?}; invalid byte range",
-                                e
-                            )),
-                        }
+                        return Err(catalog::syntax::err_01::<TExtDialect>(
+                            start_span,
+                            start_token,
+                            ErrorKind::ExtendedError(
+                                "expect Nat literals from 0 to 255, got {e:?}; invalid byte range".to_owned(),
+                            ),
+                        )
                         .into());
                     }
                 },
                 v => {
-                    return Err(ParserError {
-                        span: start_span,
-                        tok: start_token,
-                        kind: ErrorKind::ExtendedError(format!(
-                            "expect Nat literals from 0 to 255, got {:?}; invalid byte range",
-                            v
-                        )),
-                    }
+                    return Err(catalog::syntax::err_03(
+                        start_span,
+                        start_token,
+                        ErrorKind::ExtendedError("".to_string()),
+                        v,
+                    )
                     .into())
                 }
             }

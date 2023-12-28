@@ -12,9 +12,11 @@ Feature: Technical Debt
     #           - lexer->parser
     #           - typechecker .. ?
     #       - eval (lift out to romeo!)
-    # - adopt git2rs pre-commit hook
+    # - rename PlatformBindings to just Bindings
     # - rustdoc-documentation of entire API surface
     #    - #[deny(missing_docs)]
     #    - add DOCUMENTATION.md with executable/test-code recreating what's in testing.mod for some bottom dialect code
-    # - clone->Rc, audit for removal
+    # - increase coverage for new feedback::catalog
     # - specs become freestanding crate, double-up testing for romeo-interp & wasm backends
+    # - adopt git2rs pre-commit hook (being done manually, intermittently)
+    # - LOW clone->Rc, audit for removal

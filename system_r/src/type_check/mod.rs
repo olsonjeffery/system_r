@@ -3,7 +3,7 @@
 pub mod patterns;
 pub mod visit;
 use crate::dialect::{SystemRDialect, SystemRExtension};
-use crate::feedback::type_check::*;
+use crate::feedback::{self, catalog};
 use crate::platform_bindings::Bindings;
 use crate::terms::{Kind, Literal, Primitive, Term};
 use crate::util::span::Span;
@@ -93,7 +93,7 @@ impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
 }
 
 /// Helper function for extracting type from a variant
-pub fn variant_field<'vs, TExtDialect: SystemRDialect>(
+pub fn variant_field<'vs, TExtDialect: SystemRDialect + 'static>(
     var: &'vs [Variant<TExtDialect>],
     label: &str,
     span: Span,
@@ -103,13 +103,10 @@ pub fn variant_field<'vs, TExtDialect: SystemRDialect>(
             return Ok(&f.ty);
         }
     }
-    Err(
-        TypeCheckerDiagnosticInfo::error(span, format!("constructor {} doesn't appear in variant fields", label))
-            .into(),
-    )
+    Err(feedback::catalog::type_check::err_01::<TExtDialect>(span, label).into())
 }
 
-impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
+impl<TExtDialect: SystemRDialect + 'static> TypeChecker<TExtDialect> {
     pub fn type_check<TExt: SystemRExtension<TExtDialect>>(
         &mut self,
         term: &Term<TExtDialect>,
@@ -124,9 +121,10 @@ impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
             Kind::Lit(Literal::Tag(s)) => Ok(Type::Tag(s.clone())),
             Kind::PlatformBinding(idx) => self.type_check_platform_binding(idx, &term.span),
             Kind::Var(idx) => {
-                let result = self.find(*idx).cloned().ok_or_else(|| {
-                    TypeCheckerDiagnosticInfo::error(term.span, format!("type_check: unbound variable {}", idx))
-                })?;
+                let result = self
+                    .find(*idx)
+                    .cloned()
+                    .ok_or_else(|| feedback::catalog::type_check::err_02::<TExtDialect>(term.span, *idx))?;
                 Ok(result)
             }
 
@@ -154,27 +152,10 @@ impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
                                     if ext.type_check_ext_equals_ty(self, &mut ext_ty.clone(), &mut ty2) {
                                         Ok(*ty12)
                                     } else {
-                                        let d = TypeCheckerDiagnosticInfo::error(
-                                            term.span,
-                                            "Type<TExtDialect> mismatch in ext application, ty11 side",
-                                        )
-                                        .message(t2.span, format!("WTF is ty12? {:?}", ty12))
-                                        .message(term.span, format!("parent term {:?}", term.kind))
-                                        .message(term.span, format!("ctx stack {:?}", self.stack));
-                                        Err(d.into())
+                                        Err(feedback::catalog::type_check::err_03(term, *ty12, &self.stack).into())
                                     }
                                 }
-                                _ => {
-                                    let d = TypeCheckerDiagnosticInfo::error(
-                                        term.span,
-                                        "Type<TExtDialect> mismatch in application",
-                                    )
-                                    .message(t1.span, format!("Abstraction requires type {:?}", ty11))
-                                    .message(t2.span, format!("Value has a type of {:?}", ty2))
-                                    .message(t1.span, format!("Stack contents: {:?}", self.stack))
-                                    .message(term.span, format!("parent term {:?}", term.kind));
-                                    Err(d.into())
-                                }
+                                _ => Err(feedback::catalog::type_check::err_04(term, t1, t2, &ty11, &ty2).into()),
                             }
                         }
                     }
@@ -183,23 +164,11 @@ impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
                         if *ty11 == ty2 {
                             Ok(*ty12)
                         } else {
-                            let d = TypeCheckerDiagnosticInfo::error(
-                                term.span,
-                                "Type<TExtDialect> mismatch in PlatformBinding application",
-                            )
-                            .message(t1.span, format!("PlatformBinding Abstraction requires type {:?}", ty11))
-                            .message(t2.span, format!("Value has a type of {:?}", ty2));
-                            Err(d.into())
+                            Err(catalog::type_check::err_05(term, t1, t1, &ty11, &ty2, &self.stack).into())
                         }
                     }
-                    Type::Extended(t) => {
-                        panic!("SHOULDNT HAPPEN; type_check on Kind::App value with an extended in t1; term: {:?} span: {:?} t: {:?} ty+stack {:?}", term, term.span.clone(), t, self.stack);
-                        //ext.type_check_application_of_ext(self, t1, &ty1, t2,
-                        // &ty2)
-                    }
-                    _ => Err(TypeCheckerDiagnosticInfo::error(term.span, "App: Expected arrow type!")
-                        .message(t1.span, format!("Kind::App ty1 {:?} ty2 {:?}", &ty1, &ty2))
-                        .into()),
+                    Type::Extended(t) => Err(catalog::type_check::err_06(term, &t, &self.stack).into()),
+                    _ => Err(catalog::type_check::err_07(term, t1, &ty1, &ty2).into()),
                 }
             }
             Kind::Fix(inner) => {
@@ -209,18 +178,10 @@ impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
                         if ty1 == ty2 {
                             Ok(*ty1)
                         } else {
-                            let d =
-                                TypeCheckerDiagnosticInfo::error(term.span, "Type<TExtDialect> mismatch in fix term")
-                                    .message(inner.span, format!("Abstraction requires type {:?}->{:?}", ty1, ty1));
-                            Err(d.into())
+                            Err(catalog::type_check::err_08(term, inner, &ty1, &ty2).into())
                         }
                     }
-                    _ => Err(TypeCheckerDiagnosticInfo::error(term.span, "Fix: Expected arrow type!")
-                        .message(
-                            inner.span,
-                            format!("Kind::Fix -> type_check operator has type {:?}", ty),
-                        )
-                        .into()),
+                    _ => Err(catalog::type_check::err_09(term, inner, &ty).into()),
                 }
             }
             Kind::Primitive(prim) => match prim {
@@ -235,55 +196,28 @@ impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
                             if ty_ == f.ty {
                                 return Ok(*ty.clone());
                             } else {
-                                let d =
-                                    TypeCheckerDiagnosticInfo::error(term.span, "Invalid associated type in variant")
-                                        .message(
-                                            tm.span,
-                                            format!(
-                                                "variant {} requires type {:?}, but this is {:?}",
-                                                label, f.ty, ty_
-                                            ),
-                                        );
-                                return Err(d.into());
+                                return Err(catalog::type_check::err_10(tm, label, f, &ty_).into());
                             }
                         }
                     }
-                    Err(TypeCheckerDiagnosticInfo::error(
-                        term.span,
-                        format!(
-                            "constructor {} does not belong to the variant {:?}",
-                            label,
-                            fields
-                                .iter()
-                                .map(|f| f.label.clone())
-                                .collect::<Vec<String>>()
-                                .join(" | ")
-                        ),
-                    )
-                    .into())
+
+                    let joined_fields = fields
+                        .iter()
+                        .map(|f| f.label.clone())
+                        .collect::<Vec<String>>()
+                        .join(" | ");
+                    Err(catalog::type_check::err_11(term, label, joined_fields).into())
                 }
                 Type::Extended(t) => ext.type_check_injection_to_ext(self, label, t, tm),
 
-                _ => Err(TypeCheckerDiagnosticInfo::error(
-                    term.span,
-                    format!("Cannot injection {} into non-variant type {:?}", label, ty),
-                )
-                .into()),
+                _ => Err(catalog::type_check::err_12(term, label, ty).into()),
             },
             Kind::Projection(term, idx) => match self.type_check(term, ext)? {
                 Type::Product(types) => match types.get(*idx) {
                     Some(ty) => Ok(ty.clone()),
-                    None => Err(TypeCheckerDiagnosticInfo::error(
-                        term.span,
-                        format!("{} is out of range for product of length {}", idx, types.len()),
-                    )
-                    .into()),
+                    None => Err(catalog::type_check::err_13(term, *idx, types.len()).into()),
                 },
-                ty => Err(TypeCheckerDiagnosticInfo::error(
-                    term.span,
-                    format!("Cannot project on non-product type {:?}", ty),
-                )
-                .into()),
+                ty => Err(catalog::type_check::err_14(term, &ty).into()),
             },
             Kind::Product(terms) => Ok(Type::Product(
                 terms
@@ -294,11 +228,7 @@ impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
             Kind::Let(pat, t1, t2) => {
                 let ty = self.type_check(t1, ext)?;
                 if !self.pattern_type_eq(pat, &ty, ext) {
-                    return Err(TypeCheckerDiagnosticInfo::error(
-                        t1.span,
-                        "pattern does not match type of binder".to_string(),
-                    )
-                    .into());
+                    return Err(catalog::type_check::err_15(term).into());
                 }
 
                 let height = self.stack.len();
@@ -346,11 +276,7 @@ impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
                         }
                         Ok(*ty12)
                     }
-                    _ => Err(TypeCheckerDiagnosticInfo::error(
-                        term.span,
-                        format!("Expected a universal type, not {:?}", ty1),
-                    )
-                    .into()),
+                    _ => Err(catalog::type_check::err_16(term, &ty1).into()),
                 }
             }
             // See src/types/patterns.rs for exhaustiveness and typechecking
@@ -364,17 +290,10 @@ impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
                         let s = subst(*rec.clone(), *inner.clone(), ext, &self.ext_state);
                         Ok(s)
                     } else {
-                        let d = TypeCheckerDiagnosticInfo::error(term.span, "Type<TExtDialect> mismatch in unfold")
-                            .message(term.span, format!("unfold requires type {:?}", rec))
-                            .message(tm.span, format!("term has a type of {:?}", ty_));
-                        Err(d.into())
+                        Err(catalog::type_check::err_17(term, rec, &ty_).into())
                     }
                 }
-                _ => Err(TypeCheckerDiagnosticInfo::error(
-                    term.span,
-                    format!("Expected a recursive type, not {:?}", rec),
-                )
-                .into()),
+                _ => Err(catalog::type_check::err_19(term, rec).into()),
             },
 
             Kind::Fold(rec, tm) => match rec.as_ref() {
@@ -384,17 +303,10 @@ impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
                     if ty_ == s {
                         Ok(*rec.clone())
                     } else {
-                        let d = TypeCheckerDiagnosticInfo::error(term.span, "Type<TExtDialect> mismatch in fold")
-                            .message(term.span, format!("unfold requires type {:?}", s))
-                            .message(tm.span, format!("term has a type of {:?}", ty_));
-                        Err(d.into())
+                        Err(catalog::type_check::err_20(term, &s, &ty_).into())
                     }
                 }
-                _ => Err(TypeCheckerDiagnosticInfo::error(
-                    term.span,
-                    format!("Expected a recursive type, not {:?}", rec),
-                )
-                .into()),
+                _ => Err(catalog::type_check::err_19(term, rec).into()),
             },
             Kind::Pack(witness, evidence, signature) => {
                 if let Type::Existential(exists) = signature.as_ref() {
@@ -403,17 +315,10 @@ impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
                     if evidence_ty == sig_prime {
                         Ok(*signature.clone())
                     } else {
-                        let d = TypeCheckerDiagnosticInfo::error(term.span, "Type<TExtDialect> mismatch in pack")
-                            .message(term.span, format!("signature has type {:?}", sig_prime))
-                            .message(evidence.span, format!("but term has a type {:?}", evidence_ty));
-                        Err(d.into())
+                        Err(catalog::type_check::err_21(term, &sig_prime, evidence, &evidence_ty).into())
                     }
                 } else {
-                    Err(TypeCheckerDiagnosticInfo::error(
-                        term.span,
-                        format!("Expected an existential type signature, not {:?}", signature),
-                    )
-                    .into())
+                    Err(catalog::type_check::err_22(term, signature).into())
                 }
             }
             Kind::Unpack(package, body) => {
@@ -424,11 +329,7 @@ impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
                     self.pop();
                     Ok(body_ty)
                 } else {
-                    Err(TypeCheckerDiagnosticInfo::error(
-                        package.span,
-                        format!("Expected an existential type signature, not {:?}", p_ty),
-                    )
-                    .into())
+                    Err(catalog::type_check::err_23(package, &p_ty).into())
                 }
             }
         }

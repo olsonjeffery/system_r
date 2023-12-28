@@ -2,10 +2,7 @@ use std::{cell::RefCell, collections::HashMap, fmt::Display, rc::Rc};
 
 use crate::{
     bottom::{BottomDialect, BottomKind, BottomPattern, BottomTokenKind},
-    feedback::{
-        syntax::{ErrorKind, ParserError},
-        type_check::TypeCheckerDiagnosticInfo,
-    },
+    feedback::syntax::{ErrorKind, ParserError},
     patterns::Pattern,
     syntax::{parser::Parser, TokenKind},
     terms::{Kind, Term},
@@ -311,14 +308,12 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
     ) -> Result<Type<TypeAliasDialect>> {
         let sp = tm.span;
         let TypeAliasType::TypeAliasApp(type_alias_label, inner_types) = target else {
-            return Err(TypeCheckerDiagnosticInfo::error(sp, String::new()).into());
+            return Err(type_alias_catalog::err_01(sp, target).into());
         };
 
         let ps = &mut ctx.ext_state;
         let dealiased = match reify_type(ps, type_alias_label, inner_types) {
-            Err(e) => {
-                return Err(TypeCheckerDiagnosticInfo::error(sp, format!("failed to reify type: {:?}", e)).into())
-            }
+            Err(e) => return Err(type_alias_catalog::err_02(sp, &e).into()),
             Ok(t) => t,
         };
 
@@ -333,25 +328,18 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
                         }
                     }
                 }
-                Err(TypeCheckerDiagnosticInfo::error(
+                Err(type_alias_catalog::err_03(
                     sp,
-                    format!(
-                        "constructor {} does not belong to the variant {:?}",
-                        inj_label,
-                        fields
-                            .iter()
-                            .map(|f| f.label.clone())
-                            .collect::<Vec<String>>()
-                            .join(" | ")
-                    ),
+                    inj_label,
+                    fields
+                        .iter()
+                        .map(|f| f.label.clone())
+                        .collect::<Vec<String>>()
+                        .join(" | "),
                 )
                 .into())
             }
-            v => Err(TypeCheckerDiagnosticInfo::error(
-                sp,
-                format!("expected de-aliased type to be a Varient, was {:?}", v),
-            )
-            .into()),
+            v => Err(type_alias_catalog::err_04(sp, &v).into()),
         }
     }
 
@@ -724,5 +712,75 @@ impl DialectChangingTermVisitor<TypeAliasDialect, BottomDialect, TatbTypeVisitor
 
     fn visit_ext(&self, term: &Term<TypeAliasDialect>) -> Result<Term<BottomDialect>> {
         Err(anyhow!("no extended kinds should have persisted beyond parse phase"))
+    }
+}
+
+mod type_alias_catalog {
+    use anyhow::Error;
+
+    use crate::{
+        feedback::{FeedbackPhase, FeedbackSeverity, SystemRFeedback},
+        type_check::Type,
+        util::span::Span,
+    };
+
+    use super::{TypeAliasDialect, TypeAliasType};
+
+    fn build_error(
+        feedback_code: &str,
+        target_span: Span,
+        formatted_err_msg: String,
+    ) -> SystemRFeedback<TypeAliasDialect> {
+        SystemRFeedback {
+            feedback_code: feedback_code.to_owned(),
+            target_span,
+            phase: FeedbackPhase::Extended {
+                dialect: "TypeAlias".to_owned(),
+                phase: "TC".to_owned(),
+            },
+            severity: FeedbackSeverity::Error(formatted_err_msg),
+            src: None,
+            acknowledged: false,
+        }
+    }
+
+    // TADTC01
+    pub fn err_01(sp: Span, input: &TypeAliasType) -> SystemRFeedback<TypeAliasDialect> {
+        build_error(
+            "TADTC01",
+            sp,
+            format!(
+                r#"Expected the type being checked to be a TypeAliasApp type, but was {:?}"#,
+                input
+            )
+            .to_owned(),
+        )
+    }
+
+    // TADTC02
+    pub fn err_02(sp: Span, e: &Error) -> SystemRFeedback<TypeAliasDialect> {
+        build_error("TADTC02", sp, format!("failed to reify type: {:?}", e).to_owned())
+    }
+
+    // TADTC03
+    pub fn err_03(sp: Span, inj_label: &str, fields_joined: String) -> SystemRFeedback<TypeAliasDialect> {
+        build_error(
+            "TADTC03",
+            sp,
+            format!(
+                "constructor {} does not belong to the variant {:?}",
+                inj_label, fields_joined
+            )
+            .to_owned(),
+        )
+    }
+
+    // TADTC04
+    pub fn err_04(sp: Span, v: &Type<TypeAliasDialect>) -> SystemRFeedback<TypeAliasDialect> {
+        build_error(
+            "TADTC04",
+            sp,
+            format!("expected de-aliased type to be a Varient, was {:?}", v).to_owned(),
+        )
     }
 }

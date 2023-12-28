@@ -3,8 +3,8 @@ extern crate cucumber;
 use cucumber::{gherkin::Step, given, then, when};
 
 use system_r::{
-    bottom::BottomTokenKind,
-    feedback::{syntax::ParserError, type_check::TypeCheckerDiagnosticInfo},
+    bottom::{BottomDialect, BottomTokenKind},
+    feedback::{syntax::ParserError, FeedbackSeverity, SystemRFeedback},
     terms::{Kind, Literal, Term},
     testing,
     type_check::Type,
@@ -86,8 +86,11 @@ fn when_it_is_parsed(world: &mut common::SpecsWorld) {
             world.last_parse_kind = Kind::Lit(Literal::Unit);
             let output = match e.downcast_ref::<ParserError<BottomTokenKind>>() {
                 Some(e) => e.to_string(),
-                None => match e.downcast_ref() {
-                    Some(TypeCheckerDiagnosticInfo { .. }) => "diagnostic error".to_owned(),
+                None => match e.downcast_ref::<SystemRFeedback<BottomDialect>>() {
+                    Some(srf) => match &srf.severity {
+                        FeedbackSeverity::Error(msg) => msg.clone(),
+                        s => format!("{:?}", s),
+                    },
                     None => "unknown".to_owned(),
                 },
             };

@@ -98,7 +98,7 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> PatternVi
     }
 }
 
-impl<TExtDialect: SystemRDialect> Pattern<TExtDialect> {
+impl<TExtDialect: SystemRDialect + 'static> Pattern<TExtDialect> {
     /// Does this pattern match the given [`Term`]?
     pub fn matches<TPtE: SystemRExtension<TExtDialect>>(&self, term: &Term<TExtDialect>, ext: &TPtE) -> bool {
         match self {
@@ -137,7 +137,7 @@ pub struct PatTyStack<TExtDialect: SystemRDialect> {
     pub inner: Vec<Type<TExtDialect>>,
 }
 
-impl<'ty, TExtDialect: SystemRDialect> PatTyStack<TExtDialect> {
+impl<'ty, TExtDialect: SystemRDialect + 'static> PatTyStack<TExtDialect> {
     pub fn collect<TExt: SystemRExtension<TExtDialect>>(
         ty: &'ty Type<TExtDialect>,
         pat: &Pattern<TExtDialect>,
@@ -155,7 +155,7 @@ impl<'ty, TExtDialect: SystemRDialect> PatTyStack<TExtDialect> {
     }
 }
 
-impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> PatternVisitor<TExtDialect, TExt>
+impl<TExtDialect: SystemRDialect + 'static, TExt: SystemRExtension<TExtDialect>> PatternVisitor<TExtDialect, TExt>
     for PatTyStack<TExtDialect>
 {
     fn visit_product(

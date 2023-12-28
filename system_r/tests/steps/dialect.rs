@@ -38,7 +38,7 @@ where
     testing::operate_parser_for(input, ps, ext)
 }
 
-pub fn type_check_for_extension<'s, TExtDialect: SystemRDialect, TLE: SystemRExtension<TExtDialect>>(
+pub fn type_check_for_extension<'s, TExtDialect: SystemRDialect + 'static, TLE: SystemRExtension<TExtDialect>>(
     ctx: &mut TypeChecker<TExtDialect>,
     term: &mut Term<TExtDialect>,
     ext: &mut TLE,

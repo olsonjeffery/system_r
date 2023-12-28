@@ -16,7 +16,7 @@ use std::collections::HashMap;
 
 use crate::bottom::BottomDialect;
 use crate::dialect::SystemRDialect;
-use crate::feedback::type_check::TypeCheckerDiagnosticInfo;
+use crate::feedback::catalog;
 use crate::terms::Term;
 use crate::type_check::Variant;
 use crate::type_check::{Type, TypeChecker};
@@ -84,35 +84,30 @@ impl<'a> Bindings {
     }
 }
 
-fn resolve_pb_type<TExtDialect: SystemRDialect>(ty_in: Type<BottomDialect>) -> Result<Type<TExtDialect>> {
+fn resolve_pb_type<TExtDialect: SystemRDialect + 'static>(
+    ty_in: Type<BottomDialect>,
+    span: &Span,
+) -> Result<Type<TExtDialect>> {
     match ty_in {
-        Type::Extended(v) => Err(TypeCheckerDiagnosticInfo::error(
-            Default::default(),
-            "Platform binding with extended args type; not allowed",
-        )
-        .into()),
+        Type::Extended(v) => Err(catalog::type_check::err_25::<TExtDialect>(span).into()),
         Type::Alias(v) => Ok(Type::Alias(v)),
         Type::Arrow(a, b) => Ok(Type::Arrow(
-            Box::new(resolve_pb_type(*a)?),
-            Box::new(resolve_pb_type(*b)?),
+            Box::new(resolve_pb_type(*a, span)?),
+            Box::new(resolve_pb_type(*b, span)?),
         )),
         Type::Bytes => Ok(Type::Bytes),
         Type::Bool => Ok(Type::Bool),
-        Type::Existential(a) => Ok(Type::Existential(Box::new(resolve_pb_type(*a)?))),
+        Type::Existential(a) => Ok(Type::Existential(Box::new(resolve_pb_type(*a, span)?))),
         Type::Nat => Ok(Type::Nat),
-        Type::PlatformBinding(_, _) => Err(TypeCheckerDiagnosticInfo::error(
-            Default::default(),
-            "Platforming with platform-binding-type vars; shouldn't happen",
-        )
-        .into()),
+        Type::PlatformBinding(_, _) => Err(catalog::type_check::err_26::<TExtDialect>(span).into()),
         Type::Product(v) => {
             let mut result = Vec::new();
             for i in v {
-                result.push(resolve_pb_type(i)?);
+                result.push(resolve_pb_type(i, span)?);
             }
             Ok(Type::Product(result))
         }
-        Type::Rec(r) => Ok(Type::Rec(Box::new(resolve_pb_type(*r)?))),
+        Type::Rec(r) => Ok(Type::Rec(Box::new(resolve_pb_type(*r, span)?))),
         Type::Tag(t) => Ok(Type::Tag(t)),
         Type::Unit => Ok(Type::Unit),
         Type::Var(s) => Ok(Type::Var(s)),
@@ -121,29 +116,25 @@ fn resolve_pb_type<TExtDialect: SystemRDialect>(ty_in: Type<BottomDialect>) -> R
             for i in v {
                 let variant: Variant<TExtDialect> = Variant {
                     label: i.label,
-                    ty: resolve_pb_type(i.ty)?,
+                    ty: resolve_pb_type(i.ty, span)?,
                 };
                 result.push(variant);
             }
             Ok(Type::Variant(result))
         }
-        Type::Universal(r) => Ok(Type::Universal(Box::new(resolve_pb_type(*r)?))),
+        Type::Universal(r) => Ok(Type::Universal(Box::new(resolve_pb_type(*r, span)?))),
     }
 }
 
-impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
+impl<TExtDialect: SystemRDialect + 'static> TypeChecker<TExtDialect> {
     pub(crate) fn type_check_platform_binding(&mut self, idx: &usize, span: &Span) -> Result<Type<TExtDialect>> {
         match self.platform_bindings.get(*idx) {
             Some(wc) => {
-                let args_resolved = resolve_pb_type(wc.1.clone())?;
-                let ret_resolved = resolve_pb_type(wc.2.clone())?;
+                let args_resolved = resolve_pb_type(wc.1.clone(), span)?;
+                let ret_resolved = resolve_pb_type(wc.2.clone(), span)?;
                 Ok(Type::PlatformBinding(Box::new(args_resolved), Box::new(ret_resolved)))
             }
-            None => Err(TypeCheckerDiagnosticInfo::error(
-                *span,
-                format!("No matching platform_binding registration for idx {}", idx),
-            )
-            .into()),
+            None => Err(catalog::type_check::err_24::<TExtDialect>(span, *idx).into()),
         }
     }
 }
