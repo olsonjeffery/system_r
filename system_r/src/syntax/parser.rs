@@ -3,8 +3,7 @@ use super::lexer::Lexer;
 use super::{Token, TokenKind};
 use crate::bottom::{BottomDialect, BottomExtension};
 use crate::dialect::{SystemRDialect, SystemRExtension};
-use crate::feedback::catalog;
-use crate::feedback::{syntax::ParserDiagnosticInfo, ErrorKind};
+use crate::feedback::{catalog, ErrorKind};
 
 use crate::util::span::*;
 use core::fmt;
@@ -20,7 +19,6 @@ use anyhow::Result;
 pub struct Parser<'s, TExtDialect: SystemRDialect + 'static> {
     pub tmvar: DeBruijnIndexer,
     pub tyvar: DeBruijnIndexer,
-    pub diagnostic: ParserDiagnosticInfo<'s>,
     pub lexer: Lexer<'s, TExtDialect>,
     pub span: Span,
     pub token: Token<TExtDialect::TokenKind>,
@@ -30,11 +28,6 @@ pub struct Parser<'s, TExtDialect: SystemRDialect + 'static> {
 }
 
 impl<'s, TExtDialect: SystemRDialect + 'static> Parser<'s, TExtDialect> {
-    pub fn die(self) -> String {
-        let d = self.diagnostic;
-        d.emit()
-    }
-
     pub fn to_ext_state(self) -> TExtDialect::DialectState {
         self.ext_state
     }
@@ -52,7 +45,6 @@ impl<'s, TExtDialect: SystemRDialect + 'static> Parser<'s, TExtDialect> {
         let mut p = Parser {
             tmvar: DeBruijnIndexer::default(),
             tyvar: DeBruijnIndexer::default(),
-            diagnostic: ParserDiagnosticInfo::new(input),
             lexer: Lexer::new(input.chars()),
             span: Span::default(),
             token: Token::dummy(),
@@ -84,16 +76,15 @@ impl<'s, TExtDialect: SystemRDialect + 'static> Parser<'s, TExtDialect> {
     /// already been bumped.
     pub fn once<F: FnMut(&mut Self) -> Result<T>, T>(&mut self, mut func: F, message: &str) -> Result<T> {
         match func(self) {
-            Err(e) => {
-                self.diagnostic.push(message, self.span);
-                Err(e)
-            }
+            Err(e) => Err(catalog::syntax::err_05_once_failure::<TExtDialect>(
+                &self.span,
+                &self.token,
+                message.to_owned(),
+                format!("{:?}", e),
+            )
+            .into()),
             t => t,
         }
-    }
-
-    pub fn diagnostic(self) -> ParserDiagnosticInfo<'s> {
-        self.diagnostic
     }
 
     pub fn bump<TExt: SystemRExtension<TExtDialect>>(&mut self, ext: &mut TExt) -> TokenKind<TExtDialect::TokenKind> {
@@ -133,11 +124,7 @@ impl<'s, TExtDialect: SystemRDialect + 'static> Parser<'s, TExtDialect> {
             self.bump(ext);
             Ok(())
         } else {
-            self.diagnostic.push(
-                format!("expected token {:?}, found {:?}", kind, self.token.kind),
-                self.span,
-            );
-            self.error(ErrorKind::ExpectedToken(kind))
+            Err(catalog::syntax::err_06_expected_token::<TExtDialect>(&self.span, &self.token, &kind).into())
         }
     }
 
@@ -381,14 +368,10 @@ impl<'s, TExtDialect: SystemRDialect + 'static> Parser<'s, TExtDialect> {
         <TExtDialect as SystemRDialect>::TokenKind: 'static,
     {
         self.expect(ext, TokenKind::Lambda)?;
-        match self.token.kind {
+        match &self.token.kind {
             TokenKind::Uppercase(_) => self.tyabs(ext),
             TokenKind::Lowercase(_) => self.tmabs(ext),
-            _ => {
-                self.diagnostic
-                    .push("expected identifier after lambda, found".to_string(), self.span);
-                self.error(ErrorKind::ExpectedIdent)
-            }
+            t => Err(catalog::syntax::err_07::<TExtDialect>(&self.span, &self.token, t).into()),
         }
     }
 
@@ -417,11 +400,7 @@ impl<'s, TExtDialect: SystemRDialect + 'static> Parser<'s, TExtDialect> {
     {
         match self.bump(ext) {
             TokenKind::Uppercase(s) => Ok(s),
-            tk => {
-                self.diagnostic
-                    .push(format!("expected uppercase identifier, found {:?}", tk), self.span);
-                self.error(ErrorKind::ExpectedIdent)
-            }
+            tk => Err(catalog::syntax::err_08::<TExtDialect>(&self.span, &self.token, &tk, true).into()),
         }
     }
 
@@ -431,11 +410,7 @@ impl<'s, TExtDialect: SystemRDialect + 'static> Parser<'s, TExtDialect> {
     {
         match self.bump(ext) {
             TokenKind::Lowercase(s) => Ok(s),
-            tk => {
-                self.diagnostic
-                    .push(format!("expected lowercase identifier, found {:?}", tk), self.span);
-                self.error(ErrorKind::ExpectedIdent)
-            }
+            tk => Err(catalog::syntax::err_08::<TExtDialect>(&self.span, &self.token, &tk, false).into()),
         }
     }
 
@@ -740,9 +715,7 @@ impl<'s, TExtDialect: SystemRDialect + 'static> Parser<'s, TExtDialect> {
                         if let Some(idx) = self.platform_bindings.has(&var) {
                             return Ok(Term::new(Kind::PlatformBinding(idx), self.span));
                         }
-                        self.diagnostic
-                            .push(format!("parser: unbound variable {}", var), self.span);
-                        self.error(ErrorKind::UnboundTypeVar)
+                        Err(catalog::syntax::err_09::<TExtDialect>(&self.span, &self.token, var).into())
                     }
                 }
             }
@@ -769,11 +742,7 @@ impl<'s, TExtDialect: SystemRDialect + 'static> Parser<'s, TExtDialect> {
         if self.bump_if(ext, &TokenKind::Proj) {
             let idx = match self.bump(ext) {
                 TokenKind::Nat(idx) => idx,
-                _ => {
-                    self.diagnostic
-                        .push(format!("expected integer index after {}", atom), self.span);
-                    return self.error(ErrorKind::ExpectedToken(TokenKind::Proj));
-                }
+                _ => return Err(catalog::syntax::err_010(&self.span, &self.token, &atom).into()),
             };
             let sp = atom.span + self.span;
             Ok(Term::new(Kind::Projection(Box::new(atom), idx as usize), sp))

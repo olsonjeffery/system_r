@@ -3,9 +3,9 @@ Feature: Technical Debt
     #
     # Incomplete list:
     # - pervasive Result<> everywhere;
-    #   - panic removal/convert-API to result (45 remaining)
-    #     - Add SystemRError
-    #       - unify & subsume all panics, Type/Parser error, DiagnosticInfo types
+    #   - panic removal/convert-API to result (39 remaining)
+    #     - DONE Add SystemRFeedback
+    #       - DONE unify & subsume all panics, Type/Parser error, DiagnosticInfo types
     #     - panic sites
     #       - PatternCount & all collects that take ext
     #       - dialect
@@ -16,6 +16,7 @@ Feature: Technical Debt
     # - rustdoc-documentation of entire API surface
     #    - #[deny(missing_docs)]
     #    - add DOCUMENTATION.md with executable/test-code recreating what's in testing.mod for some bottom dialect code
+    # - remove ErrorKind::ExtendedError, update where aprop
     # - increase coverage for new feedback::catalog
     # - specs become freestanding crate, double-up testing for romeo-interp & wasm backends
     # - adopt git2rs pre-commit hook (being done manually, intermittently)

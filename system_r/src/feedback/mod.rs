@@ -8,7 +8,6 @@ use crate::{
 };
 
 pub mod catalog;
-pub mod syntax;
 
 #[derive(Default, Debug, Clone, PartialEq, PartialOrd)]
 pub enum FeedbackSeverity {

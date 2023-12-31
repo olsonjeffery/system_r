@@ -87,7 +87,6 @@ fn when_it_is_processed_for_type_alias(world: &mut common::SpecsWorld) {
             term
         }
         Err(e) => {
-            ps.die();
             panic!("TypeAlias parse failed: {:?}", e);
         }
     };

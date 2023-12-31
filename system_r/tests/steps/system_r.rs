@@ -4,11 +4,12 @@ use cucumber::{gherkin::Step, given, then, when};
 
 use system_r::{
     bottom::BottomDialect,
+    dialect::type_alias::TypeAliasDialect,
     feedback::{FeedbackSeverity, SystemRFeedback},
     terms::{Kind, Literal, Term},
     testing,
     type_check::Type,
-    type_check::TypeChecker, dialect::type_alias::TypeAliasDialect,
+    type_check::TypeChecker,
 };
 
 use crate::common::{self, extensions::OmniTypeChecker};
