@@ -75,35 +75,6 @@ impl<TExtDialect: SystemRDialect> SystemRFeedback<TExtDialect> {
             acknowledged,
         }
     }
-
-    #[must_use]
-    /// Emit all remaining error message, if there are any
-    pub fn emit(self) -> String {
-        let mut _s = String::new();
-        panic!("SystemRFeedback emit; shouldn;t be called");
-
-        /*
-        let lines = self.src.unwrap().lines().collect::<Vec<&str>>();
-        for i in 0..self.messages.len() {
-            let msg: &Spanned<String> = &self.messages[i];
-            let mut squiggly = (1..msg.span.end.col.saturating_sub(msg.span.start.col))
-                .map(|_| '~')
-                .collect::<String>();
-            squiggly.push('^');
-            s.push_str(&format!(
-                "Error occuring at line {}, col: {}: {} {} {} {}",
-                msg.span.start.line,
-                msg.span.start.col,
-                msg.data,
-                &lines[msg.span.start.line as usize],
-                (0..msg.span.start.col).map(|_| ' ').collect::<String>(),
-                squiggly
-            ));
-        }
-        self.messages.clear();
-        s
-        */
-    }
 }
 
 #[derive(Default, Debug)]

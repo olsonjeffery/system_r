@@ -78,26 +78,26 @@ pub trait SystemRExtension<TExtDialect: SystemRDialect>: Copy + Clone + Default 
         label: &str,
         pat: &Pattern<TExtDialect>,
         ext_ty: &TExtDialect::Type,
-    );
+    ) -> Result<()>;
     fn exhaustive_for_ext(&mut self, matrix: &Matrix<TExtDialect>, ext_state: &mut TExtDialect::DialectState) -> bool;
     fn ty_shift_visit_ext(
         &mut self,
         shift: &mut Shift,
         ext_ty: &mut Type<TExtDialect>,
         ext_state: &TExtDialect::DialectState,
-    );
+    ) -> Result<()>;
     fn ty_aliaser_visit_ext(
         &mut self,
         aliaser: &mut Aliaser<TExtDialect>,
         ext_ty: &mut Type<TExtDialect>,
         ext_state: &TExtDialect::DialectState,
-    );
+    ) -> Result<()>;
     fn ty_subst_visit_ext(
         &mut self,
         subst_visitor: &mut Subst<TExtDialect>,
         ext_ty: &mut Type<TExtDialect>,
         ext_state: &TExtDialect::DialectState,
-    );
+    ) -> Result<()>;
     fn type_check_ext_equals_ty(
         &mut self,
         ctx: &mut TypeChecker<TExtDialect>,

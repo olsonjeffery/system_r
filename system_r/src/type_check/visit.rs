@@ -24,8 +24,7 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTypeVi
         ext: &mut TExt,
         ext_state: &<TExtDialect as SystemRDialect>::DialectState,
     ) -> Result<()> {
-        ext.ty_shift_visit_ext(self, ty, ext_state);
-        Ok(())
+        ext.ty_shift_visit_ext(self, ty, ext_state)
     }
 
     fn visit_var(&mut self, var: &mut usize, ext: &mut TExt, ext_state: &TExtDialect::DialectState) -> Result<()> {
@@ -132,8 +131,7 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTypeVi
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
     ) -> Result<()> {
-        ext.ty_subst_visit_ext(self, ty, ext_state);
-        Ok(())
+        ext.ty_subst_visit_ext(self, ty, ext_state)
     }
 
     fn visit(

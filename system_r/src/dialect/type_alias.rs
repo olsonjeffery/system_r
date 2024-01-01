@@ -313,25 +313,19 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         label: &str,
         pat: &Pattern<TypeAliasDialect>,
         ext_ty: &<TypeAliasDialect as SystemRDialect>::Type,
-    ) {
+    ) -> Result<()> {
         let ty = pts.ty.clone();
 
         let TypeAliasType::TypeAliasApp(ext_label, applied_types) = ext_ty else {
-            return;
+            return Err(type_check::err_06_expected_type_alias_app(Type::Extended(ext_ty.clone())).into())
         };
-        let reified_type = match reify_type(ext_state, ext_label, applied_types) {
-            Ok(t) => t,
-            Err(e) => {
-                panic!("reifiy failed {:?}", e);
-            }
-        };
+        let reified_type = reify_type(ext_state, ext_label, applied_types)?;
         pts.ty = reified_type.clone();
 
-        if let Err(e) = pts.visit_constructor(label, pat, self, ext_state) {
-            panic!("need results here")
-        }
+        pts.visit_constructor(label, pat, self, ext_state)?;
 
         pts.ty = ty;
+        Ok(())
     }
 
     fn exhaustive_for_ext(
@@ -371,18 +365,20 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         subst_visitor: &mut Subst<TypeAliasDialect>,
         ext_ty: &mut Type<TypeAliasDialect>,
         ext_state: &<TypeAliasDialect as SystemRDialect>::DialectState,
-    ) {
+    ) -> Result<()> {
         let Type::Extended(TypeAliasType::TypeAliasApp(type_decl_key, applied_types)) = ext_ty else {
-            return;
+            if let Type::Extended(TypeAliasType::VarWrap(_)) = ext_ty {
+                return Ok(()); // blow past these; they are handled later
+            }
+            // otherwise this is an error
+            return Err(type_check::err_06_expected_type_alias_app(ext_ty.clone()).into())
         };
         let reified = match reify_type(ext_state, type_decl_key, applied_types) {
             Ok(t) => t,
-            _ => return,
+            _ => return Ok(()),
         };
         *ext_ty = reified;
-        if let Err(e) = subst_visitor.visit(ext_ty, self, ext_state) {
-            panic!("need results here")
-        }
+        subst_visitor.visit(ext_ty, self, ext_state)
     }
 
     fn ty_aliaser_visit_ext(
@@ -390,17 +386,12 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         aliaser: &mut crate::type_check::Aliaser<TypeAliasDialect>,
         ext_ty: &mut Type<TypeAliasDialect>,
         ext_state: &<TypeAliasDialect as SystemRDialect>::DialectState,
-    ) {
+    ) -> Result<()> {
         let Type::Extended(TypeAliasType::TypeAliasApp(type_decl_key, applied_types)) = ext_ty.clone() else {
-            return;
+            return Err(type_check::err_06_expected_type_alias_app(ext_ty.clone()).into())
         };
-        let mut reified = match reify_type(ext_state, &type_decl_key, &applied_types) {
-            Ok(t) => t,
-            _ => return,
-        };
-        if let Err(e) = aliaser.visit(&mut reified, self, ext_state) {
-            panic!("need results here")
-        }
+        let mut reified = reify_type(ext_state, &type_decl_key, &applied_types)?;
+        aliaser.visit(&mut reified, self, ext_state)
     }
 
     fn ty_shift_visit_ext(
@@ -408,20 +399,20 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         shift: &mut crate::type_check::visit::Shift,
         ext_ty: &mut Type<TypeAliasDialect>,
         ext_state: &<TypeAliasDialect as SystemRDialect>::DialectState,
-    ) {
+    ) -> Result<()> {
         let Type::Extended(TypeAliasType::TypeAliasApp(type_decl_key, applied_types)) = ext_ty.clone() else {
-            return;
+            if let Type::Extended(TypeAliasType::VarWrap(_)) = ext_ty {
+                return Ok(()); // blow past these; they are handled later
+            }
+            // otherwise this is an error
+            return Err(type_check::err_06_expected_type_alias_app(ext_ty.clone()).into())
         };
-        let reified = match reify_type(ext_state, &type_decl_key, &applied_types) {
-            Ok(t) => t,
-            _ => return,
-        };
+        let reified = reify_type(ext_state, &type_decl_key, &applied_types)?;
         shift.cutoff += 1;
         *ext_ty = reified; // :3
-        if let Err(e) = shift.visit(ext_ty, self, ext_state) {
-            panic!("need results here")
-        }
+        shift.visit(ext_ty, self, ext_state)?;
         shift.cutoff -= 1;
+        Ok(())
     }
 
     fn type_check_ext_equals_ty(
@@ -490,9 +481,7 @@ pub fn reify_type(
         let abstract_type = holed_type.clone();
         let mut subst_visitor = Subst::new(working_ty.clone());
         subst_visitor.cutoff = desired_cutoff;
-        if let Err(e) = subst_visitor.visit(&mut holed_type, &mut ext, ext_state) {
-            panic!("need result here {:?}", e)
-        }
+        subst_visitor.visit(&mut holed_type, &mut ext, ext_state)?;
     }
     holed_type = VarWrapReplacingVisitor.visit(&holed_type)?;
 
@@ -600,17 +589,12 @@ impl DialectChangingTypeVisitor<TypeAliasDialect, TypeAliasDialect> for VarWrapR
 
 impl DialectChangingTypeVisitor<TypeAliasDialect, BottomDialect> for TatbTypeVisitor {
     fn visit_ext(&self, ty: &Type<TypeAliasDialect>) -> Result<Type<BottomDialect>> {
-        match ty {
-            Type::Extended(TypeAliasType::TypeAliasApp(label, applied_types)) => {
-                let ext_state = &*self.ext_state.as_ref().borrow();
-                let out_ty = match reify_type(ext_state, label, applied_types) {
-                    Ok(t) => t,
-                    Err(e) => panic!("failed called reifiy_type with error: {:?}", e),
-                };
-                self.visit(&out_ty)
-            }
-            _ => panic!("called into visit_ext for Tatb Type visitor with non TypeAliasApp type; shouldn't happen"),
-        }
+        let Type::Extended(TypeAliasType::TypeAliasApp(label, applied_types)) = ty else {
+            return Err(type_check::err_06_expected_type_alias_app(ty.clone()).into())
+        };
+        let ext_state = &*self.ext_state.as_ref().borrow();
+        let out_ty = reify_type(ext_state, label, applied_types)?;
+        self.visit(&out_ty)
     }
 }
 
@@ -854,6 +838,15 @@ mod type_alias_catalog {
                 )
                 .to_owned(),
             )
+        }
+
+        // TADTC06
+        pub fn err_06_expected_type_alias_app(ext_ty: Type<TypeAliasDialect>) -> SystemRFeedback<TypeAliasDialect> {
+            build_error(
+                "TADTC06",
+                Default::default(),
+                format!("TypeAliasDialect: within pattern visitor for constructor; expected a $TypeAlias definition, but got {:?}", ext_ty),
+                )
         }
     }
 }

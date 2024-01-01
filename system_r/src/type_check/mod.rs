@@ -80,11 +80,8 @@ impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
         Aliaser { map: &self.map }
     }
 
-    pub fn de_alias<TExt: SystemRExtension<TExtDialect>>(&mut self, term: &mut Term<TExtDialect>, ext: &mut TExt) {
-        match crate::visit::MutTermVisitor::visit(self, term, ext, &self.ext_state.clone()) {
-            Ok(t) => t,
-            Err(e) => panic!("unimpl panic handler {:?}", e),
-        }
+    pub fn de_alias<TExt: SystemRExtension<TExtDialect>>(&mut self, term: &mut Term<TExtDialect>, ext: &mut TExt) -> Result<()> {
+        crate::visit::MutTermVisitor::visit(self, term, ext, &self.ext_state.clone())
     }
 
     pub fn to_ext_state(self) -> TExtDialect::DialectState {
@@ -233,7 +230,7 @@ impl<TExtDialect: SystemRDialect + 'static> TypeChecker<TExtDialect> {
 
                 let height = self.stack.len();
 
-                let binds = crate::patterns::PatTyStack::<TExtDialect>::collect(&ty, pat, ext, &self.ext_state);
+                let binds = crate::patterns::PatTyStack::<TExtDialect>::collect(&ty, pat, ext, &self.ext_state)?;
                 for b in binds.into_iter().rev() {
                     self.push(b.clone());
                 }
@@ -265,15 +262,9 @@ impl<TExtDialect: SystemRDialect + 'static> TypeChecker<TExtDialect> {
                 let ty1 = self.type_check(term, ext)?;
                 match ty1 {
                     Type::Universal(mut ty12) => {
-                        if let Err(e) = Shift::new(1).visit(&mut ty, ext, &self.ext_state) {
-                            panic!("need result here {:?}", e)
-                        }
-                        if let Err(e) = Subst::new(*ty.clone()).visit(&mut ty12, ext, &self.ext_state) {
-                            panic!("need result here {:?}", e)
-                        }
-                        if let Err(e) = Shift::new(-1).visit(&mut ty12, ext, &self.ext_state) {
-                            panic!("need result here {:?}", e)
-                        }
+                        Shift::new(1).visit(&mut ty, ext, &self.ext_state)?;
+                        Subst::new(*ty.clone()).visit(&mut ty12, ext, &self.ext_state)?;
+                        Shift::new(-1).visit(&mut ty12, ext, &self.ext_state)?;
                         Ok(*ty12)
                     }
                     _ => Err(catalog::type_check::err_16(term, &ty1).into()),
@@ -287,7 +278,7 @@ impl<TExtDialect: SystemRDialect + 'static> TypeChecker<TExtDialect> {
                 Type::Rec(inner) => {
                     let ty_ = self.type_check(tm, ext)?;
                     if ty_ == *rec.clone() {
-                        let s = subst(*rec.clone(), *inner.clone(), ext, &self.ext_state);
+                        let s = subst(*rec.clone(), *inner.clone(), ext, &self.ext_state)?;
                         Ok(s)
                     } else {
                         Err(catalog::type_check::err_17(term, rec, &ty_).into())
@@ -299,7 +290,7 @@ impl<TExtDialect: SystemRDialect + 'static> TypeChecker<TExtDialect> {
             Kind::Fold(rec, tm) => match rec.as_ref() {
                 Type::Rec(inner) => {
                     let ty_ = self.type_check(tm, ext)?;
-                    let s = subst(*rec.clone(), *inner.clone(), ext, &self.ext_state);
+                    let s = subst(*rec.clone(), *inner.clone(), ext, &self.ext_state)?;
                     if ty_ == s {
                         Ok(*rec.clone())
                     } else {
@@ -310,7 +301,7 @@ impl<TExtDialect: SystemRDialect + 'static> TypeChecker<TExtDialect> {
             },
             Kind::Pack(witness, evidence, signature) => {
                 if let Type::Existential(exists) = signature.as_ref() {
-                    let sig_prime = subst(*witness.clone(), *exists.clone(), ext, &self.ext_state);
+                    let sig_prime = subst(*witness.clone(), *exists.clone(), ext, &self.ext_state)?;
                     let evidence_ty = self.type_check(evidence, ext)?;
                     if evidence_ty == sig_prime {
                         Ok(*signature.clone())
@@ -335,7 +326,7 @@ impl<TExtDialect: SystemRDialect + 'static> TypeChecker<TExtDialect> {
         }
     }
     pub fn type_check_ext(&mut self, t: &Term<TExtDialect>) -> Result<Type<TExtDialect>> {
-        panic!("Context::type_check_ext unimplemented");
+        Err(catalog::type_check::err_27::<TExtDialect>(&t.span).into())
     }
 }
 
@@ -344,17 +335,11 @@ pub fn subst<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
     mut t: Type<TExtDialect>,
     ext: &mut TExt,
     ext_state: &TExtDialect::DialectState,
-) -> Type<TExtDialect> {
-    if let Err(e) = Shift::new(1).visit(&mut s, ext, ext_state) {
-        panic!("need result here {:?}", e)
-    }
-    if let Err(e) = Subst::new(s).visit(&mut t, ext, ext_state) {
-        panic!("need result here {:?}", e)
-    }
-    if let Err(e) = Shift::new(-1).visit(&mut t, ext, ext_state) {
-        panic!("need result here {:?}", e)
-    }
-    t
+) -> Result<Type<TExtDialect>> {
+    Shift::new(1).visit(&mut s, ext, ext_state)?;
+    Subst::new(s).visit(&mut t, ext, ext_state)?;
+    Shift::new(-1).visit(&mut t, ext, ext_state)?;
+    Ok(t)
 }
 
 pub struct Aliaser<'ctx, TExtDialect: SystemRDialect> {
@@ -370,8 +355,7 @@ impl<'ctx, TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> Mut
         ext: &mut TExt,
         ext_state: &<TExtDialect as SystemRDialect>::DialectState,
     ) -> Result<()> {
-        ext.ty_aliaser_visit_ext(self, ty, ext_state);
-        Ok(())
+        ext.ty_aliaser_visit_ext(self, ty, ext_state)
     }
 
     fn visit(

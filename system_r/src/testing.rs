@@ -43,7 +43,7 @@ pub fn dealias_and_type_check_term<TExtDialect: SystemRDialect + 'static, TExt: 
     ext: &mut TExt,
 ) -> Result<Type<TExtDialect>> {
     // Step 0
-    ctx.de_alias(term, ext);
+    ctx.de_alias(term, ext)?;
     InjRewriter(Default::default(), Default::default()).visit(term, ext, &ctx.ext_state)?;
 
     type_check_term(ctx, term, ext)

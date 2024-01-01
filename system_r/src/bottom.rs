@@ -168,7 +168,8 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
         label: &str,
         pat: &Pattern<BottomDialect>,
         ext_ty: &<BottomDialect as SystemRDialect>::Type,
-    ) {
+    ) -> Result<()> {
+        Ok(())
     }
 
     fn exhaustive_for_ext(
@@ -184,7 +185,8 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
         subst_visitor: &mut crate::type_check::visit::Subst<BottomDialect>,
         ty: &mut Type<BottomDialect>,
         ext_state: &<BottomDialect as SystemRDialect>::DialectState,
-    ) {
+    ) -> Result<()> {
+        Ok(())
     }
 
     fn ty_aliaser_visit_ext(
@@ -192,7 +194,8 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
         aliaser: &mut crate::type_check::Aliaser<BottomDialect>,
         ext_ty: &mut Type<BottomDialect>,
         ext_state: &<BottomDialect as SystemRDialect>::DialectState,
-    ) {
+    ) -> Result<()> {
+        Ok(())
     }
 
     fn ty_shift_visit_ext(
@@ -200,7 +203,8 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
         shift: &mut crate::type_check::visit::Shift,
         ext_ty: &mut Type<BottomDialect>,
         ext_state: &<BottomDialect as SystemRDialect>::DialectState,
-    ) {
+    ) -> Result<()> {
+        Ok(())
     }
 
     fn type_check_ext_equals_ty(

@@ -346,7 +346,7 @@ impl<'s, TExtDialect: SystemRDialect + 'static> Parser<'s, TExtDialect> {
 
         let t1 = self.once(|p| p.parse(ext), "let binder required")?;
         let len = self.tmvar.len();
-        for var in PatVarStack::<TExtDialect>::collect(&pat, ext, &self.ext_state)
+        for var in PatVarStack::<TExtDialect>::collect(&pat, ext, &self.ext_state)?
             .into_iter()
             .rev()
         {
@@ -533,7 +533,7 @@ impl<'s, TExtDialect: SystemRDialect + 'static> Parser<'s, TExtDialect> {
 
         let pat = self.once(|p| p.pattern(ext), "missing pattern")?;
 
-        for var in PatVarStack::<TExtDialect>::collect(&pat, ext, &self.ext_state)
+        for var in PatVarStack::<TExtDialect>::collect(&pat, ext, &self.ext_state)?
             .into_iter()
             .rev()
         {

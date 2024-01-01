@@ -55,7 +55,7 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
         ext_state: &TExtDialect::DialectState,
     ) -> Result<()> {
         self.visit(t1, ext, ext_state)?;
-        let c = PatternCount::<TExtDialect>::collect(pat, ext, ext_state);
+        let c = PatternCount::<TExtDialect>::collect(pat, ext, ext_state)?;
         self.cutoff += c;
         self.visit(t2, ext, ext_state)?;
         self.cutoff -= c;
@@ -72,7 +72,7 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
     ) -> Result<()> {
         self.visit(term, ext, ext_state)?;
         for arm in arms {
-            let c = PatternCount::<TExtDialect>::collect(&arm.pat, ext, ext_state);
+            let c = PatternCount::<TExtDialect>::collect(&arm.pat, ext, ext_state)?;
             self.cutoff += c;
             self.visit(&mut arm.term, ext, ext_state)?;
             self.cutoff -= c;
@@ -144,7 +144,7 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
         ext_state: &TExtDialect::DialectState,
     ) -> Result<()> {
         self.visit(t1, ext, ext_state)?;
-        let c = PatternCount::<TExtDialect>::collect(pat, ext, ext_state);
+        let c = PatternCount::<TExtDialect>::collect(pat, ext, ext_state)?;
         self.cutoff += c;
         self.visit(t2, ext, ext_state)?;
         self.cutoff -= c;
@@ -161,7 +161,7 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
     ) -> Result<()> {
         self.visit(term, ext, ext_state)?;
         for arm in arms {
-            let c = PatternCount::<TExtDialect>::collect(&arm.pat, ext, ext_state);
+            let c = PatternCount::<TExtDialect>::collect(&arm.pat, ext, ext_state)?;
             self.cutoff += c;
             self.visit(&mut arm.term, ext, ext_state)?;
             self.cutoff -= c;
@@ -381,7 +381,7 @@ impl<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>> MutTermVi
         match &mut term.kind {
             Kind::Injection(label, val, ty) => {
                 if let Type::Rec(inner) = *ty.clone() {
-                    let ty_prime = crate::type_check::subst(*ty.clone(), *inner.clone(), ext, ext_state);
+                    let ty_prime = crate::type_check::subst(*ty.clone(), *inner.clone(), ext, ext_state)?;
                     let rewrite_ty = Term::new(
                         Kind::Injection(label.clone(), val.clone(), Box::new(ty_prime)),
                         term.span,

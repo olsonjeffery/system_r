@@ -35,12 +35,10 @@ impl<TExtDialect: SystemRDialect> PatVarStack<TExtDialect> {
         pat: &Pattern<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) -> Vec<String> {
+    ) -> Result<Vec<String>> {
         let mut p = Self::default();
-        if let Err(e) = p.visit_pattern(pat, ext, ext_state) {
-            panic!("need result here {:?}", e)
-        }
-        p.inner
+        p.visit_pattern(pat, ext, ext_state)?;
+        Ok(p.inner)
     }
 }
 
@@ -71,12 +69,10 @@ impl<TExtDialect: SystemRDialect> PatternCount<TExtDialect> {
         pat: &Pattern<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) -> usize {
+    ) -> Result<usize> {
         let mut p = PatternCount(0, Default::default(), Default::default());
-        if let Err(e) = p.visit_pattern(pat, ext, ext_state) {
-            panic!("need result here {:?}", e)
-        }
-        p.0
+        p.visit_pattern(pat, ext, ext_state)?;
+        Ok(p.0)
     }
 }
 
@@ -143,15 +139,13 @@ impl<'ty, TExtDialect: SystemRDialect + 'static> PatTyStack<TExtDialect> {
         pat: &Pattern<TExtDialect>,
         ext: &mut TExt,
         ext_state: &TExtDialect::DialectState,
-    ) -> Vec<Type<TExtDialect>> {
+    ) -> Result<Vec<Type<TExtDialect>>> {
         let mut p = PatTyStack {
             ty: ty.clone(),
             inner: Vec::with_capacity(16),
         };
-        if let Err(e) = p.visit_pattern(pat, ext, ext_state) {
-            panic!("need result here {:?}", e)
-        }
-        p.inner
+        p.visit_pattern(pat, ext, ext_state)?;
+        Ok(p.inner)
     }
 }
 
@@ -191,8 +185,7 @@ impl<TExtDialect: SystemRDialect + 'static, TExt: SystemRExtension<TExtDialect>>
                 Ok(())
             }
             Type::Extended(v) => {
-                ext.pat_visit_constructor_of_ext(ext_state, self, label, pat, &v);
-                Ok(())
+                ext.pat_visit_constructor_of_ext(ext_state, self, label, pat, &v)
             }
             _ => Ok(()),
         }
@@ -236,8 +229,12 @@ mod test {
     fn pattern_count() {
         let mut pat: Pattern<BottomDialect> = Pattern::Variable(String::new());
         let mut state = BottomState;
+        let result = match PatternCount::<BottomDialect>::collect(&mut pat, &mut BottomExtension, &mut state) {
+            Ok(r) => r,
+            _ => 99,
+        };
         assert_eq!(
-            PatternCount::<BottomDialect>::collect(&mut pat, &mut BottomExtension, &mut state),
+            result,
             1
         );
     }
@@ -247,8 +244,12 @@ mod test {
         let mut pat: Pattern<BottomDialect> = Pattern::Variable(String::new());
         let ty = Type::Nat;
         let mut state = BottomState;
+        let result = match PatTyStack::<BottomDialect>::collect(&ty, &mut pat, &mut BottomExtension, &mut state) {
+            Ok(t) => t,
+            _ => Vec::new()
+        };
         assert_eq!(
-            PatTyStack::<BottomDialect>::collect(&ty, &mut pat, &mut BottomExtension, &mut state),
+            result,
             vec![ty]
         );
     }
@@ -257,8 +258,12 @@ mod test {
     fn pattern_var_stack() {
         let mut pat: Pattern<BottomDialect> = Pattern::Variable("x".into());
         let mut state = BottomState;
+        let result = match PatVarStack::<BottomDialect>::collect(&mut pat, &mut BottomExtension, &mut state) {
+            Ok(r) => r,
+            _ => Vec::new()
+        };
         assert_eq!(
-            PatVarStack::<BottomDialect>::collect(&mut pat, &mut BottomExtension, &mut state),
+            result,
             vec![String::from("x")]
         );
     }
