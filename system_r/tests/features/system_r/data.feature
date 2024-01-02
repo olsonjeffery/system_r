@@ -13,3 +13,5 @@ f (false, 16);
         """
         When it evals successfully
         Then the resulting eval Kind should be Nat of 0
+
+    # Scenario: fixed length homogenous array of T
