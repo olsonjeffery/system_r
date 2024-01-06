@@ -13,8 +13,8 @@ Feature: Technical Debt
     # - proj reorg
     #   - eval/testing -> system_r_eval_ref_impl; refactor steps to use this;
     #   - add system_r_dialects crate
-    #   - specs become freestanding crate
-    #     - !! use coverage to drive additional test creation; cover the entire language
-    #     - port system_r unit tests to specs, dump macros
+    # - tests
+    #   - !! use coverage to drive additional test creation; cover the entire language
+    #   - port system_r unit tests to specs, dump macros
     # - adopt git2rs pre-commit hook (being done manually, intermittently)
     # - LOW clone->Rc, audit for removal

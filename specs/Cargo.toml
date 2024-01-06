@@ -1,0 +1,20 @@
+[package]
+name = "system_r_specs"
+version = "0.0.1"
+authors = ["the contributors"]
+edition = "2021"
+license = "APACHE2 & MIT"
+
+[dependencies]
+anyhow = { version = "1.0.75" }
+system_r = { path = "../system_r" }
+futures = "0.3"
+chrono = "0.4"
+cucumber = { version = "0.20.2", features = ["output-json"] }
+
+[[test]]
+name = "specs"
+harness = false
+
+[[bench]]
+name = "default"

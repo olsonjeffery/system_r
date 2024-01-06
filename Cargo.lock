@@ -1210,9 +1210,17 @@ name = "system_r"
 version = "0.0.1"
 dependencies = [
  "anyhow",
+]
+
+[[package]]
+name = "system_r_specs"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
  "chrono",
  "cucumber",
  "futures",
+ "system_r",
 ]
 
 [[package]]

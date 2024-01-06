@@ -4,15 +4,12 @@ extern crate chrono;
 extern crate cucumber;
 extern crate test;
 
-#[macro_use]
 extern crate anyhow;
 
 use cucumber::{writer, World, WriterExt};
 use std::fs;
 
-mod steps;
-
-mod common;
+use system_r_specs::common;
 
 fn main() {
     blocking_specs_run();
@@ -34,6 +31,6 @@ pub fn blocking_specs_run() {
                     .tee::<common::SpecsWorld, _>(json_writer)
                     .normalized(),
             )
-            .run("tests/features"),
+            .run("features"),
     );
 }

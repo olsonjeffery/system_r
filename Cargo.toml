@@ -1,4 +1,4 @@
 [workspace]
-members = [ "system_r", "xtask" ]
-default-members = [ "system_r" ]
+members = [ "system_r", "xtask", "specs" ]
+default-members = [ "specs" ]
 resolver = "2"
