@@ -364,7 +364,6 @@ pub fn err_26<TExtDialect: SystemRDialect>(term_span: &Span) -> SystemRFeedback<
     SystemRFeedback::type_check_error("TC26", *term_span, "Binding within binding-type vars; shouldn't happen")
 }
 
-
 /// TC27
 pub fn err_27<TExtDialect: SystemRDialect>(term_span: &Span) -> SystemRFeedback<TExtDialect> {
     SystemRFeedback::type_check_error("TC27", *term_span, "root type-check of extended types is unimplemented")

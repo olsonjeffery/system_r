@@ -1,8 +1,8 @@
-# System R
+# system_r
 
 An extension of the simply typed lambda calculus with parametric polymorphism (known classically as System F). Starting from the base provided for `06_system_f` and `util` from [lazear/types-and-programming-languages](https://github.com/lazear/types-and-programming-languages), the lexer, parser, type_checker and eval system have been extended to support more "industrial use cases", as defined by subsequent author(s).
 
-Consult the gherkin specs in the `/tests/features` directory for more on system_r's capabilities, embedding, etc.
+Consult the gherkin specs in the `/tests/features` directory for more on `system_r`'s capabilities, embedding, etc.
 
 From original README:
 
@@ -19,7 +19,7 @@ at your option.
 
 # Contribution
 
-Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in system_r by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in `system_r` by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
 
 ### pre-commit ritual:
 - `cargo fmt && cargo clippy && cargo test`

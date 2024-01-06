@@ -225,7 +225,8 @@ impl<TExtDialect: SystemRDialect + 'static> TypeChecker<TExtDialect> {
             if self.pattern_type_eq(&arm.pat, &matrix.expr_ty, ext) {
                 let height = self.stack.len();
 
-                let binds = PatTyStack::<TExtDialect>::collect::<TExt>(&matrix.expr_ty, &arm.pat, ext, &self.ext_state)?;
+                let binds =
+                    PatTyStack::<TExtDialect>::collect::<TExt>(&matrix.expr_ty, &arm.pat, ext, &self.ext_state)?;
                 for b in binds.into_iter().rev() {
                     self.push(b.clone());
                 }

@@ -80,7 +80,11 @@ impl<TExtDialect: SystemRDialect> TypeChecker<TExtDialect> {
         Aliaser { map: &self.map }
     }
 
-    pub fn de_alias<TExt: SystemRExtension<TExtDialect>>(&mut self, term: &mut Term<TExtDialect>, ext: &mut TExt) -> Result<()> {
+    pub fn de_alias<TExt: SystemRExtension<TExtDialect>>(
+        &mut self,
+        term: &mut Term<TExtDialect>,
+        ext: &mut TExt,
+    ) -> Result<()> {
         crate::visit::MutTermVisitor::visit(self, term, ext, &self.ext_state.clone())
     }
 

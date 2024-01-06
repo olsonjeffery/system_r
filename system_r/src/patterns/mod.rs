@@ -184,9 +184,7 @@ impl<TExtDialect: SystemRDialect + 'static, TExt: SystemRExtension<TExtDialect>>
                 self.ty = ty;
                 Ok(())
             }
-            Type::Extended(v) => {
-                ext.pat_visit_constructor_of_ext(ext_state, self, label, pat, &v)
-            }
+            Type::Extended(v) => ext.pat_visit_constructor_of_ext(ext_state, self, label, pat, &v),
             _ => Ok(()),
         }
     }
@@ -233,10 +231,7 @@ mod test {
             Ok(r) => r,
             _ => 99,
         };
-        assert_eq!(
-            result,
-            1
-        );
+        assert_eq!(result, 1);
     }
 
     #[test]
@@ -246,12 +241,9 @@ mod test {
         let mut state = BottomState;
         let result = match PatTyStack::<BottomDialect>::collect(&ty, &mut pat, &mut BottomExtension, &mut state) {
             Ok(t) => t,
-            _ => Vec::new()
+            _ => Vec::new(),
         };
-        assert_eq!(
-            result,
-            vec![ty]
-        );
+        assert_eq!(result, vec![ty]);
     }
 
     #[test]
@@ -260,11 +252,8 @@ mod test {
         let mut state = BottomState;
         let result = match PatVarStack::<BottomDialect>::collect(&mut pat, &mut BottomExtension, &mut state) {
             Ok(r) => r,
-            _ => Vec::new()
+            _ => Vec::new(),
         };
-        assert_eq!(
-            result,
-            vec![String::from("x")]
-        );
+        assert_eq!(result, vec![String::from("x")]);
     }
 }

@@ -317,7 +317,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         let ty = pts.ty.clone();
 
         let TypeAliasType::TypeAliasApp(ext_label, applied_types) = ext_ty else {
-            return Err(type_check::err_06_expected_type_alias_app(Type::Extended(ext_ty.clone())).into())
+            return Err(type_check::err_06_expected_type_alias_app(Type::Extended(ext_ty.clone())).into());
         };
         let reified_type = reify_type(ext_state, ext_label, applied_types)?;
         pts.ty = reified_type.clone();
@@ -371,7 +371,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
                 return Ok(()); // blow past these; they are handled later
             }
             // otherwise this is an error
-            return Err(type_check::err_06_expected_type_alias_app(ext_ty.clone()).into())
+            return Err(type_check::err_06_expected_type_alias_app(ext_ty.clone()).into());
         };
         let reified = match reify_type(ext_state, type_decl_key, applied_types) {
             Ok(t) => t,
@@ -388,7 +388,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         ext_state: &<TypeAliasDialect as SystemRDialect>::DialectState,
     ) -> Result<()> {
         let Type::Extended(TypeAliasType::TypeAliasApp(type_decl_key, applied_types)) = ext_ty.clone() else {
-            return Err(type_check::err_06_expected_type_alias_app(ext_ty.clone()).into())
+            return Err(type_check::err_06_expected_type_alias_app(ext_ty.clone()).into());
         };
         let mut reified = reify_type(ext_state, &type_decl_key, &applied_types)?;
         aliaser.visit(&mut reified, self, ext_state)
@@ -405,7 +405,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
                 return Ok(()); // blow past these; they are handled later
             }
             // otherwise this is an error
-            return Err(type_check::err_06_expected_type_alias_app(ext_ty.clone()).into())
+            return Err(type_check::err_06_expected_type_alias_app(ext_ty.clone()).into());
         };
         let reified = reify_type(ext_state, &type_decl_key, &applied_types)?;
         shift.cutoff += 1;
@@ -590,7 +590,7 @@ impl DialectChangingTypeVisitor<TypeAliasDialect, TypeAliasDialect> for VarWrapR
 impl DialectChangingTypeVisitor<TypeAliasDialect, BottomDialect> for TatbTypeVisitor {
     fn visit_ext(&self, ty: &Type<TypeAliasDialect>) -> Result<Type<BottomDialect>> {
         let Type::Extended(TypeAliasType::TypeAliasApp(label, applied_types)) = ty else {
-            return Err(type_check::err_06_expected_type_alias_app(ty.clone()).into())
+            return Err(type_check::err_06_expected_type_alias_app(ty.clone()).into());
         };
         let ext_state = &*self.ext_state.as_ref().borrow();
         let out_ty = reify_type(ext_state, label, applied_types)?;

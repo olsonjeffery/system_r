@@ -10,9 +10,11 @@ Feature: Technical Debt
     # - further feedback work:
     #   - remove ErrorKind::ExtendedError, update where aprop
     #   - thread spans all throughout system, especially into ALL SystemRExtension impls
-    # - specs become freestanding crate
-    #   - double-up testing for romeo-interp & wasm backends
-    #   - port system_r unit tests to specs, dump macros
-    #   - use coverage to drive additional test creation; cover the entire language
+    # - proj reorg
+    #   - eval/testing -> system_r_eval_ref_impl; refactor steps to use this;
+    #   - add system_r_dialects crate
+    #   - specs become freestanding crate
+    #     - !! use coverage to drive additional test creation; cover the entire language
+    #     - port system_r unit tests to specs, dump macros
     # - adopt git2rs pre-commit hook (being done manually, intermittently)
     # - LOW clone->Rc, audit for removal
