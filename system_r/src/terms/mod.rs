@@ -188,7 +188,7 @@ impl<TExtDialect: SystemRDialect> fmt::Debug for Term<TExtDialect> {
 
 #[cfg(test)]
 mod test {
-    use crate::bottom::BottomExtension;
+    use crate::dialect::bottom::BottomExtension;
 
     use super::*;
 

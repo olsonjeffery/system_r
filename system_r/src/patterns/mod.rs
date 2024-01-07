@@ -220,7 +220,7 @@ impl<TExtDialect: SystemRDialect + 'static, TExt: SystemRExtension<TExtDialect>>
 #[cfg(test)]
 mod test {
 
-    use crate::bottom::{BottomDialect, BottomExtension, BottomState};
+    use crate::dialect::bottom::{BottomDialect, BottomExtension, BottomState};
 
     use super::*;
     #[test]

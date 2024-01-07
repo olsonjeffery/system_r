@@ -36,13 +36,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-//! Macros to make writing tests easier; [crate::bottom::BottomDialect] only
+//! Macros to make writing tests easier; [crate::dialect::bottom::BottomDialect] only
 
 /// Boolean term
 macro_rules! lit {
     ($x:expr) => {
-        Term::<crate::bottom::BottomDialect>::new(
-            crate::terms::Kind::<crate::bottom::BottomDialect>::Lit(crate::terms::Literal::Bool($x)),
+        Term::<crate::dialect::bottom::BottomDialect>::new(
+            crate::terms::Kind::<crate::dialect::bottom::BottomDialect>::Lit(crate::terms::Literal::Bool($x)),
             crate::util::span::Span::dummy(),
         )
     };
@@ -51,8 +51,8 @@ macro_rules! lit {
 /// Integer term
 macro_rules! nat {
     ($x:expr) => {
-        crate::terms::Term::<crate::bottom::BottomDialect>::new(
-            crate::terms::Kind::<crate::bottom::BottomDialect>::Lit(crate::terms::Literal::Nat($x)),
+        crate::terms::Term::<crate::dialect::bottom::BottomDialect>::new(
+            crate::terms::Kind::<crate::dialect::bottom::BottomDialect>::Lit(crate::terms::Literal::Nat($x)),
             crate::util::span::Span::dummy(),
         )
     };
@@ -120,8 +120,8 @@ macro_rules! prim {
 
 macro_rules! inj {
     ($label:expr, $t:expr, $ty:expr) => {
-        crate::terms::Term::<crate::bottom::BottomDialect>::new(
-            crate::terms::Kind::<crate::bottom::BottomDialect>::Injection(
+        crate::terms::Term::<crate::dialect::bottom::BottomDialect>::new(
+            crate::terms::Kind::<crate::dialect::bottom::BottomDialect>::Injection(
                 $label.to_string(),
                 Box::new($t),
                 Box::new($ty),
@@ -133,7 +133,7 @@ macro_rules! inj {
 
 /// Product term
 macro_rules! tuple {
-    ($($ex:expr),+) => { crate::terms::Term::<crate::bottom::BottomDialect>::new(crate::terms::Kind::<crate::bottom::BottomDialect>::Product(vec![$($ex),+]),
+    ($($ex:expr),+) => { crate::terms::Term::<crate::dialect::bottom::BottomDialect>::new(crate::terms::Kind::<crate::dialect::bottom::BottomDialect>::Product(vec![$($ex),+]),
     crate::util::span::Span::dummy()) }
 }
 

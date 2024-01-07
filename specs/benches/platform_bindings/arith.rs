@@ -1,5 +1,5 @@
 use anyhow::Result;
-use system_r::bottom::BottomDialect;
+use system_r::dialect::bottom::BottomDialect;
 use system_r::terms::{Kind, Term};
 use system_r::util::span::Span;
 use system_r::{platform_bindings::WrappedBinding, terms::Literal, type_check::Type};

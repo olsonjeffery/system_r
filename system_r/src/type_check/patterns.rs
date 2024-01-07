@@ -319,7 +319,7 @@ impl<TExtDialect: SystemRDialect + 'static> TypeChecker<TExtDialect> {
 
 #[cfg(test)]
 mod test {
-    use crate::bottom::{BottomExtension, BottomState};
+    use crate::dialect::bottom::{BottomExtension, BottomState};
 
     use super::*;
     use Pattern::*;

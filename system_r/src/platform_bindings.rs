@@ -14,8 +14,7 @@ limitations under the License.
 */
 use std::collections::HashMap;
 
-use crate::bottom::BottomDialect;
-use crate::dialect::SystemRDialect;
+use crate::dialect::{SystemRDialect, bottom::BottomDialect};
 use crate::feedback::catalog;
 use crate::terms::Term;
 use crate::type_check::Variant;

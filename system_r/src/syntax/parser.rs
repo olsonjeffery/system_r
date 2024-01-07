@@ -1,7 +1,7 @@
 use super::debruijn::DeBruijnIndexer;
 use super::lexer::Lexer;
 use super::{Token, TokenKind};
-use crate::bottom::{BottomDialect, BottomExtension};
+use crate::dialect::bottom::{BottomDialect, BottomExtension};
 use crate::dialect::{SystemRDialect, SystemRExtension};
 use crate::feedback::{catalog, ErrorKind};
 

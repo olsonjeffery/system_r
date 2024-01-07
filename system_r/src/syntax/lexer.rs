@@ -244,7 +244,7 @@ impl<'s, TExtDialect: SystemRDialect> Lexer<'s, TExtDialect> {
 
 #[cfg(test)]
 mod test {
-    use crate::bottom::{BottomDialect, BottomExtension, BottomTokenKind};
+    use crate::dialect::bottom::{BottomDialect, BottomExtension, BottomTokenKind};
 
     use super::*;
     use TokenKind::*;

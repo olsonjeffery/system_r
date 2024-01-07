@@ -41,7 +41,6 @@ limitations under the License.
 #![allow(unused_variables, unused_macros)]
 #[macro_use]
 pub mod macros;
-pub mod bottom;
 pub mod dialect;
 pub mod eval;
 pub mod feedback;

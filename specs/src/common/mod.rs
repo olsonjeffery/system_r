@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use cucumber::World;
 
 use system_r::{
-    bottom::BottomDialect,
+    dialect::bottom::BottomDialect,
     platform_bindings::Bindings,
     terms::{Kind, Term},
     type_check::Type,

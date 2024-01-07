@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::HashMap, fmt::Display, rc::Rc};
 
 use crate::{
-    bottom::{BottomDialect, BottomKind, BottomPattern, BottomTokenKind},
+    dialect::bottom::{BottomDialect, BottomKind, BottomPattern, BottomTokenKind},
     patterns::Pattern,
     syntax::{parser::Parser, TokenKind},
     terms::{Kind, Term},

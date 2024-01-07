@@ -1,6 +1,5 @@
 use system_r::{
-    bottom::{BottomDialect, BottomKind, BottomState},
-    dialect::type_alias::{TypeAliasDialect, TypeAliasDialectState, TypeAliasTypeChecker},
+    dialect::{type_alias::{TypeAliasDialect, TypeAliasDialectState, TypeAliasTypeChecker}, bottom::{BottomDialect, BottomKind, BottomState}},
     platform_bindings::Bindings,
     terms::{Kind, Term},
     type_check::{Type, TypeChecker},

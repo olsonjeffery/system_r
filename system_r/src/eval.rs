@@ -37,7 +37,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-use crate::bottom::{BottomDialect, BottomExtension, BottomState};
+use crate::dialect::bottom::{BottomDialect, BottomExtension, BottomState};
 use crate::patterns::Pattern;
 use crate::platform_bindings::Bindings;
 use crate::terms::visit::{Shift, Subst, TyTermSubst};

@@ -3,8 +3,7 @@ extern crate cucumber;
 use cucumber::{gherkin::Step, given, then, when};
 
 use system_r::{
-    bottom::BottomDialect,
-    dialect::type_alias::TypeAliasDialect,
+    dialect::{type_alias::TypeAliasDialect, bottom::BottomDialect},
     feedback::{FeedbackSeverity, SystemRFeedback},
     terms::{Kind, Literal, Term},
     testing,
