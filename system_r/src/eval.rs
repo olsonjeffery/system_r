@@ -39,7 +39,7 @@ limitations under the License.
 
 use crate::dialect::bottom::{BottomDialect, BottomExtension, BottomState};
 use crate::patterns::Pattern;
-use crate::platform_bindings::Bindings;
+use crate::platform_bindings::PlatformBindings;
 use crate::terms::visit::{Shift, Subst, TyTermSubst};
 use crate::terms::{Kind, Literal, Primitive, Term};
 use crate::type_check::{Type, TypeChecker};
@@ -48,7 +48,7 @@ use anyhow::Result;
 
 pub struct Eval<'ctx> {
     _context: &'ctx TypeChecker<BottomDialect>,
-    platform_bindings: Bindings,
+    platform_bindings: PlatformBindings,
 }
 
 impl<'ctx> Eval<'ctx> {

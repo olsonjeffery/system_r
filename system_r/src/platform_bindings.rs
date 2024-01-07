@@ -14,7 +14,7 @@ limitations under the License.
 */
 use std::collections::HashMap;
 
-use crate::dialect::{SystemRDialect, bottom::BottomDialect};
+use crate::dialect::{bottom::BottomDialect, SystemRDialect};
 use crate::feedback::catalog;
 use crate::terms::Term;
 use crate::type_check::Variant;
@@ -39,12 +39,12 @@ impl core::fmt::Debug for WrappedBinding {
 }
 
 #[derive(Default, Clone, Debug)]
-pub struct Bindings {
+pub struct PlatformBindings {
     by_name: HashMap<String, usize>,
     by_idx: Vec<WrappedBinding>,
 }
 
-impl PartialEq for Bindings {
+impl PartialEq for PlatformBindings {
     fn eq(&self, other: &Self) -> bool {
         self.by_name == other.by_name
     }
@@ -54,9 +54,9 @@ pub trait UnwrappedFnTrait {
     fn to_wrapped(&self) -> WrappedFn;
 }
 
-impl<'a> Bindings {
+impl<'a> PlatformBindings {
     pub fn new() -> Self {
-        Bindings {
+        PlatformBindings {
             by_name: HashMap::new(),
             by_idx: Vec::new(),
         }

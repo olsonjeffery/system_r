@@ -1,10 +1,9 @@
 use system_r::{
-    dialect::bottom::{BottomDialect, BottomKind, BottomState},
+    dialect::{type_alias::{TypeAliasDialect, TypeAliasDialectState, TypeAliasTypeChecker}, bottom::{BottomDialect, BottomKind, BottomState}},
     platform_bindings::PlatformBindings,
     terms::{Kind, Term},
     type_check::{Type, TypeChecker},
 };
-use system_r_dialects::type_alias::{TypeAliasDialect, TypeAliasDialectState, TypeAliasTypeChecker};
 
 #[derive(Clone, Default, Debug)]
 pub enum OmniTypeChecker {

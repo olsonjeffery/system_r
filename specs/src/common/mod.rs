@@ -4,7 +4,7 @@ use cucumber::World;
 
 use system_r::{
     dialect::bottom::BottomDialect,
-    platform_bindings::Bindings,
+    platform_bindings::PlatformBindings,
     terms::{Kind, Term},
     type_check::Type,
 };
@@ -20,7 +20,7 @@ pub mod platform_bindings;
 pub struct SpecsWorld {
     pub code_snippet: String,
     pub type_checkers: HashMap<String, OmniTypeChecker>,
-    pub platform_bindings: Bindings,
+    pub platform_bindings: PlatformBindings,
     pub last_parse_success: bool,
     pub last_parse_kind: Kind<BottomDialect>,
     pub last_parse_term: Term<BottomDialect>,
@@ -40,8 +40,7 @@ pub struct SpecsWorld {
 
 impl SpecsWorld {
     pub fn take_last_ext_state(&mut self) -> OmniState {
-        let st = std::mem::replace(&mut self.last_ext_state, OmniState::Empty);
-        st
+        std::mem::replace(&mut self.last_ext_state, OmniState::Empty)
     }
 
     pub fn take_ctx_by_name(&mut self, ctx_name: &str) -> Result<OmniTypeChecker> {

@@ -4,7 +4,7 @@ use system_r::terms::{Kind, Term};
 use system_r::util::span::Span;
 use system_r::{platform_bindings::WrappedBinding, terms::Literal, type_check::Type};
 
-pub fn pull_u64_from(args: &Vec<Term<BottomDialect>>, idx: usize, _span: &Span) -> Result<u64> {
+pub fn pull_u64_from(args: &[Term<BottomDialect>], idx: usize, _span: &Span) -> Result<u64> {
     let arg_t_raw = match args.get(idx) {
         Some(t) => t,
         None => {
@@ -39,10 +39,10 @@ fn sub(arg: Term<BottomDialect>, span: &Span) -> Result<Term<BottomDialect>> {
             let mut ret_term = Term::unit();
             ret_term.kind = sum.clone();
             ret_term.span = *span;
-            return Ok(ret_term);
+            Ok(ret_term)
         }
-        _ => return Err(anyhow!("nat::arith::sub: Expected a product argument")),
-    };
+        _ => Err(anyhow!("nat::arith::sub: Expected a product argument")),
+    }
 }
 fn add(arg: Term<BottomDialect>, span: &Span) -> Result<Term<BottomDialect>> {
     match arg.kind {
@@ -56,8 +56,8 @@ fn add(arg: Term<BottomDialect>, span: &Span) -> Result<Term<BottomDialect>> {
             let mut ret_term = Term::unit();
             ret_term.kind = sum.clone();
             ret_term.span = *span;
-            return Ok(ret_term);
+            Ok(ret_term)
         }
-        _ => return Err(anyhow!("nat::arith::add: Expected a product argument")),
-    };
+        _ => Err(anyhow!("nat::arith::add: Expected a product argument")),
+    }
 }

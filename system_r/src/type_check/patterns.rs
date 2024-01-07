@@ -274,7 +274,7 @@ impl<TExtDialect: SystemRDialect + 'static> TypeChecker<TExtDialect> {
     ///
     /// This function is primarily used as a first pass to ensure that a pattern
     /// is valid for a given case expression
-    pub(crate) fn pattern_type_eq<TExt: SystemRExtension<TExtDialect>>(
+    pub fn pattern_type_eq<TExt: SystemRExtension<TExtDialect>>(
         &mut self,
         pat: &Pattern<TExtDialect>,
         ty: &Type<TExtDialect>,

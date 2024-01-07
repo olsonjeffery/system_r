@@ -14,7 +14,6 @@ use crate::{
 
 use anyhow::Result;
 
-pub mod type_alias;
 pub mod bottom;
 
 pub trait ExtendedTokenKind:

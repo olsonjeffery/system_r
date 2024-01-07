@@ -1,6 +1,6 @@
 use std::{cell::RefCell, collections::HashMap, fmt::Display, rc::Rc};
 
-use crate::{
+use system_r::{
     dialect::bottom::{BottomDialect, BottomKind, BottomPattern, BottomTokenKind},
     patterns::Pattern,
     syntax::{parser::Parser, TokenKind},
@@ -14,7 +14,7 @@ use crate::{
 
 use self::type_alias_catalog::{syntax, type_check};
 
-use super::{
+use system_r::dialect::{
     ExtendedDialectState, ExtendedKind, ExtendedPattern, ExtendedTokenKind, ExtendedType, SystemRDialect,
     SystemRExtension, SystemRResolver,
 };
@@ -34,7 +34,7 @@ pub enum TypeAliasTokenKind {
     #[default]
     Placeholder,
     TypeAliasKeyword,
-    TypeBindingVar(String),
+    TypeAliasDeclVarName(String),
     Below(BottomTokenKind),
 }
 
@@ -115,7 +115,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
     }
 
     fn lex_extended_single(&mut self, data: &str) -> TypeAliasTokenKind {
-        TypeAliasTokenKind::TypeBindingVar(data.to_owned())
+        TypeAliasTokenKind::TypeAliasDeclVarName(data.to_owned())
     }
 
     fn lex_ext_keyword(&mut self, data: &str) -> Result<TypeAliasTokenKind> {
@@ -129,22 +129,22 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
 
     fn pat_ext_pattern_type_eq(
         &self,
-        ctx: &TypeChecker<TypeAliasDialect>,
-        pat: &TypeAliasPattern,
-        ty: &crate::type_check::Type<TypeAliasDialect>,
+        _ctx: &TypeChecker<TypeAliasDialect>,
+        _pat: &TypeAliasPattern,
+        _ty: &system_r::type_check::Type<TypeAliasDialect>,
     ) -> bool {
         false
     }
 
     fn pat_add_ext_pattern<'a>(
         &'a self,
-        parent: &crate::type_check::patterns::Matrix<'a, TypeAliasDialect>,
-        ext_pattern: &crate::patterns::Pattern<TypeAliasDialect>,
+        _parent: &system_r::type_check::patterns::Matrix<'a, TypeAliasDialect>,
+        _ext_pattern: &system_r::patterns::Pattern<TypeAliasDialect>,
     ) -> bool {
         false
     }
 
-    fn pat_ext_matches(&self, pat: &TypeAliasPattern, term: &crate::terms::Term<TypeAliasDialect>) -> bool {
+    fn pat_ext_matches(&self, _pat: &TypeAliasPattern, _term: &system_r::terms::Term<TypeAliasDialect>) -> bool {
         false
     }
 
@@ -153,7 +153,6 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
     }
 
     fn parser_ext_parse<'s>(&mut self, ps: &mut Parser<TypeAliasDialect>) -> Result<Term<TypeAliasDialect>> {
-        let sp = ps.span;
         ps.expect(self, TokenKind::Extended(TypeAliasTokenKind::TypeAliasKeyword))?;
 
         let struct_ident = ps.once(|p| p.atom(self), "missing struct identifier $Binding")?;
@@ -186,7 +185,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         Ok(t2)
     }
 
-    fn parser_has_ext_atom(&self, tk: &TypeAliasTokenKind) -> bool {
+    fn parser_has_ext_atom(&self, _tk: &TypeAliasTokenKind) -> bool {
         false
     }
 
@@ -194,8 +193,8 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
         let name_tok = ps.token.clone();
         let name_val = match name_tok.kind.clone() {
             TokenKind::Extended(n) => match n {
-                TypeAliasTokenKind::TypeBindingVar(name) => name,
-                v => return Err(syntax::err_03_expected_typebindingvar(&name_tok.span, &name_tok, &v).into()),
+                TypeAliasTokenKind::TypeAliasDeclVarName(name) => name,
+                v => return Err(syntax::err_03_expected_typealiasdeclvarname(&name_tok.span, &name_tok, &v).into()),
             },
             v => return Err(syntax::err_04_expected_extendedtokenkind(&name_tok.span, &name_tok, &v).into()),
         };
@@ -209,15 +208,15 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
     fn parser_ty_bump_if(&mut self, ps: &mut Parser<TypeAliasDialect>) -> bool {
         matches!(
             &ps.token.kind,
-            TokenKind::Extended(TypeAliasTokenKind::TypeBindingVar(_))
+            TokenKind::Extended(TypeAliasTokenKind::TypeAliasDeclVarName(_))
         )
     }
 
     fn parser_ty(&mut self, ps: &mut Parser<TypeAliasDialect>) -> Result<Type<TypeAliasDialect>> {
-        let binding = ps.token.kind.clone();
+        let ty_decl = ps.token.kind.clone();
 
-        let TokenKind::Extended(TypeAliasTokenKind::TypeBindingVar(type_decl_key)) = binding else {
-            return Err(syntax::err_04_expected_extendedtokenkind(&ps.span, &ps.token, &binding).into());
+        let TokenKind::Extended(TypeAliasTokenKind::TypeAliasDeclVarName(type_decl_key)) = ty_decl else {
+            return Err(syntax::err_04_expected_extendedtokenkind(&ps.span, &ps.token, &ty_decl).into());
         };
         ps.bump(self);
 
@@ -244,7 +243,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
 
         let ps = &mut ctx.ext_state;
         let dealiased = match reify_type(ps, type_alias_label, inner_types) {
-            Err(e) => return false,
+            Err(_) => return false,
             Ok(t) => t,
         };
 
@@ -258,7 +257,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
                 }
                 false
             }
-            v => false,
+            _ => false,
         }
     }
 
@@ -309,7 +308,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
     fn pat_visit_constructor_of_ext(
         &mut self,
         ext_state: &TypeAliasDialectState,
-        pts: &mut crate::patterns::PatTyStack<TypeAliasDialect>,
+        pts: &mut system_r::patterns::PatTyStack<TypeAliasDialect>,
         label: &str,
         pat: &Pattern<TypeAliasDialect>,
         ext_ty: &<TypeAliasDialect as SystemRDialect>::Type,
@@ -330,7 +329,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
 
     fn exhaustive_for_ext(
         &mut self,
-        matrix: &crate::type_check::patterns::Matrix<TypeAliasDialect>,
+        matrix: &system_r::type_check::patterns::Matrix<TypeAliasDialect>,
         ext_state: &mut <TypeAliasDialect as SystemRDialect>::DialectState,
     ) -> bool {
         let Type::Extended(TypeAliasType::TypeAliasApp(type_decl_key, applied_types)) = matrix.expr_ty.clone() else {
@@ -383,7 +382,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
 
     fn ty_aliaser_visit_ext(
         &mut self,
-        aliaser: &mut crate::type_check::Aliaser<TypeAliasDialect>,
+        aliaser: &mut system_r::type_check::Aliaser<TypeAliasDialect>,
         ext_ty: &mut Type<TypeAliasDialect>,
         ext_state: &<TypeAliasDialect as SystemRDialect>::DialectState,
     ) -> Result<()> {
@@ -396,7 +395,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
 
     fn ty_shift_visit_ext(
         &mut self,
-        shift: &mut crate::type_check::visit::Shift,
+        shift: &mut system_r::type_check::visit::Shift,
         ext_ty: &mut Type<TypeAliasDialect>,
         ext_state: &<TypeAliasDialect as SystemRDialect>::DialectState,
     ) -> Result<()> {
@@ -429,7 +428,7 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
                 };
                 reified == *other_ty
             }
-            TypeAliasType::VarWrap(v) => false, // shouldn't happen
+            TypeAliasType::VarWrap(_) => false, // shouldn't happen
             TypeAliasType::Empty => false,      // shouldn't happen
         }
     }
@@ -478,7 +477,6 @@ pub fn reify_type(
             var_indexes_to_fix.push(v);
             working_ty = Type::Extended(TypeAliasType::VarWrap(v))
         }
-        let abstract_type = holed_type.clone();
         let mut subst_visitor = Subst::new(working_ty.clone());
         subst_visitor.cutoff = desired_cutoff;
         subst_visitor.visit(&mut holed_type, &mut ext, ext_state)?;
@@ -538,7 +536,6 @@ pub fn parse_holed_type_from_decl(
     ps: &mut Parser<'_, TypeAliasDialect>,
     ext: &mut TypeAliasExtension,
 ) -> Result<(usize, Type<TypeAliasDialect>)> {
-    let sp = ps.span;
     let push_count = extract_tyabs_for_type_shape(ps, ext)?;
 
     // type def
@@ -568,7 +565,7 @@ pub struct TatbPatVisitor {
 }
 
 impl DialectChangingPatternVisitor<TypeAliasDialect, BottomDialect> for TatbPatVisitor {
-    fn visit_ext(&self, pat: &Pattern<TypeAliasDialect>) -> Result<Pattern<BottomDialect>> {
+    fn visit_ext(&self, _pat: &Pattern<TypeAliasDialect>) -> Result<Pattern<BottomDialect>> {
         Err(anyhow!("pattern visit_ext not impl, {:?}", self.ext_state.as_ref()))
     }
 }
@@ -623,15 +620,15 @@ impl DialectChangingTermVisitor<TypeAliasDialect, BottomDialect, TatbTypeVisitor
         })
     }
 
-    fn visit_ext(&self, term: &Term<TypeAliasDialect>) -> Result<Term<BottomDialect>> {
+    fn visit_ext(&self, _term: &Term<TypeAliasDialect>) -> Result<Term<BottomDialect>> {
         Err(anyhow!("no extended kinds should have persisted beyond parse phase"))
     }
 }
 
 mod type_alias_catalog {
     pub mod syntax {
-        use crate::{
-            dialect::type_alias::{TypeAliasDialect, TypeAliasTokenKind},
+        use crate::type_alias::{TypeAliasDialect, TypeAliasTokenKind};
+        use system_r::{
             feedback::{ErrorKind, ExtendedPhaseContent, FeedbackPhase, FeedbackSeverity, SystemRFeedback},
             syntax::{Token, TokenKind},
             terms::Kind,
@@ -692,7 +689,7 @@ mod type_alias_catalog {
         }
 
         /// TADPS03
-        pub fn err_03_expected_typebindingvar(
+        pub fn err_03_expected_typealiasdeclvarname(
             target_span: &Span,
             tok: &Token<TypeAliasTokenKind>,
             v: &TypeAliasTokenKind,
@@ -757,7 +754,7 @@ mod type_alias_catalog {
     pub mod type_check {
         use anyhow::Error;
 
-        use crate::{
+        use system_r::{
             feedback::{ExtendedPhaseContent, FeedbackPhase, FeedbackSeverity, SystemRFeedback},
             type_check::Type,
             util::span::Span,

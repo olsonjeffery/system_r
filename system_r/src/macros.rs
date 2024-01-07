@@ -36,7 +36,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-//! Macros to make writing tests easier; [crate::dialect::bottom::BottomDialect] only
+//! Macros to make writing tests easier; [crate::dialect::bottom::BottomDialect]
+//! only
 
 /// Boolean term
 macro_rules! lit {

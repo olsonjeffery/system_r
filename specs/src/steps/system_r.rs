@@ -3,17 +3,18 @@ extern crate cucumber;
 use cucumber::{gherkin::Step, given, then, when};
 
 use system_r::{
-    dialect::{type_alias::TypeAliasDialect, bottom::BottomDialect},
+    dialect::bottom::BottomDialect,
     feedback::{FeedbackSeverity, SystemRFeedback},
     terms::{Kind, Literal, Term},
     testing,
     type_check::Type,
     type_check::TypeChecker,
 };
+use system_r_dialects::type_alias::TypeAliasDialect;
 
 use crate::common::{self, extensions::OmniTypeChecker};
 
-pub static BOTTOM_TC_NAME: &'static str = "Bottom";
+pub static BOTTOM_TC_NAME: &str = "Bottom";
 
 #[given(regex = r#"^a new type checker"#)]
 #[given(regex = r#"^a new Bottom type checker"#)]
@@ -75,8 +76,8 @@ fn when_it_evals_successfully(world: &mut common::SpecsWorld) {
 #[when("it is parsed")]
 #[when("sr parses it")]
 fn when_it_is_parsed(world: &mut common::SpecsWorld) {
-    if world.code_snippet == "" {
-        assert!(false, "passed empty code snippet to parser");
+    if world.code_snippet.is_empty() {
+        panic!("when_it_is_parsed(): passed empty code snippet to parser");
     }
     let parse_result = testing::parse_single_block(&world.platform_bindings, &world.code_snippet);
     let parse_result = match parse_result {
@@ -109,8 +110,8 @@ fn when_it_is_parsed(world: &mut common::SpecsWorld) {
 #[when("type_check and eval for BottomDialect is ran")]
 #[when("sr evals it")]
 fn when_eval_is_ran(world: &mut common::SpecsWorld) {
-    if world.code_snippet == "" {
-        assert!(false, "passed empty code snippet to parser");
+    if world.code_snippet.is_empty() {
+        panic!("when_eval_is_ran(): passed empty code snippet to parser");
     }
     let Some(OmniTypeChecker::Bottom(ctx)) = world.type_checkers.get_mut(BOTTOM_TC_NAME) else {
         panic!("expected to get a bottom context, didn't!");
@@ -147,13 +148,13 @@ fn when_it_is_parsed_and_evaluated(world: &mut common::SpecsWorld) {
 #[then("the last eval should be successful")]
 #[then("the last sr eval should be successful")]
 fn then_the_last_eval_should_be_successful(world: &mut common::SpecsWorld) {
-    assert!(world.last_eval_success == true, "{}", world.last_eval_msg);
+    assert!(world.last_eval_success, "{}", world.last_eval_msg);
 }
 
 #[then("the last parse should be successful")]
 #[then("the last sr parse should be successful")]
 fn then_the_last_parse_should_be_successful(world: &mut common::SpecsWorld) {
-    assert!(world.last_parse_success == true, "{}", world.last_parse_msg);
+    assert!(world.last_parse_success, "{}", world.last_parse_msg);
 }
 
 #[then(regex = r#"the last parse message should contain "([^"]*)""#)]
@@ -169,13 +170,13 @@ fn then_the_last_eval_message_should_container(world: &mut common::SpecsWorld, e
 #[then("the last eval should have failed")]
 #[then("the last sr eval should have failed")]
 fn then_the_last_eval_should_have_failed(world: &mut common::SpecsWorld) {
-    assert!(world.last_eval_success == false);
+    assert!(!world.last_eval_success);
 }
 
 #[then("the last parse should have failed")]
 #[then("the last sr parse should have failed")]
 fn then_the_last_parse_should_have_failed(world: &mut common::SpecsWorld) {
-    assert!(world.last_parse_success == false);
+    assert!(!world.last_parse_success);
 }
 
 #[then("the resulting eval Kind should be Unit")]
@@ -234,10 +235,7 @@ fn then_the_evaluated_value_should_be_tag_of(world: &mut common::SpecsWorld, tag
 #[then(regex = r#"the resulting eval Kind should be a fn abs"#)]
 #[then(regex = r#"the resulting sr eval Kind should be a fn abs"#)]
 fn then_the_evaluated_value_should_be_a_fn_abs(world: &mut common::SpecsWorld) {
-    let match_result = match world.last_eval_kind {
-        Kind::Abs(_, _) => true,
-        _ => false,
-    };
+    let match_result = matches!(world.last_eval_kind, Kind::Abs(_, _));
     assert!(
         match_result,
         "expected true match result for input, but got false with {:?}",
@@ -268,7 +266,7 @@ fn then_the_final_value_after_eval_should_equal(world: &mut common::SpecsWorld, 
             );
             return;
         }
-        assert!(false, "failed; shouldn't reach here");
+        unreachable!("failed; shouldn't reach here");
     }
-    assert!(false, "failed; shouldn't reach here");
+    unreachable!("failed; shouldn't reach here");
 }

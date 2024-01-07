@@ -17,7 +17,7 @@ use crate::dialect::{SystemRDialect, SystemRExtension};
 use crate::{
     dialect::bottom::{BottomDialect, BottomExtension},
     eval,
-    platform_bindings::Bindings,
+    platform_bindings::PlatformBindings,
     syntax::parser::Parser,
     terms::{visit::InjRewriter, Term},
     type_check::{self, Type},
@@ -59,7 +59,7 @@ where
     ps.parse(ext)
 }
 
-pub fn parse_single_block(platform_bindings: &Bindings, input: &str) -> Result<Term<BottomDialect>> {
+pub fn parse_single_block(platform_bindings: &PlatformBindings, input: &str) -> Result<Term<BottomDialect>> {
     let mut ps = Parser::<'_, BottomDialect>::new(platform_bindings, input);
     let mut ext = BottomExtension;
     ps.parse(&mut ext)

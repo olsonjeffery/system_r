@@ -4,7 +4,7 @@ pub mod patterns;
 pub mod visit;
 use crate::dialect::{SystemRDialect, SystemRExtension};
 use crate::feedback::{self, catalog};
-use crate::platform_bindings::Bindings;
+use crate::platform_bindings::PlatformBindings;
 use crate::terms::{Kind, Literal, Primitive, Term};
 use crate::util::span::Span;
 use crate::visit::{MutTermVisitor, MutTypeVisitor};
@@ -44,7 +44,7 @@ pub struct Variant<TExtDialect: SystemRDialect> {
 pub struct TypeChecker<TExtDialect: SystemRDialect> {
     pub stack: VecDeque<Type<TExtDialect>>,
     pub map: HashMap<String, Type<TExtDialect>>,
-    pub platform_bindings: Bindings,
+    pub platform_bindings: PlatformBindings,
     pub ext_state: TExtDialect::DialectState,
 }
 

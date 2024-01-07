@@ -4,15 +4,13 @@ use cucumber::{given, then, when};
 
 use system_r::testing;
 use system_r::{
-    dialect::{
-        type_alias::{
-            TypeAliasDialectState, TypeAliasExtension, TypeAliasToBottomDialectResolver, TypeAliasTypeChecker,
-        },
-        SystemRDialect, SystemRExtension, SystemRResolver,
-    },
+    dialect::{SystemRDialect, SystemRExtension, SystemRResolver},
     syntax::parser::Parser,
     terms::Term,
     type_check::{Type, TypeChecker},
+};
+use system_r_dialects::type_alias::{
+    TypeAliasDialectState, TypeAliasExtension, TypeAliasToBottomDialectResolver, TypeAliasTypeChecker,
 };
 
 use crate::common::{
@@ -25,11 +23,11 @@ use super::system_r::{given_a_new_type_checker, BOTTOM_TC_NAME};
 
 use anyhow::Result;
 
-static TYPE_ALIAS_CTX_NAME: &'static str = "TypeAlias";
+static TYPE_ALIAS_CTX_NAME: &str = "TypeAlias";
 
-pub fn parse_for_extension<'s, TExtDialect: SystemRDialect, TLE: SystemRExtension<TExtDialect>>(
+pub fn parse_for_extension<TExtDialect: SystemRDialect, TLE: SystemRExtension<TExtDialect>>(
     input: &str,
-    ps: &mut Parser<'s, TExtDialect>,
+    ps: &mut Parser<TExtDialect>,
     ext: &mut TLE,
 ) -> Result<Term<TExtDialect>>
 where
@@ -38,7 +36,7 @@ where
     testing::operate_parser_for(input, ps, ext)
 }
 
-pub fn type_check_for_extension<'s, TExtDialect: SystemRDialect + 'static, TLE: SystemRExtension<TExtDialect>>(
+pub fn type_check_for_extension<TExtDialect: SystemRDialect + 'static, TLE: SystemRExtension<TExtDialect>>(
     ctx: &mut TypeChecker<TExtDialect>,
     term: &mut Term<TExtDialect>,
     ext: &mut TLE,
@@ -46,7 +44,7 @@ pub fn type_check_for_extension<'s, TExtDialect: SystemRDialect + 'static, TLE: 
     testing::do_type_check::<TExtDialect, TLE>(ctx, term, ext)
 }
 
-pub fn add_type_alias_ext_state_to_context<'s>(world: &mut SpecsWorld, st: TypeAliasDialectState) {
+pub fn add_type_alias_ext_state_to_context(world: &mut SpecsWorld, st: TypeAliasDialectState) {
     let Some(OmniTypeChecker::TypeAlias(ctx)) = world.type_checkers.get_mut(TYPE_ALIAS_CTX_NAME) else {
         panic!("expected type alias context, didn't get it!");
     };
@@ -80,7 +78,7 @@ fn when_it_is_processed_for_type_alias(world: &mut common::SpecsWorld) {
         Ok(term) => {
             let k = OmniKind::TypeAlias(term.clone().kind);
             let t = OmniTerm::TypeAlias(term.clone());
-            world.last_ext_parse_success = if k == OmniKind::Empty { false } else { true };
+            world.last_ext_parse_success = k != OmniKind::Empty;
             world.last_ext_parse_kind = k;
             world.last_ext_parse_term = t;
             world.last_ext_state = OmniState::TypeAlias(ps.to_ext_state());

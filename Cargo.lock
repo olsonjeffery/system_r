@@ -1213,6 +1213,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "system_r_dialects"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
+ "system_r",
+]
+
+[[package]]
 name = "system_r_specs"
 version = "0.0.1"
 dependencies = [
@@ -1221,6 +1229,7 @@ dependencies = [
  "cucumber",
  "futures",
  "system_r",
+ "system_r_dialects",
 ]
 
 [[package]]

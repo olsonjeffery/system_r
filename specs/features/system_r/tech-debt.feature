@@ -2,7 +2,9 @@
 Feature: Technical Debt
     #
     # Incomplete list:
-    # - rename PlatformBindings to just Bindings
+    # - proj reorg
+    #   - eval/testing -> system_r_eval_ref_impl; refactor steps to use this;
+    #   - add system_r_dialects crate
     # - panic site in lexer->parser
     # - rustdoc-documentation of entire API surface
     #   - #[deny(missing_docs)]
@@ -10,9 +12,6 @@ Feature: Technical Debt
     # - further feedback work:
     #   - remove ErrorKind::ExtendedError, update where aprop
     #   - thread spans all throughout system, especially into ALL SystemRExtension impls
-    # - proj reorg
-    #   - eval/testing -> system_r_eval_ref_impl; refactor steps to use this;
-    #   - add system_r_dialects crate
     # - tests
     #   - !! use coverage to drive additional test creation; cover the entire language
     #   - port system_r unit tests to specs, dump macros
