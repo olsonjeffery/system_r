@@ -9,7 +9,8 @@ extern crate anyhow;
 
 #[cfg(test)]
 mod bench {
-    use system_r::{platform_bindings::PlatformBindings, terms::Kind, testing, type_check::TypeChecker};
+    use system_r_eval::testing;
+    use system_r::{platform_bindings::PlatformBindings, terms::Kind, type_check::TypeChecker};
     use test::{black_box, Bencher};
 
     #[bench]

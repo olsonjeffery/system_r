@@ -2,9 +2,10 @@
 Feature: Technical Debt
     #
     # Incomplete list:
-    # - proj reorg
-    #   - eval/testing -> system_r_eval_ref_impl; refactor steps to use this;
-    #   - add system_r_dialects crate
+    # - test improvement
+    #   - port system_r unit tests to specs, dump macros
+    #     - eval tests are commented-out, should be re-impl'd
+    #   - !! use coverage to drive additional test creation; cover the entire language
     # - panic site in lexer->parser
     # - rustdoc-documentation of entire API surface
     #   - #[deny(missing_docs)]
@@ -12,8 +13,6 @@ Feature: Technical Debt
     # - further feedback work:
     #   - remove ErrorKind::ExtendedError, update where aprop
     #   - thread spans all throughout system, especially into ALL SystemRExtension impls
-    # - tests
-    #   - !! use coverage to drive additional test creation; cover the entire language
-    #   - port system_r unit tests to specs, dump macros
+    #   - type_check appears to be disconnected from span..
     # - adopt git2rs pre-commit hook (being done manually, intermittently)
     # - LOW clone->Rc, audit for removal

@@ -1,0 +1,12 @@
+[package]
+name = "system_r_eval"
+version = "0.0.1"
+authors = ["the contributors"]
+edition = "2021"
+license = "APACHE2 & MIT"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = { version = "1.0.75" }
+system_r = { path = "../system_r" }

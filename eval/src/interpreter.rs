@@ -1,61 +1,20 @@
-/*
-Copyright (C) 2020-2023 Micheal Lazear, AUTHORS
-
-The MIT License (MIT)
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
----------------------
-
-Copyright (C) 2023 AUTHORS
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License in the ./LICENSE.APACHE2 file
-in this repository.
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
-use crate::dialect::bottom::{BottomDialect, BottomExtension, BottomState};
-use crate::patterns::Pattern;
-use crate::platform_bindings::PlatformBindings;
-use crate::terms::visit::{Shift, Subst, TyTermSubst};
-use crate::terms::{Kind, Literal, Primitive, Term};
-use crate::type_check::{Type, TypeChecker};
-use crate::visit::MutTermVisitor;
+use system_r::dialect::bottom::{BottomDialect, BottomExtension, BottomState};
+use system_r::patterns::Pattern;
+use system_r::platform_bindings::PlatformBindings;
+use system_r::terms::visit::{Shift, Subst, TyTermSubst};
+use system_r::terms::{Kind, Literal, Primitive, Term};
+use system_r::type_check::{Type, TypeChecker};
+use system_r::visit::MutTermVisitor;
 use anyhow::Result;
 
-pub struct Eval<'ctx> {
-    _context: &'ctx TypeChecker<BottomDialect>,
+pub struct BottomDialectInterpreter {
     platform_bindings: PlatformBindings,
 }
 
-impl<'ctx> Eval<'ctx> {
-    pub fn with_context(_context: &TypeChecker<BottomDialect>) -> Eval<'_> {
-        let platform_bindings = _context.platform_bindings.clone();
-        Eval {
-            _context,
+impl BottomDialectInterpreter {
+    pub fn with_context(context: &TypeChecker<BottomDialect>) -> BottomDialectInterpreter {
+        let platform_bindings = context.platform_bindings.clone();
+        BottomDialectInterpreter {
             platform_bindings,
         }
     }
@@ -66,10 +25,10 @@ impl<'ctx> Eval<'ctx> {
             Kind::Abs(_, _) => true,
             Kind::TyAbs(_) => true,
             Kind::Primitive(_) => true,
-            Kind::Injection(_, tm, _) => Eval::normal_form(tm),
-            Kind::Product(fields) => fields.iter().all(Eval::normal_form),
-            Kind::Fold(_, tm) => Eval::normal_form(tm),
-            Kind::Pack(_, tm, _) => Eval::normal_form(tm),
+            Kind::Injection(_, tm, _) => BottomDialectInterpreter::normal_form(tm),
+            Kind::Product(fields) => fields.iter().all(BottomDialectInterpreter::normal_form),
+            Kind::Fold(_, tm) => BottomDialectInterpreter::normal_form(tm),
+            Kind::Pack(_, tm, _) => BottomDialectInterpreter::normal_form(tm),
             Kind::PlatformBinding(_) => true,
             // Kind::Unpack(pack, tm) => Eval::normal_form(tm),
             _ => false,
@@ -98,12 +57,12 @@ impl<'ctx> Eval<'ctx> {
     }
 
     pub fn small_step(&self, term: Term<BottomDialect>) -> Result<Option<Term<BottomDialect>>> {
-        if Eval::normal_form(&term) {
+        if BottomDialectInterpreter::normal_form(&term) {
             return Ok(None);
         }
         match term.kind {
             Kind::App(t1, t2) => {
-                if Eval::normal_form(&t2) {
+                if BottomDialectInterpreter::normal_form(&t2) {
                     match t1.kind {
                         Kind::Abs(_, mut abs) => {
                             term_subst(*t2, abs.as_mut());
@@ -127,7 +86,7 @@ impl<'ctx> Eval<'ctx> {
                             None => Ok(None),
                         },
                     }
-                } else if Eval::normal_form(&t1) {
+                } else if BottomDialectInterpreter::normal_form(&t1) {
                     // t1 is in normal form, but t2 is not, so we will
                     // carry out the reducton t2 -> t2', and return
                     // App(t1, t2')
@@ -146,9 +105,9 @@ impl<'ctx> Eval<'ctx> {
                 }
             }
             Kind::Let(pat, bind, mut body) => {
-                if Eval::normal_form(&bind) {
+                if BottomDialectInterpreter::normal_form(&bind) {
                     // term_subst(*bind, &mut body);
-                    Eval::case_subst(&pat, &bind, body.as_mut());
+                    BottomDialectInterpreter::case_subst(&pat, &bind, body.as_mut());
                     Ok(Some(*body))
                 } else {
                     let t = self.small_step(*bind)?;
@@ -182,7 +141,7 @@ impl<'ctx> Eval<'ctx> {
                 }
             }
             Kind::Projection(tm, idx) => {
-                if Eval::normal_form(&tm) {
+                if BottomDialectInterpreter::normal_form(&tm) {
                     match tm.kind {
                         // Typechecker ensures that idx is in bounds
                         Kind::Product(terms) => Ok(terms.get(idx).cloned()),
@@ -199,7 +158,7 @@ impl<'ctx> Eval<'ctx> {
             Kind::Product(terms) => {
                 let mut v = Vec::with_capacity(terms.len());
                 for term in terms {
-                    if Eval::normal_form(&term) {
+                    if BottomDialectInterpreter::normal_form(&term) {
                         v.push(term);
                     } else {
                         let res = self.small_step(term)?;
@@ -212,7 +171,7 @@ impl<'ctx> Eval<'ctx> {
                 Ok(Some(Term::new(Kind::Product(v), term.span)))
             }
             Kind::Fix(tm) => {
-                if !Eval::normal_form(&tm) {
+                if !BottomDialectInterpreter::normal_form(&tm) {
                     let t_prime = self.small_step(*tm)?;
                     match t_prime {
                         Some(t_prime) => return Ok(Some(Term::new(Kind::Fix(Box::new(t_prime)), term.span))),
@@ -230,7 +189,7 @@ impl<'ctx> Eval<'ctx> {
                 }
             }
             Kind::Case(expr, arms) => {
-                if !Eval::normal_form(&expr) {
+                if !BottomDialectInterpreter::normal_form(&expr) {
                     let t_prime = self.small_step(*expr)?;
                     match t_prime {
                         Some(t_prime) => return Ok(Some(Term::new(Kind::Case(Box::new(t_prime), arms), term.span))),
@@ -240,7 +199,7 @@ impl<'ctx> Eval<'ctx> {
 
                 for mut arm in arms {
                     if arm.pat.matches(&expr, &BottomExtension) {
-                        Eval::case_subst(&arm.pat, &expr, arm.term.as_mut());
+                        BottomDialectInterpreter::case_subst(&arm.pat, &expr, arm.term.as_mut());
                         return Ok(Some(*arm.term));
                     }
                 }
@@ -248,7 +207,7 @@ impl<'ctx> Eval<'ctx> {
                 Ok(None)
             }
             Kind::Fold(ty, tm) => {
-                if !Eval::normal_form(&tm) {
+                if !BottomDialectInterpreter::normal_form(&tm) {
                     let t_prime = self.small_step(*tm)?;
                     match t_prime {
                         Some(t_prime) => Ok(Some(Term::new(Kind::Fold(ty, Box::new(t_prime)), term.span))),
@@ -260,7 +219,7 @@ impl<'ctx> Eval<'ctx> {
             }
 
             Kind::Unfold(ty, tm) => {
-                if !Eval::normal_form(&tm) {
+                if !BottomDialectInterpreter::normal_form(&tm) {
                     let t_prime = self.small_step(*tm)?;
                     match t_prime {
                         Some(t_prime) => return Ok(Some(Term::new(Kind::Unfold(ty, Box::new(t_prime)), term.span))),
@@ -269,12 +228,13 @@ impl<'ctx> Eval<'ctx> {
                 }
 
                 match tm.kind {
-                    Kind::Fold(ty2, inner) => Ok(Some(*inner)),
+                    // FIXME: unused _ty2 param; incomplete feature/bug?
+                    Kind::Fold(_ty2, inner) => Ok(Some(*inner)),
                     _ => Ok(None),
                 }
             }
             Kind::Pack(wit, evidence, sig) => {
-                if !Eval::normal_form(&evidence) {
+                if !BottomDialectInterpreter::normal_form(&evidence) {
                     let t_prime = self.small_step(*evidence)?;
                     match t_prime {
                         Some(t_prime) => {
@@ -286,13 +246,14 @@ impl<'ctx> Eval<'ctx> {
                 Ok(None)
             }
             Kind::Unpack(package, mut body) => match package.kind {
-                Kind::Pack(wit, evidence, sig) => {
+                // FIXME: unused _sig param; incomplete feature/bug?
+                Kind::Pack(wit, evidence, _sig) => {
                     term_subst(*evidence, &mut body);
                     type_subst(*wit, &mut body);
                     Ok(Some(*body))
                 }
                 _ => {
-                    if !Eval::normal_form(&package) {
+                    if !BottomDialectInterpreter::normal_form(&package) {
                         let t_prime = self.small_step(*package)?;
                         match t_prime {
                             Some(t_prime) => {
@@ -320,7 +281,7 @@ impl<'ctx> Eval<'ctx> {
             Product(v) => {
                 if let Kind::Product(terms) = &expr.kind {
                     for (idx, tm) in terms.iter().enumerate() {
-                        Eval::case_subst(&v[idx], tm, term);
+                        BottomDialectInterpreter::case_subst(&v[idx], tm, term);
                     }
                 } else {
                     panic!("runtime error")
@@ -329,7 +290,7 @@ impl<'ctx> Eval<'ctx> {
             Constructor(label, v) => {
                 if let Kind::Injection(label_, tm, _) = &expr.kind {
                     if label == label_ {
-                        Eval::case_subst(v, tm, term);
+                        BottomDialectInterpreter::case_subst(v, tm, term);
                     }
                 } else {
                     panic!("runtime error")
@@ -365,19 +326,22 @@ fn type_subst(s: Type<BottomDialect>, t: &mut Term<BottomDialect>) {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use crate::util::span::Span;
+    /*
+    use crate::interpreter::*;
+    use system_r::*;
+    use system_r::macros::*;
+    use system_r::util::span::Span;
 
     #[test]
     fn literal() {
-        let ctx = crate::type_check::TypeChecker::default();
+        let ctx = type_check::TypeChecker::default();
         let eval = Eval::with_context(&ctx);
         assert_eq!(eval.small_step(lit!(false)).unwrap(), None);
     }
 
     #[test]
     fn application() {
-        let ctx = crate::type_check::TypeChecker::default();
+        let ctx = type_check::TypeChecker::default();
         let eval = Eval::with_context(&ctx);
         let tm = app!(abs!(Type::Nat, app!(prim!(Primitive::Succ), var!(0))), nat!(1));
 
@@ -391,7 +355,7 @@ mod test {
 
     #[test]
     fn type_application() {
-        let ctx = crate::type_check::TypeChecker::default();
+        let ctx = type_check::TypeChecker::default();
         let eval = Eval::with_context(&ctx);
         let tm = tyapp!(
             tyabs!(abs!(Type::Var(0), app!(prim!(Primitive::Succ), var!(0)))),
@@ -406,7 +370,7 @@ mod test {
 
     #[test]
     fn projection() {
-        let ctx = crate::type_check::TypeChecker::default();
+        let ctx = type_check::TypeChecker::default();
         let eval = Eval::with_context(&ctx);
         let product = Term::new(Kind::Product(vec![nat!(5), nat!(6), nat!(29)]), Span::zero());
         let projection = Term::new(Kind::Projection(Box::new(product), 2), Span::zero());
@@ -419,4 +383,5 @@ mod test {
         let t3 = eval.small_step(t2.unwrap()).unwrap();
         assert_eq!(t3, None);
     }
+    */
 }

@@ -12,11 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-use crate::dialect::{SystemRDialect, SystemRExtension};
+use system_r::dialect::{SystemRDialect, SystemRExtension};
 
-use crate::{
+use crate::interpreter;
+use system_r::{
     dialect::bottom::{BottomDialect, BottomExtension},
-    eval,
     platform_bindings::PlatformBindings,
     syntax::parser::Parser,
     terms::{visit::InjRewriter, Term},
@@ -49,7 +49,7 @@ pub fn dealias_and_type_check_term<TExtDialect: SystemRDialect + 'static, TExt: 
 }
 
 pub fn operate_parser_for<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
-    input: &str,
+    _input: &str, // FIXME not needed?
     ps: &mut Parser<TExtDialect>,
     ext: &mut TExt,
 ) -> Result<Term<TExtDialect>>
@@ -69,7 +69,7 @@ pub fn do_bottom_eval(
     ctx: &mut type_check::TypeChecker<BottomDialect>,
     term: &mut Term<BottomDialect>,
 ) -> Result<Term<BottomDialect>> {
-    let ev = eval::Eval::with_context(ctx);
+    let ev = interpreter::BottomDialectInterpreter::with_context(ctx);
     let mut t: Term<BottomDialect> = term.clone();
     let fin = loop {
         if let Some(res) = ev.small_step(t.clone())? {
@@ -84,7 +84,7 @@ pub fn do_bottom_eval(
 pub fn type_check_and_eval_single_block(
     ctx: &mut type_check::TypeChecker<BottomDialect>,
     term: &mut Term<BottomDialect>,
-    src: &str,
+    _src: &str, // FIXME do something with this?
     fail_on_type_mismatch: bool,
 ) -> Result<(Type<BottomDialect>, Term<BottomDialect>)> {
     // Step 1
@@ -101,7 +101,7 @@ pub fn type_check_and_eval_single_block(
             "Type change of term pre check typecheck to post-eval: {:?} {:?}",
             pre_ty, fin_ty
         );
-        return Err(anyhow!("romeo-level type-check-coordination error"));
+        return Err(anyhow!("romeo-level type-check-coordination error {}", msg));
     }
 
     Ok((fin_ty, fin))

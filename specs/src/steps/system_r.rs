@@ -2,11 +2,11 @@ extern crate cucumber;
 
 use cucumber::{gherkin::Step, given, then, when};
 
+use system_r_eval::testing;
 use system_r::{
     dialect::bottom::BottomDialect,
     feedback::{FeedbackSeverity, SystemRFeedback},
     terms::{Kind, Literal, Term},
-    testing,
     type_check::Type,
     type_check::TypeChecker,
 };

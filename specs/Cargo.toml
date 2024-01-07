@@ -9,6 +9,7 @@ license = "APACHE2 & MIT"
 anyhow = { version = "1.0.75" }
 system_r = { path = "../system_r" }
 system_r_dialects = { path = "../dialects" }
+system_r_eval = { path = "../eval" }
 futures = "0.3"
 chrono = "0.4"
 cucumber = { version = "0.20.2", features = ["output-json"] }

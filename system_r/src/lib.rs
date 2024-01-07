@@ -42,13 +42,11 @@ limitations under the License.
 #[macro_use]
 pub mod macros;
 pub mod dialect;
-pub mod eval;
 pub mod feedback;
 pub mod patterns;
 pub mod platform_bindings;
 pub mod syntax;
 pub mod terms;
-pub mod testing;
 pub mod type_check;
 pub mod util;
 pub mod visit;

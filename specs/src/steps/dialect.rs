@@ -2,7 +2,7 @@ extern crate cucumber;
 
 use cucumber::{given, then, when};
 
-use system_r::testing;
+use system_r_eval::testing;
 use system_r::{
     dialect::{SystemRDialect, SystemRExtension, SystemRResolver},
     syntax::parser::Parser,
