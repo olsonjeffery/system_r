@@ -2,15 +2,15 @@ extern crate cucumber;
 
 use cucumber::{gherkin::Step, given, then, when};
 
-use system_r_eval::testing;
 use system_r::{
-    dialect::bottom::BottomDialect,
+    dialect::bottom::{BottomDialect, BottomExtension},
     feedback::{FeedbackSeverity, SystemRFeedback},
-    terms::{Kind, Literal, Term},
+    terms::{Kind, Literal, Term, plaintext::Plaintext},
     type_check::Type,
     type_check::TypeChecker,
 };
 use system_r_dialects::type_alias::TypeAliasDialect;
+use system_r_eval::testing;
 
 use crate::common::{self, extensions::OmniTypeChecker};
 
@@ -106,6 +106,39 @@ fn when_it_is_parsed(world: &mut common::SpecsWorld) {
     world.last_parse_msg = "".to_owned();
 }
 
+#[when("it is converted to plaintext")]
+fn when_it_is_converted_to_plaintext(world: &mut common::SpecsWorld) {
+    let term = world.last_parse_term.clone();
+    match term.to_plaintext(&BottomExtension) {
+        Ok(s) => {
+            world.last_plaintext = s
+        },
+        Err(e) => {
+            world.last_plaintext = format!("plaintext failed: {e:?}");
+        }
+    };
+}
+
+#[when("it is type checked")]
+fn when_type_check_is_ran_on_the_default_bottom_ctx(world: &mut common::SpecsWorld) {
+    let Some(OmniTypeChecker::Bottom(ctx)) = world.type_checkers.get_mut(BOTTOM_TC_NAME) else {
+        panic!("expected to get a bottom context, didn't!");
+    };
+    let mut term = world.last_parse_term.clone();
+    match testing::do_type_check(ctx, &mut term, &mut BottomExtension) {
+        Ok(t) => {
+            world.last_tyck_success = true;
+            world.last_tyck_type = t;
+            world.last_tyck_msg = String::new();
+        },
+        Err(e) => {
+            world.last_tyck_success = false;
+            world.last_tyck_type = Type::default();
+            world.last_tyck_msg = format!("error returned from system_r_eval::testing::do_type_check(): {e:?}");
+        }
+    }
+}
+
 #[when("eval is ran")]
 #[when("type_check and eval for BottomDialect is ran")]
 #[when("sr evals it")]
@@ -167,36 +200,10 @@ fn then_the_last_eval_message_should_container(world: &mut common::SpecsWorld, e
     );
 }
 
-#[then("the last eval should have failed")]
-#[then("the last sr eval should have failed")]
-fn then_the_last_eval_should_have_failed(world: &mut common::SpecsWorld) {
-    assert!(!world.last_eval_success);
-}
-
 #[then("the last parse should have failed")]
 #[then("the last sr parse should have failed")]
 fn then_the_last_parse_should_have_failed(world: &mut common::SpecsWorld) {
     assert!(!world.last_parse_success);
-}
-
-#[then("the resulting eval Kind should be Unit")]
-#[then("the resulting sr eval Kind should be Unit")]
-fn then_the_evaluated_term_should_be_unit(world: &mut common::SpecsWorld) {
-    assert!(
-        world.last_eval_kind == Kind::Lit(Literal::Unit),
-        "Kind {:?}",
-        world.last_eval_kind
-    );
-}
-
-#[then("the resulting eval Kind should be Boolean false")]
-#[then("the resulting sr eval Kind should be Boolean false")]
-fn then_the_evaluated_term_should_be_boolean_false(world: &mut common::SpecsWorld) {
-    assert!(
-        world.last_eval_kind == Kind::Lit(Literal::Bool(false)),
-        "Expected Boolean false, got {:?}",
-        world.last_eval_kind
-    );
 }
 
 #[then("the result should be Boolean true")]

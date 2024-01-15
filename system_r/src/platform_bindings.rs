@@ -66,9 +66,7 @@ impl<'a> PlatformBindings {
     /// registered with this PlatformBindings instance
     pub fn has(&self, alias: &str) -> Option<usize> {
         let r = self.by_name.get(alias);
-        let Some(idx) = r else {
-            return None;
-        };
+        let idx = r?;
         Some(*idx)
     }
 

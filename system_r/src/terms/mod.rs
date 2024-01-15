@@ -4,6 +4,7 @@ use crate::patterns::Pattern;
 use crate::type_check::Type;
 use crate::util::span::Span;
 use std::fmt;
+pub mod plaintext;
 pub mod visit;
 
 #[derive(Clone, Default, PartialEq, PartialOrd)]

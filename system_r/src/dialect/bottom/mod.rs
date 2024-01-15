@@ -11,6 +11,8 @@ use crate::{
 };
 use anyhow::Result;
 
+pub mod plaintext;
+
 #[derive(Eq, Hash, Clone, Default, Debug, PartialEq, PartialOrd)]
 pub struct BottomDialect;
 
@@ -214,5 +216,9 @@ impl SystemRExtension<BottomDialect> for BottomExtension {
         other_ty: &mut crate::type_check::Type<BottomDialect>,
     ) -> bool {
         false
+    }
+
+    fn to_plaintext(&self, input: &Term<BottomDialect>) -> Result<String> {
+        Err(anyhow!("should never be called under bottom dialect"))
     }
 }

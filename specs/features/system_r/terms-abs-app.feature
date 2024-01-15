@@ -31,3 +31,32 @@ Feature: Terms Function ABS APP
         """
         When it evals successfully
         Then the resulting eval Kind should be Nat of 12
+    
+        # FIXME: from system-f.srpt; improve
+    Scenario: poly fn abs + app from system-f.srpt 1
+        Given a new type checker
+        Given a srpt block:
+        """
+let poly = \X \x: X. x in 
+	let x = poly [Nat] 0 in 
+	let y = poly [Bool] false in 
+	let z = poly [(Nat, Bool)] in 
+	z (x, y)
+;
+        """
+        When it is parsed and evaluated
+        Then the last parse should be successful
+        Then the last eval should be successful
+
+    Scenario: poly fn abs + app from system-f.srpt 2
+        Given a new type checker
+        Given a srpt block:
+        """
+let poly = \X \Y (\func: X->Y. \val: X. func val) in poly [Nat][Bool]
+;
+        """
+        When it is parsed and evaluated
+        Then the last parse should be successful
+        Then the last eval should be successful
+
+

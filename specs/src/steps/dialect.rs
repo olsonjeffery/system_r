@@ -2,7 +2,6 @@ extern crate cucumber;
 
 use cucumber::{given, then, when};
 
-use system_r_eval::testing;
 use system_r::{
     dialect::{SystemRDialect, SystemRExtension, SystemRResolver},
     syntax::parser::Parser,
@@ -12,6 +11,7 @@ use system_r::{
 use system_r_dialects::type_alias::{
     TypeAliasDialectState, TypeAliasExtension, TypeAliasToBottomDialectResolver, TypeAliasTypeChecker,
 };
+use system_r_eval::testing;
 
 use crate::common::{
     self,

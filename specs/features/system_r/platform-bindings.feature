@@ -2,12 +2,8 @@
 Feature: Platform Bindings
     #- rust-implemented, aliased fn bindings for Nat arithmetic + logic:
     #    - need generlized facility to bind identifiers to expressable funs w/ params 
-    #        - first api for total functions
-    #        - subsequent API that captures ARE syntax; expressed as decl?
-    #        - need macros
-    #    - just functions bound to rust! leave dyad-impl out of system_r
-    #    - there will likely be higher-level APIs to emit these binding instructions; used's by an `rstrong_input`
-
+    #        - v1 api for total functions
+    #        - subsequent API that captures TARE syntax; expressed as decl?
     Scenario: Recursive fib() with natAdd & natSub
         Given a new type checker
         And platform bindings for Nat add & sub
@@ -25,7 +21,7 @@ let fib = \z: Nat->Nat. \i: Nat.
         And the last eval should be successful
         And the resulting eval Kind should be Nat of 21
 
-    Scenario: Nested PB invokes shouldn't choke
+    Scenario: Proper eager eval of nested PBs
         # The regression this captures is to ensure that the
         # arguments to a PB are evaluated-down to normal form
         # before the PB itself is invoked

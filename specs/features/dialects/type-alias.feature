@@ -67,5 +67,8 @@ res ;
         And the last eval should be successful
         Then the final value after eval should equal: "14"
     
+    Scenario: TypeAlias plaintext
+        Given this is not implemented
+    
     # Scenario: TechDebt
     # - remove need for $-prefix, share Uppercase var namespace w/ tyabs?

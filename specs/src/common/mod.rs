@@ -36,6 +36,10 @@ pub struct SpecsWorld {
     pub last_ext_parse_msg: String,
     pub last_ext_state: OmniState,
     pub last_ext_ty: OmniType,
+    pub last_tyck_success: bool,
+    pub last_tyck_type: Type<BottomDialect>,
+    pub last_tyck_msg: String,
+    pub last_plaintext: String,
 }
 
 impl SpecsWorld {

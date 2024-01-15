@@ -16,4 +16,7 @@ f (false, 16);
 
     # Scenario: variant data
 
-    # Scenario: NEW fixed length homogenous array of T
+    # Scenario: NEW fixed length homogenous array of T, pass by value
+
+    # Scenario: NEW unsized slice of T, derived from array, passed by-ref
+    # - ensure no unsafety

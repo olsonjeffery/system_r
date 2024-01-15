@@ -1,3 +1,6 @@
+//! TypeAliasDialect
+/// - Extends the Bottom-dialect of system_r (ie system_f with some minor
+///   kind/type enhancement)
 use std::{cell::RefCell, collections::HashMap, fmt::Display, rc::Rc};
 
 use system_r::{
@@ -26,9 +29,6 @@ pub struct TypeAliasExtension;
 
 pub type TypeAliasTypeChecker = TypeChecker<TypeAliasDialect>;
 
-/// Extension 1: TypeAliasDialect
-/// - Extends the Bottom-dialect of system_r (ie system_f with some minor
-///   kind/type enhancement)
 #[derive(Clone, Debug, Default, PartialEq, PartialOrd)]
 pub enum TypeAliasTokenKind {
     #[default]
@@ -432,6 +432,10 @@ impl SystemRExtension<TypeAliasDialect> for TypeAliasExtension {
             TypeAliasType::Empty => false,      // shouldn't happen
         }
     }
+
+    fn to_plaintext(&self, _input: &Term<TypeAliasDialect>) -> Result<String> {
+        todo!()
+    }
 }
 
 pub fn get_holed_type_from(ps: &TypeAliasDialectState, key: &str) -> Result<(usize, Type<TypeAliasDialect>)> {
@@ -458,7 +462,7 @@ pub fn set_holed_type_for(
 pub fn reify_type(
     ext_state: &TypeAliasDialectState,
     type_decl_key: &str,
-    applied_types: &Vec<Type<TypeAliasDialect>>,
+    applied_types: &[Type<TypeAliasDialect>],
 ) -> Result<Type<TypeAliasDialect>> {
     let (tyabs_count, mut holed_type) = get_holed_type_from(ext_state, type_decl_key)?;
 

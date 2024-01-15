@@ -1,3 +1,4 @@
+use anyhow::Result;
 use system_r::dialect::bottom::{BottomDialect, BottomExtension, BottomState};
 use system_r::patterns::Pattern;
 use system_r::platform_bindings::PlatformBindings;
@@ -5,7 +6,6 @@ use system_r::terms::visit::{Shift, Subst, TyTermSubst};
 use system_r::terms::{Kind, Literal, Primitive, Term};
 use system_r::type_check::{Type, TypeChecker};
 use system_r::visit::MutTermVisitor;
-use anyhow::Result;
 
 pub struct BottomDialectInterpreter {
     platform_bindings: PlatformBindings,
@@ -14,9 +14,7 @@ pub struct BottomDialectInterpreter {
 impl BottomDialectInterpreter {
     pub fn with_context(context: &TypeChecker<BottomDialect>) -> BottomDialectInterpreter {
         let platform_bindings = context.platform_bindings.clone();
-        BottomDialectInterpreter {
-            platform_bindings,
-        }
+        BottomDialectInterpreter { platform_bindings }
     }
 
     fn normal_form(term: &Term<BottomDialect>) -> bool {

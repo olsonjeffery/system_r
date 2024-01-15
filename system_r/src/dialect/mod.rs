@@ -104,6 +104,7 @@ pub trait SystemRExtension<TExtDialect: SystemRDialect>: Copy + Clone + Default 
         ext_ty: &mut TExtDialect::Type,
         other_ty: &mut Type<TExtDialect>,
     ) -> bool;
+    fn to_plaintext(&self, input: &Term<TExtDialect>) -> Result<String>;
 }
 
 pub trait SystemRResolver<InDialect: SystemRDialect, OutDialect: SystemRDialect> {
