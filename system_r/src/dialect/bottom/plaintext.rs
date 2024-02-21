@@ -1,10 +1,16 @@
-use crate::{terms::{plaintext::Plaintext, Term, Kind}, dialect::{SystemRDialect, SystemRExtension}};
 use super::BottomDialect;
+use crate::{
+    dialect::{SystemRDialect, SystemRExtension},
+    terms::{plaintext::Plaintext, Kind, Literal, Term},
+};
 use anyhow::Result;
 
-pub fn vanilla_dialect_to_plaintext<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(input: &Term<TExtDialect>, ext: &TExt) -> Result<String> {
+pub fn vanilla_dialect_to_plaintext<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
+    input: &Term<TExtDialect>,
+    ext: &TExt,
+) -> Result<String> {
     match input.kind.clone() {
-        l @ Kind::Lit(_) => Ok(vanilla_lit_kind_to_plaintext(input)),
+        Kind::Lit(v) => Ok(vanilla_lit_kind_to_plaintext::<TExtDialect>(&v)),
         crate::terms::Kind::Var(_) => todo!(),
         crate::terms::Kind::PlatformBinding(_) => todo!(),
         crate::terms::Kind::Fix(_) => todo!(),
@@ -26,8 +32,14 @@ pub fn vanilla_dialect_to_plaintext<TExtDialect: SystemRDialect, TExt: SystemREx
     }
 }
 
-fn vanilla_lit_kind_to_plaintext<TExtDialect: SystemRDialect>(input: &Term<TExtDialect>) -> String {
-    todo!()
+fn vanilla_lit_kind_to_plaintext<TExtDialect: SystemRDialect>(input: &Literal) -> String {
+    match input {
+        Literal::Unit => "Unit".to_owned(),
+        Literal::Bool(b) => if b == &true { "true".to_owned() } else { "false".to_owned() },
+        Literal::Nat(n) => n.to_string(),
+        Literal::Tag(t) => format!("@{t}"),
+        Literal::Bytes(bytes) => todo!(),
+    }
 }
 
 impl Plaintext<BottomDialect> for Term<BottomDialect> {
@@ -36,9 +48,11 @@ impl Plaintext<BottomDialect> for Term<BottomDialect> {
             // Any dialect building-up from BottomDialect should implement the extended arm for its
             // respective dialect items, otherwise delegate everything else to vanilla_dialect_to_plaintext(),
             // which is exported and should be the extry point for handing it any term
-            &Kind::Extended(_) => Err(anyhow!("Plaintext for Term<BottomDialect>: should never have extended
-                kinds, but got one (shouldn't ever happen)")),
-            _ => vanilla_dialect_to_plaintext(self, ext)
+            &Kind::Extended(_) => Err(anyhow!(
+                "Plaintext for Term<BottomDialect>: should never have extended
+                kinds, but got one (shouldn't ever happen)"
+            )),
+            _ => vanilla_dialect_to_plaintext(self, ext),
         }
     }
 }

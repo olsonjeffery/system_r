@@ -5,7 +5,7 @@ use cucumber::{gherkin::Step, given, then, when};
 use system_r::{
     dialect::bottom::{BottomDialect, BottomExtension},
     feedback::{FeedbackSeverity, SystemRFeedback},
-    terms::{Kind, Literal, Term, plaintext::Plaintext},
+    terms::{Kind, Literal, Term},
     type_check::Type,
     type_check::TypeChecker,
 };
@@ -106,19 +106,6 @@ fn when_it_is_parsed(world: &mut common::SpecsWorld) {
     world.last_parse_msg = "".to_owned();
 }
 
-#[when("it is converted to plaintext")]
-fn when_it_is_converted_to_plaintext(world: &mut common::SpecsWorld) {
-    let term = world.last_parse_term.clone();
-    match term.to_plaintext(&BottomExtension) {
-        Ok(s) => {
-            world.last_plaintext = s
-        },
-        Err(e) => {
-            world.last_plaintext = format!("plaintext failed: {e:?}");
-        }
-    };
-}
-
 #[when("it is type checked")]
 fn when_type_check_is_ran_on_the_default_bottom_ctx(world: &mut common::SpecsWorld) {
     let Some(OmniTypeChecker::Bottom(ctx)) = world.type_checkers.get_mut(BOTTOM_TC_NAME) else {
@@ -130,7 +117,7 @@ fn when_type_check_is_ran_on_the_default_bottom_ctx(world: &mut common::SpecsWor
             world.last_tyck_success = true;
             world.last_tyck_type = t;
             world.last_tyck_msg = String::new();
-        },
+        }
         Err(e) => {
             world.last_tyck_success = false;
             world.last_tyck_type = Type::default();
@@ -176,6 +163,12 @@ fn when_eval_is_ran(world: &mut common::SpecsWorld) {
 fn when_it_is_parsed_and_evaluated(world: &mut common::SpecsWorld) {
     when_it_is_parsed(world);
     when_eval_is_ran(world);
+}
+
+#[then("the last tyck should be successful")]
+#[then("the last type check should be successful")]
+fn then_the_last_tyck_should_be_successful(world: &mut common::SpecsWorld) {
+    assert!(world.last_tyck_success, "{}", world.last_tyck_msg);
 }
 
 #[then("the last eval should be successful")]
