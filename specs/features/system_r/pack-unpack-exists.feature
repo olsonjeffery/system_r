@@ -1,13 +1,16 @@
 @system_r
 Feature: pack / unpack / exists examples
     Scenario: Basic pack / unpack
-        # FIXME: from system-f.srpt; improve
+        # Very basic packaging of a value (a tuple of (Nat->Nat, Nat)) and
+        # then using it (along with an intermediate identity function to
+        # show separate usage)
+        #
+        # See next scenario for more thorough examination of what's happening
         Given a new type checker
         Given a srpt block:
         """
 let package = (pack Nat, ((\x: Nat. succ (succ x)), 0) as exists X. (X->Nat, X)) in
 	unpack package as T, mod in mod.0 ((\x: T. x) mod.1)
-;
         """
         When it is parsed and evaluated
         Then the last parse should be successful

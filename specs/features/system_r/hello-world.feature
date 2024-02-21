@@ -5,7 +5,7 @@ Feature: RStrong: System R Hello World
         Given a srpt block:
         """
 let id = \X \x: X. x in
-id [Bool] (true);
+    id [Bool] (true);
         """
         When it is parsed and evaluated
         Then the last parse should be successful

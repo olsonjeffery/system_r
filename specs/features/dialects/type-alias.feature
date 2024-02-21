@@ -50,7 +50,8 @@ toNat [Bool] (Left true of $Either[Bool, Nat]) (\x: Bool. case x of | true => 1 
         Given a system_r toolchain extended for TypeAlias
         And adding an instrinsic named iiiNatAdd to the "TypeAlias" context
         And a code block:
-        """type $NatOption = {None | Some Nat} in
+        """
+type $NatOption = {None | Some Nat} in
 let doubler = \c: $NatOption.
 	case c of 
 		| None => None of $NatOption

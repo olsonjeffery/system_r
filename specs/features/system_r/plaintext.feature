@@ -1,5 +1,9 @@
 Feature: Plaintext
     Scenario: plaintext generated from parsed and type checked BottomDialect Term
+        # NOTE: because it's possible for heteromorphisms always collapsing to
+        # a single given form when converted to plaintext, we will try
+        # and stick to input thats "survive" the plaintext-conversion process with
+        # textual equivalence intact
         Given a new type checker
         And a code block:
 """let id = \X \x: X. x in
