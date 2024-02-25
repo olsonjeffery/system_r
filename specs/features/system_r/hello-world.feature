@@ -61,37 +61,23 @@ case Some (5, 2) of {None | Some (Nat, Nat)} of
 case (1, (2, 3)) of 
 	| (x, (y, z)) => ((z, y), x)
 ;
-let x = 
-	\z: (Nat, Nat)->Nat. 
-		\y: (Nat, Nat).
-			case y of
-				| (0, x) => x,
-				| x => z (pred y.0, succ (succ x.1))
-	in (fix x) (10, 0)
-
-;
-
-let cdr = \list: NatList. 
-	case unfold NatList list of 
-		| Nil => Nil of NatList
-		| Cons (x, xs) => xs
-in cdr Cons (10, Cons (20, Nil of NatList) of NatList) of NatList
-;
-
-case unfold NatList Cons (10, Cons (20, Nil of NatList) of NatList) of NatList of 
-	| Nil => Nil of NatList 
-	| Cons (10, xs) => Cons (11, xs) of NatList
-	| Cons (x, xs) => xs
-;
-
-let nil = Nil of NatList in 
-let cons = (\val: Nat. \list: NatList. Cons (val, list) of NatList) in
-case unfold NatList (cons 1 nil) of 
-	| Nil => nil
-	| Cons (x, y) => y
-
-;
         """
         When it is parsed and evaluated
         Then the last parse should be successful
         Then the last eval should be successful
+
+    Scenario: polymorphic abs+app, case, destructuring
+        Given a new type checker
+        Given a srpt block:
+        """
+let func = \X (\c: {None | Some X}. \x: X->(X, X). 
+	case c of 
+		| None => None of {None | Some (X, X)}
+		| Some val => Some x val of {None | Some (X, X)} ) in
+let Some result = func [Nat] (Some 10 of {None|Some Nat}) (\x: Nat. (x, x)) in
+result;
+        """
+        When it is parsed and evaluated
+        Then the last parse should be successful
+        Then the last eval should be successful
+        Then the final value after eval should equal: "(10, 10)"

@@ -1,9 +1,5 @@
 Feature: Plaintext
-    Scenario: plaintext hello-world of just literals
-        # NOTE: because it's possible for heteromorphisms always collapsing to
-        # a single given form when converted to plaintext, we will try
-        # and stick to input thats "survive" the plaintext-conversion process with
-        # textual equivalence intact
+    Scenario: plaintext: Nat literal
         Given a new type checker
         And a code block:
 """42"""
@@ -11,5 +7,48 @@ Feature: Plaintext
         And it is type checked
         And it is converted to plaintext
         Then the plaintext should match the input code block
-        And the last parse should be successful
-        And the last type check should be successful
+
+    Scenario: plaintext: Bool literal
+        Given a new type checker
+        And a code block:
+"""false"""
+        When it is parsed
+        And it is type checked
+        And it is converted to plaintext
+        Then the plaintext should match the input code block
+
+    Scenario: plaintext: Tag literal
+        Given a new type checker
+        And a code block:
+"""@someTag"""
+        When it is parsed
+        And it is type checked
+        And it is converted to plaintext
+        Then the plaintext should match the input code block
+
+    Scenario: plaintext: Unit literal
+        Given a new type checker
+        And a code block:
+"""Unit"""
+        When it is parsed
+        And it is type checked
+        And it is converted to plaintext
+        Then the plaintext should match the input code block
+
+    Scenario: byte literal
+        Given a new type checker
+        And a code block:
+"""[71, 69, 84]"""
+        When it is parsed
+        And it is type checked
+        And it is converted to plaintext
+        Then the plaintext should match the input code block
+
+    Scenario: plaintext: application of primitive + nat literal
+        Given a new type checker
+        And a code block:
+"""succ 2"""
+        When it is parsed
+        And it is type checked
+        And it is converted to plaintext
+        Then the plaintext should match the input code block

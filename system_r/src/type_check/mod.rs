@@ -288,7 +288,7 @@ impl<TExtDialect: SystemRDialect + 'static> TypeChecker<TExtDialect> {
                         Err(catalog::type_check::err_17(term, rec, &ty_).into())
                     }
                 }
-                _ => Err(catalog::type_check::err_19(term, rec).into()),
+                _ => Err(catalog::type_check::err_18(term, rec).into()),
             },
 
             Kind::Fold(rec, tm) => match rec.as_ref() {

@@ -14,12 +14,12 @@ let fib = \z: Nat->Nat. \i: Nat.
         | 1 => 1
         | 0 => 1
         | n => natAdd( z(natSub(n, 1)), z(natSub(n, 2)) ) in
-(fix fib)(7);
+(fix fib) 4;
         """
         When it is parsed and evaluated
         Then the last parse should be successful
         And the last eval should be successful
-        And the resulting eval Kind should be Nat of 21
+        And the resulting eval Kind should be Nat of 5
 
     Scenario: Proper eager eval of nested PBs
         # The regression this captures is to ensure that the

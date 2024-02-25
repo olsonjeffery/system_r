@@ -263,7 +263,7 @@ pub fn err_18<TExtDialect: SystemRDialect>(
     rec: &Type<TExtDialect>,
 ) -> SystemRFeedback<TExtDialect> {
     let term_span = term.span;
-    SystemRFeedback::type_check_error("TC18", term_span, &format!(r#"execpted a recursive type, not {rec:?}"#))
+    SystemRFeedback::type_check_error("TC18", term_span, &format!(r#"execpted a recursive type in unfold, not {rec:?}"#))
 }
 
 /// TC19
@@ -272,7 +272,7 @@ pub fn err_19<TExtDialect: SystemRDialect>(
     rec: &Type<TExtDialect>,
 ) -> SystemRFeedback<TExtDialect> {
     let term_span = term.span;
-    SystemRFeedback::type_check_error("TC19", term_span, &format!(r#"execpted a recursive type, not {rec:?}"#))
+    SystemRFeedback::type_check_error("TC19", term_span, &format!(r#"execpted a recursive type in fold, not {rec:?}"#))
 }
 
 /// TC20

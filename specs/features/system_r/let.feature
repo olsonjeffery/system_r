@@ -38,7 +38,7 @@ succ z;
         Then the last parse should be successful
         Then the last eval should be successful
 
-    Scenario: fun with let from system-f.srpt 4
+    Scenario: fun with let III
         Given a new type checker
         Given a srpt block:
         """
@@ -52,7 +52,7 @@ x (10, 12, 13);
         Then the last eval should be successful
         Then the final value after eval should equal: "12"
 
-    Scenario: fun with let from system-f.srpt 4
+    Scenario: fun with let IV
         Given a new type checker
         Given a srpt block:
         """
