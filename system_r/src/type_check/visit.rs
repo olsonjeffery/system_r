@@ -4,7 +4,6 @@ use crate::{
     visit::MutTypeVisitor,
 };
 use anyhow::{Context, Result};
-use std::convert::TryFrom;
 
 pub struct Shift {
     pub cutoff: usize,

@@ -13,11 +13,8 @@
 //! <http://moscova.inria.fr/~maranget/papers/warn/index.html>
 
 use super::*;
-use crate::dialect::{SystemRDialect, SystemRExtension};
-use crate::feedback;
 use crate::patterns::{PatTyStack, Pattern};
 use crate::terms::*;
-use anyhow::Result;
 use std::collections::HashSet;
 
 /// Return true if `existing` covers `new`, i.e. if new is a useful pattern
