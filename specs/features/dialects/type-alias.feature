@@ -1,5 +1,9 @@
 @system_r_dialects
 Feature: The TypeAlias dialect
+    # ALSO: re-work entire Ext framework, add Deferred to Kinds, all "extended" syntax just becomes
+    # deferrals that the extended Dialect tries to handle.. if it rejects any ParseDeferrals, then it's
+    # a legit error
+
     # Add structural type/data-shape capture (let-style, with arity-based TyAbs) with the `type`
     # keyword, add TypeAlias application with $TypeName[Of V]
     # where V is a TyAbs in the type value
