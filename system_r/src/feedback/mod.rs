@@ -42,7 +42,7 @@ impl<TExtDialect: SystemRDialect> SystemRFeedback<TExtDialect> {
             phase: FeedbackPhase::Parse(tok, kind.clone()),
             severity: FeedbackSeverity::Error(message.unwrap_or(match kind.clone() {
                 ErrorKind::ExtendedError(msg) => msg.clone(),
-                _ => "unknown error".to_owned(),
+                ek => format!("error of kind {:?} in span {:?}", ek, span),
             })),
             src: None,
             acknowledged: false,
