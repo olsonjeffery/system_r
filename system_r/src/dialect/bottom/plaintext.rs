@@ -109,7 +109,23 @@ fn type_shape_to_plaintext<TExtDialect: SystemRDialect, TExt: SystemRExtension<T
         vars_debruijn: &mut Vec<String>,
         tyvars_debruijn: &mut Vec<String>,
     ) -> Result<String> {
-        todo!("type_shape_to_plaintext")
+        match ty {
+            Type::Unit => Ok("Unit".to_owned()),
+            Type::Nat => Ok("Nat".to_owned()),
+            Type::Bool => Ok("Bool".to_owned()),
+            Type::Bytes => Ok("Bytes".to_owned()),
+            Type::Tag(_) => todo!(),
+            Type::Alias(_) => todo!(),
+            Type::Var(tyvar_idx) => Ok(tyvars_debruijn[tyvars_debruijn.len() - (1 + tyvar_idx)].clone()),
+            Type::Variant(_) => todo!(),
+            Type::Product(_) => todo!(),
+            Type::PlatformBinding(_, _) => todo!(),
+            Type::Arrow(_, _) => todo!(),
+            Type::Universal(_) => todo!(),
+            Type::Existential(_) => todo!(),
+            Type::Rec(_) => todo!(),
+            Type::Extended(_) => todo!(),
+        }
     }
 
 fn function_abstraction_to_plaintext<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
@@ -119,16 +135,21 @@ fn function_abstraction_to_plaintext<TExtDialect: SystemRDialect, TExt: SystemRE
         vars_debruijn: &mut Vec<String>,
         tyvars_debruijn: &mut Vec<String>
     ) -> std::prelude::v1::Result<String, anyhow::Error> {
-    let next_var = get_next_var(tyvars_debruijn);
+    let next_var = get_next_var(vars_debruijn);
     let inner_plaintext = term_to_plaintext(&body, ext, vars_debruijn, tyvars_debruijn)?;
     let ty_plaintext = type_shape_to_plaintext(&arg_ty, ext, vars_debruijn, tyvars_debruijn)?;
-    Ok("\\{next_var}: {ty_plaintext} {inner_plaintext}".to_owned())
+    Ok(format!("\\{next_var}: {ty_plaintext}. {inner_plaintext}"))
 }
 
-fn type_abstraction_to_plaintext<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(inner_term: Box<Term<TExtDialect>>, ext: &TExt, vars_debruijn: &mut Vec<String>, tyvars_debruijn: &mut Vec<String>) -> std::prelude::v1::Result<String, anyhow::Error> {
-    let next_tyvar = get_next_tyvar(vars_debruijn);
+fn type_abstraction_to_plaintext<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
+        inner_term: Box<Term<TExtDialect>>,
+        ext: &TExt,
+        vars_debruijn: &mut Vec<String>,
+        tyvars_debruijn: &mut Vec<String>
+    ) -> std::prelude::v1::Result<String, anyhow::Error> {
+    let next_tyvar = get_next_tyvar(tyvars_debruijn);
     let inner_plaintext = term_to_plaintext(&inner_term, ext, vars_debruijn, tyvars_debruijn)?;
-    Ok("\\{next_tyvar} {inner_plaintext}".to_owned())
+    Ok(format!("\\{next_tyvar} {inner_plaintext}"))
 }
 
 fn application_to_plaintext<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(

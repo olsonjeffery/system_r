@@ -61,6 +61,4 @@ Feature: Plaintext
         And it is type checked
         And it is converted to plaintext
         Then the plaintext should match the input code block
-        And the plaintext should eval to the same term as the input
-    
-    # todo .. carry varname info forward from lexer/parser into Terms metadata?
+        # TODO And the plaintext should eval to the same term as the input
