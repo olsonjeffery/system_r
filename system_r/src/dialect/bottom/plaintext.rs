@@ -77,7 +77,8 @@ pub fn term_to_plaintext<TExtDialect: SystemRDialect, TExt: SystemRExtension<TEx
         crate::terms::Kind::Product(_) => todo!("product"),
         crate::terms::Kind::Projection(_, _) => todo!("proj"),
         crate::terms::Kind::Case(_, _) => todo!("case"),
-        crate::terms::Kind::Let(_, _, _) => todo!("let"),
+        crate::terms::Kind::Let(pat, val, scope) =>
+            let_block_to_plaintext(pat, val, scope, vars_debruijn, tyvars_debruijn),
         crate::terms::Kind::Abs(arg_ty, body) => 
             function_abstraction_to_plaintext(arg_ty, body, ext, vars_debruijn, tyvars_debruijn),
         crate::terms::Kind::App(l, r) =>
@@ -91,6 +92,12 @@ pub fn term_to_plaintext<TExtDialect: SystemRDialect, TExt: SystemRExtension<TEx
         crate::terms::Kind::Unpack(_, _) => todo!("unpack"),
         k @ Kind::Extended(_) => ext.to_plaintext(input),
     }
+}
+
+fn let_block_to_plaintext(
+        pat: Box<Pattern<TExtDialect>
+    ) -> Result<String> {
+    Ok("".to_owned())
 }
 
 fn var_to_plaintext<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
