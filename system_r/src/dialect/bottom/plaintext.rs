@@ -1,7 +1,6 @@
 use super::BottomDialect;
 use crate::{
-    dialect::{SystemRDialect, SystemRExtension},
-    terms::{plaintext::Plaintext, Kind, Literal, Primitive, Term}, type_check::Type,
+    dialect::{SystemRDialect, SystemRExtension}, patterns::Pattern, terms::{plaintext::Plaintext, Kind, Literal, Primitive, Term}, type_check::Type
 };
 use anyhow::Result;
 
@@ -78,7 +77,7 @@ pub fn term_to_plaintext<TExtDialect: SystemRDialect, TExt: SystemRExtension<TEx
         crate::terms::Kind::Projection(_, _) => todo!("proj"),
         crate::terms::Kind::Case(_, _) => todo!("case"),
         crate::terms::Kind::Let(pat, val, scope) =>
-            let_block_to_plaintext(pat, val, scope, vars_debruijn, tyvars_debruijn),
+            let_block_to_plaintext(pat, val, scope, ext, vars_debruijn, tyvars_debruijn),
         crate::terms::Kind::Abs(arg_ty, body) => 
             function_abstraction_to_plaintext(arg_ty, body, ext, vars_debruijn, tyvars_debruijn),
         crate::terms::Kind::App(l, r) =>
@@ -94,10 +93,15 @@ pub fn term_to_plaintext<TExtDialect: SystemRDialect, TExt: SystemRExtension<TEx
     }
 }
 
-fn let_block_to_plaintext(
-        pat: Box<Pattern<TExtDialect>
+fn let_block_to_plaintext<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
+        pat: Box<Pattern<TExtDialect>>,
+        val: Box<Term<TExtDialect>>,
+        scope: Box<Term<TExtDialect>>,
+        ext: &TExt,
+        vars_debruijn: &mut Vec<String>,
+        tyvars_debruijn: &mut Vec<String>,
     ) -> Result<String> {
-    Ok("".to_owned())
+    todo!("let->plaintext impl");
 }
 
 fn var_to_plaintext<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
