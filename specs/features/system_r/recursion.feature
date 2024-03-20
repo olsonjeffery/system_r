@@ -34,3 +34,23 @@ in car Cons (10, Nil of rec MyNatList = {Nil | Cons (Nat, MyNatList)})
         Then the last parse should be successful
         Then the last eval should be successful
         Then the final value after eval should equal: "10"
+
+    Scenario: Function+Type recursion via fix+unfold
+        Given a new type checker
+        Given a srpt block:
+        """
+let l = \r:(rec MyNatList = {Nil | Cons (Nat, MyNatList)})->Nat.
+        \list: rec MyNatList = {Nil | Cons (Nat, MyNatList)}. 
+	case unfold rec MyNatList = {Nil | Cons (Nat, MyNatList)} list of 
+        | Nil => 0
+        | Cons (x, xs) => (case unfold rec MyNatList = {Nil | Cons (Nat, MyNatList)} xs of
+            | Nil => x
+            | Cons(xx, xxs) => (r Cons (xx, xxs) of rec MyNatList = {Nil | Cons (Nat, MyNatList)})) in
+(fix l) Cons (10, Cons (20, Nil of rec MyNatList = {Nil | Cons (Nat, MyNatList)})
+    of rec MyNatList = {Nil | Cons (Nat, MyNatList)})
+        of rec MyNatList = {Nil | Cons (Nat, MyNatList)}
+        """
+        When it is parsed and evaluated
+        Then the last parse should be successful
+        Then the last eval should be successful
+        Then the final value after eval should equal: "20"
