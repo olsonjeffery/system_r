@@ -118,7 +118,7 @@ impl<TExtDialect: SystemRDialect> fmt::Debug for SystemRFeedback<TExtDialect> {
         f.debug_struct("Error")
             .field(
                 "system-r-feedback",
-                &format!("phase: {:?} severity: {:?}", self.phase, self.severity),
+                &format!("phase: {:?} span: {:?} severity: {:?}", self.phase, self.target_span, self.severity),
             )
             .finish()
     }
@@ -128,7 +128,7 @@ impl<TExtDialect: SystemRDialect> fmt::Display for SystemRFeedback<TExtDialect> 
         f.debug_struct("Error")
             .field(
                 "system-r-feedback",
-                &format!("phase: {:?} severity: {:?}", self.phase, self.severity),
+                &format!("phase: {:?} span: {:?} severity: {:?}", self.phase, self.target_span, self.severity),
             )
             .finish()
     }

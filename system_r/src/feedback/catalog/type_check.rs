@@ -48,7 +48,7 @@ pub fn err_04<TExtDialect: SystemRDialect>(
     term: &Term<TExtDialect>,
     t1: &Term<TExtDialect>,
     t2: &Term<TExtDialect>,
-    ty11: &Type<TExtDialect>,
+    ty1: &Type<TExtDialect>,
     ty2: &Type<TExtDialect>,
 ) -> SystemRFeedback<TExtDialect> {
     let t1_span = t1.span;
@@ -59,8 +59,7 @@ pub fn err_04<TExtDialect: SystemRDialect>(
         term_span,
         &format!(
             r#"Type<TExtDialect> mismatch in application
-{t1_span:?} Abstraction requires type {ty11:?}
-{t2_span:?} Value has a type of {ty2:?}
+span: {t1_span:?} Abstraction requires type '{ty1:?}' Value has a type of '{ty2:?}'
     "#
         ),
     )
@@ -118,7 +117,7 @@ pub fn err_07<TExtDialect: SystemRDialect>(
     SystemRFeedback::type_check_error(
         "TC07",
         term_span,
-        &format!(r#"App: Expected arrow type! Kind::App ty1 {ty1:?}, ty1 {ty2:?} "#),
+        &format!(r#"App: Expected arrow type in Kind::App term; ty1 {ty1:?}, ty2 {ty2:?} ; Term: {term:?}"#),
     )
 }
 
