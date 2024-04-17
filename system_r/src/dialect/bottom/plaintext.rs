@@ -35,8 +35,8 @@ fn do_debruijn_mangling_within(last_name: &str, floor_char: char, ceiling: u32) 
     } else {
         let partial = last_name.chars().into_iter().take(last_name.len() - 1).collect::<String>();
         let next_name = partial + &add1_char(last_char).to_string();
+        return next_name;
     }
-    String::new()
 }
 
 fn generic_var_getter(names_debruijn: &mut Vec<String>, floor_char: char, ceiling: u32) -> String {
@@ -45,6 +45,7 @@ fn generic_var_getter(names_debruijn: &mut Vec<String>, floor_char: char, ceilin
     } else {
         let last_name = names_debruijn.last().unwrap();
         let next_var = do_debruijn_mangling_within(last_name, floor_char, ceiling);
+
         next_var
     };
     names_debruijn.push(next_var.clone());
@@ -65,8 +66,10 @@ pub fn term_to_plaintext<TExtDialect: SystemRDialect, TExt: SystemRExtension<TEx
     vars_debruijn: &mut Vec<String>,
     tyvars_debruijn: &mut Vec<String>,
 ) -> Result<String> {
-    match input.kind.clone() {
-        Kind::Lit(v) => Ok(vanilla_lit_kind_to_plaintext::<TExtDialect>(&v)),
+    let vars_before = vars_debruijn.len();
+    let tyvars_before = tyvars_debruijn.len();
+    let res = match input.kind.clone() {
+        Kind::Lit(v) => Ok(lit_kind_to_plaintext::<TExtDialect>(&v)),
         crate::terms::Kind::Var(idx) => 
             var_to_plaintext(idx, ext, vars_debruijn, tyvars_debruijn),
         crate::terms::Kind::PlatformBinding(_) => todo!("platformbinding"),
@@ -90,18 +93,36 @@ pub fn term_to_plaintext<TExtDialect: SystemRDialect, TExt: SystemRExtension<TEx
         crate::terms::Kind::Pack(_, _, _) => todo!("pack"),
         crate::terms::Kind::Unpack(_, _) => todo!("unpack"),
         k @ Kind::Extended(_) => ext.to_plaintext(input),
+    };
+
+    if res.is_ok() {
+        unwind_debruijn_to(vars_debruijn, tyvars_debruijn, vars_before, tyvars_before);
     }
+    res
 }
 
 fn let_block_to_plaintext<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
-        pat: Box<Pattern<TExtDialect>>,
+        binding: Box<Pattern<TExtDialect>>,
         val: Box<Term<TExtDialect>>,
         scope: Box<Term<TExtDialect>>,
         ext: &TExt,
         vars_debruijn: &mut Vec<String>,
         tyvars_debruijn: &mut Vec<String>,
     ) -> Result<String> {
-    todo!("let->plaintext impl");
+    let binding_str = pattern_to_plaintext::<TExtDialect>(&binding, vars_debruijn)?;
+
+    let value_str = term_to_plaintext(&val, ext, vars_debruijn, tyvars_debruijn)?;
+    let scope_str = term_to_plaintext(&scope, ext, vars_debruijn, tyvars_debruijn)?;
+    Ok(format!("let {} = {} in {}", binding_str, value_str, scope_str))
+}
+
+fn unwind_debruijn_to(vars_debruijn: &mut Vec<String>, tyvars_debruijn: &mut Vec<String>, vars_before: usize, tyvars_before: usize) {
+    while vars_before < vars_debruijn.len() {
+        vars_debruijn.pop();
+    }
+    while tyvars_before < tyvars_debruijn.len() {
+        tyvars_debruijn.pop();
+    }
 }
 
 fn var_to_plaintext<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
@@ -110,8 +131,7 @@ fn var_to_plaintext<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDial
         vars_debruijn: &mut Vec<String>,
         _tyvars_debruijn: &mut Vec<String>,
     ) -> Result<String> {
-        let idx = 0;
-        Ok(vars_debruijn[idx].clone())
+        Ok(vars_debruijn[(vars_debruijn.len()-1)-idx].clone())
     }
 
 fn type_shape_to_plaintext<TExtDialect: SystemRDialect, TExt: SystemRExtension<TExtDialect>>(
@@ -182,7 +202,29 @@ fn primitive_to_plaintext(prim: &Primitive) -> String {
     }
 }
 
-fn vanilla_lit_kind_to_plaintext<TExtDialect: SystemRDialect>(input: &Literal) -> String {
+fn pattern_to_plaintext<TExtDialect: SystemRDialect>(input: &Pattern<TExtDialect>, vars_debruijn: &mut Vec<String>) -> Result<String> {
+    let res = match input {
+        Pattern::Any => "_".to_owned(),
+        Pattern::Literal(lit) => lit_kind_to_plaintext::<TExtDialect>(lit),
+        Pattern::Variable(v) => {
+            get_next_var(vars_debruijn)
+        },
+        Pattern::Product(v) => {
+            let c = v.iter()
+                .map(|x| pattern_to_plaintext(x, vars_debruijn).unwrap_or("unknown".to_owned()))
+                .collect::<Vec<String>>().join(", ");
+            format!("({})", c)
+        },
+        Pattern::Constructor(label, inj) => {
+            let inj_str = pattern_to_plaintext(&inj, vars_debruijn)?;
+            format!("{} {}", label, inj_str)
+        },
+        Pattern::Extended(_) => return Err(anyhow!("Extended pattern; not yet impl")),
+    };
+    Ok(res)
+}
+
+fn lit_kind_to_plaintext<TExtDialect: SystemRDialect>(input: &Literal) -> String {
     match input {
         Literal::Unit => "Unit".to_owned(),
         Literal::Bool(b) => if b == &true { "true".to_owned() } else { "false".to_owned() },
